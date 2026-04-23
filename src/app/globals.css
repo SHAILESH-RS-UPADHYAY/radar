@@ -1,26 +1,94 @@
 @import "tailwindcss";
 
+/* ============================
+   RADAR — Design System
+   Deep space theme with electric cyan + radar green accents
+   ============================ */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --radar-bg: #0A0E27;
+  --radar-bg-secondary: #111638;
+  --radar-bg-card: #161B3D;
+  --radar-cyan: #00D4FF;
+  --radar-green: #00FF88;
+  --radar-purple: #6C63FF;
+  --radar-pink: #FF6B9D;
+  --radar-text: #FFFFFF;
+  --radar-text-secondary: #94A3B8;
+  --radar-text-muted: #4B5563;
+  --radar-border: rgba(255, 255, 255, 0.08);
+  --radar-glow-cyan: 0 0 20px rgba(0, 212, 255, 0.3);
+  --radar-glow-green: 0 0 20px rgba(0, 255, 136, 0.3);
+  --radar-gradient-primary: linear-gradient(135deg, #6C63FF, #00D4FF);
+  --radar-gradient-accent: linear-gradient(135deg, #00D4FF, #00FF88);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--radar-bg);
+  --color-foreground: var(--radar-text);
+  --font-sans: var(--font-inter);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
+* { scrollbar-width: thin; scrollbar-color: var(--radar-purple) transparent; }
+*::-webkit-scrollbar { width: 6px; }
+*::-webkit-scrollbar-thumb { background: var(--radar-purple); border-radius: 3px; }
+html { scroll-behavior: smooth; }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--radar-bg);
+  color: var(--radar-text);
+  font-family: var(--font-inter), system-ui, sans-serif;
+  overflow-x: hidden;
+}
+
+::selection { background: rgba(0, 212, 255, 0.3); color: white; }
+
+.glass-card {
+  background: rgba(22, 27, 61, 0.6);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+}
+
+.btn-glow {
+  background: var(--radar-gradient-primary);
+  border: none; border-radius: 12px;
+  padding: 12px 32px; color: white;
+  font-weight: 600; cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative; overflow: hidden;
+}
+.btn-glow:hover { box-shadow: var(--radar-glow-cyan); transform: translateY(-2px); }
+
+.ripple-btn { position: relative; overflow: hidden; }
+.ripple-btn::before {
+  content: ''; position: absolute;
+  top: 50%; left: 50%; width: 0; height: 0;
+  border-radius: 50%; background: rgba(0, 212, 255, 0.2);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s ease, height 0.6s ease;
+}
+.ripple-btn:hover::before { width: 300px; height: 300px; }
+
+@keyframes float { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-10px); } }
+.animate-float { animation: float 3s ease-in-out infinite; }
+
+@keyframes pulse-glow { 0%, 100% { box-shadow: 0 0 5px rgba(0, 212, 255, 0.2); } 50% { box-shadow: 0 0 20px rgba(0, 212, 255, 0.5); } }
+.animate-pulse-glow { animation: pulse-glow 2s ease-in-out infinite; }
+
+@keyframes radar-scan { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+.animate-radar-scan { animation: radar-scan 4s linear infinite; }
+
+.text-gradient { background: var(--radar-gradient-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+.text-gradient-accent { background: var(--radar-gradient-accent); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+
+.badge-remote { background: rgba(0, 255, 136, 0.15); color: var(--radar-green); border: 1px solid rgba(0, 255, 136, 0.3); }
+.badge-hybrid { background: rgba(255, 183, 0, 0.15); color: #FFB700; border: 1px solid rgba(255, 183, 0, 0.3); }
+.badge-office { background: rgba(255, 107, 157, 0.15); color: var(--radar-pink); border: 1px solid rgba(255, 107, 157, 0.3); }
+
+.skill-tag {
+  background: rgba(108, 99, 255, 0.15); color: var(--radar-purple);
+  border: 1px solid rgba(108, 99, 255, 0.3);
+  padding: 2px 10px; border-radius: 100px;
+  font-size: 0.75rem; font-weight: 500;
 }
