@@ -5,7 +5,7 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Float, Stars, AdaptiveDpr } from '@react-three/drei';
 import * as THREE from 'three';
 
-// ===== OPTIMIZED: Mouse-reactive globe (lower poly, fewer objects) =====
+// High-detail Earth-like wireframe structure (Restored)
 function RadarGlobe() {
   const globeRef = useRef<THREE.Group>(null);
   const scanRef = useRef<THREE.Mesh>(null);
@@ -16,65 +16,70 @@ function RadarGlobe() {
   useFrame((state) => {
     const t = state.clock.elapsedTime;
     if (globeRef.current) {
-      globeRef.current.rotation.y = t * 0.1;
-      globeRef.current.rotation.x = THREE.MathUtils.lerp(globeRef.current.rotation.x, pointer.y * 0.12, 0.02);
-      globeRef.current.rotation.z = THREE.MathUtils.lerp(globeRef.current.rotation.z, -pointer.x * 0.06, 0.02);
+      globeRef.current.rotation.y = t * 0.15;
+      globeRef.current.rotation.x = THREE.MathUtils.lerp(globeRef.current.rotation.x, pointer.y * 0.15, 0.05);
+      globeRef.current.rotation.z = THREE.MathUtils.lerp(globeRef.current.rotation.z, -pointer.x * 0.08, 0.05);
     }
     if (scanRef.current) scanRef.current.rotation.z = t * 0.5;
-    // Sonar pulse — only 2 rings
+    
+    // Sonar pulses
     [pulseRef1, pulseRef2].forEach((ref, i) => {
       if (!ref.current) return;
-      const phase = ((t * 0.35 + i * 1.8) % 3.6) / 3.6;
-      ref.current.scale.setScalar(2 + phase * 3);
-      (ref.current.material as THREE.MeshBasicMaterial).opacity = (1 - phase) * 0.12;
+      const phase = ((t * 0.4 + i * 1.5) % 3) / 3;
+      ref.current.scale.setScalar(1.5 + phase * 2);
+      (ref.current.material as THREE.MeshBasicMaterial).opacity = (1 - phase) * 0.25;
     });
   });
 
   return (
     <group ref={globeRef}>
-      {/* Main sphere — LOW POLY for performance */}
+      {/* High-detail wireframe earth structure */}
       <mesh>
-        <sphereGeometry args={[2, 28, 28]} />
-        <meshBasicMaterial color="#0d3d35" wireframe transparent opacity={0.12} />
+        <sphereGeometry args={[2, 64, 64]} />
+        <meshBasicMaterial color="#333333" wireframe transparent opacity={0.3} />
       </mesh>
-      {/* Core glow */}
+      
+      {/* Secondary wireframe offset for glitchy/complex look */}
+      <mesh scale={1.01}>
+        <sphereGeometry args={[2, 32, 32]} />
+        <meshBasicMaterial color="#00FFD4" wireframe transparent opacity={0.1} />
+      </mesh>
+      
+      {/* Inner dark core to hide back-faces slightly */}
       <mesh>
-        <sphereGeometry args={[0.25, 12, 12]} />
-        <meshBasicMaterial color="#00FFD4" transparent opacity={0.5} />
+        <sphereGeometry args={[1.95, 32, 32]} />
+        <meshBasicMaterial color="#050505" transparent opacity={0.9} />
       </mesh>
-      {/* Scan wedge */}
+      
+      {/* Scan Wedge */}
       <mesh ref={scanRef} rotation={[Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[2, 32, 0, Math.PI / 4]} />
-        <meshBasicMaterial color="#00FFD4" transparent opacity={0.06} side={THREE.DoubleSide} />
+        <circleGeometry args={[2.2, 64, 0, Math.PI / 4]} />
+        <meshBasicMaterial color="#00FFD4" transparent opacity={0.1} side={THREE.DoubleSide} />
       </mesh>
-      {/* Equator ring */}
+
+      {/* Orbit Rings */}
       <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[2, 0.01, 8, 80]} />
-        <meshBasicMaterial color="#00FFD4" transparent opacity={0.5} />
+        <torusGeometry args={[2.3, 0.005, 16, 100]} />
+        <meshBasicMaterial color="#00FFD4" transparent opacity={0.4} />
       </mesh>
-      {/* Tilted ring */}
       <mesh rotation={[Math.PI / 3, 0.5, 0]}>
-        <torusGeometry args={[2.35, 0.005, 8, 80]} />
-        <meshBasicMaterial color="#8B5CF6" transparent opacity={0.3} />
+        <torusGeometry args={[2.6, 0.005, 16, 100]} />
+        <meshBasicMaterial color="#444444" transparent opacity={0.6} />
       </mesh>
-      {/* Outer ring */}
-      <mesh rotation={[Math.PI / 2, Math.PI / 3, 0.3]}>
-        <torusGeometry args={[2.6, 0.004, 8, 80]} />
-        <meshBasicMaterial color="#00FF88" transparent opacity={0.15} />
-      </mesh>
-      {/* Pulse rings */}
+
+      {/* Pulse Rings */}
       <mesh ref={pulseRef1} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1, 0.012, 6, 48]} />
-        <meshBasicMaterial color="#00FFD4" transparent opacity={0.12} />
+        <torusGeometry args={[1, 0.01, 16, 100]} />
+        <meshBasicMaterial color="#00FFD4" transparent opacity={0.2} />
       </mesh>
       <mesh ref={pulseRef2} rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[1, 0.008, 6, 48]} />
-        <meshBasicMaterial color="#00FFD4" transparent opacity={0.08} />
+        <torusGeometry args={[1, 0.01, 16, 100]} />
+        <meshBasicMaterial color="#00FFD4" transparent opacity={0.15} />
       </mesh>
-      {/* Data dots — reduced count */}
-      <OrbitingDots count={18} radius={2.1} color="#00FFD4" size={0.022} />
-      <OrbitingDots count={12} radius={2.45} color="#8B5CF6" size={0.018} />
-      <OrbitingDots count={8} radius={2.75} color="#00FF88" size={0.015} />
+
+      {/* Data Dots */}
+      <OrbitingDots count={40} radius={2.4} color="#00FFD4" size={0.02} />
+      <OrbitingDots count={25} radius={2.7} color="#ffffff" size={0.015} />
     </group>
   );
 }
@@ -116,7 +121,7 @@ function OrbitingDots({ count, radius, color, size }: { count: number; radius: n
   return (
     <instancedMesh ref={ref} args={[undefined, undefined, count]}>
       <sphereGeometry args={[size, 6, 6]} />
-      <meshBasicMaterial color={color} transparent opacity={0.7} />
+      <meshBasicMaterial color={color} transparent opacity={0.8} />
     </instancedMesh>
   );
 }
@@ -126,14 +131,13 @@ function FloatingShapes() {
     <group>
       {[
         { pos: [-5, 2.5, -5] as [number, number, number], color: '#00FFD4', s: 0.13, sp: 1 },
-        { pos: [5.5, -1.5, -6] as [number, number, number], color: '#8B5CF6', s: 0.17, sp: 0.6 },
-        { pos: [-4.5, -3, -4] as [number, number, number], color: '#00FF88', s: 0.1, sp: 1.2 },
-        { pos: [6, 3.5, -7] as [number, number, number], color: '#FF3D71', s: 0.14, sp: 0.8 },
+        { pos: [5.5, -1.5, -6] as [number, number, number], color: '#444444', s: 0.17, sp: 0.6 },
+        { pos: [-4.5, -3, -4] as [number, number, number], color: '#ffffff', s: 0.1, sp: 1.2 },
       ].map((s, i) => (
         <Float key={i} speed={s.sp} rotationIntensity={2} floatIntensity={1.5}>
           <mesh position={s.pos} scale={s.s}>
             <octahedronGeometry args={[1, 0]} />
-            <meshBasicMaterial color={s.color} wireframe transparent opacity={0.25} />
+            <meshBasicMaterial color={s.color} wireframe transparent opacity={0.3} />
           </mesh>
         </Float>
       ))}
@@ -141,8 +145,7 @@ function FloatingShapes() {
   );
 }
 
-// ===== MAIN SCENE — NO BLOOM, NO POSTPROCESSING = FAST =====
-// Using CSS glow effects instead for the "neon" look
+// MAIN SCENE — NO BLOOM, NO POSTPROCESSING = FAST
 export default function RadarScene() {
   return (
     <div className="absolute inset-0 z-0" style={{ filter: 'contrast(1.1) brightness(1.05)' }}>
@@ -152,9 +155,9 @@ export default function RadarScene() {
         gl={{ antialias: false, powerPreference: 'low-power' }}
         style={{ background: 'transparent' }}
       >
-        <color attach="background" args={['#080b1a']} />
+        <color attach="background" args={['#000000']} />
         <AdaptiveDpr pixelated />
-        <Stars radius={50} depth={60} count={1500} factor={2.5} saturation={0.2} fade speed={0.2} />
+        <Stars radius={50} depth={60} count={2000} factor={2.5} saturation={0} fade speed={0.2} />
         <RadarGlobe />
         <FloatingShapes />
         <ambientLight intensity={0.15} />
