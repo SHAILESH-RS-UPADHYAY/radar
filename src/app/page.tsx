@@ -4,10 +4,12 @@ import dynamic from 'next/dynamic';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
 import Image from 'next/image';
+import { playSound } from '@/lib/audio';
+import TicTacToe from '@/components/ui/MiniGame';
 
 const RadarScene = dynamic(() => import('@/components/3d/RadarScene'), { ssr: false });
 
-// Icons to replace emojis completely
+// Icons
 const CheckIcon = () => <svg className="w-5 h-5 text-[#00FFD4]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" /></svg>;
 const CrossIcon = () => <svg className="w-5 h-5 text-[#64748B]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>;
 const WarnIcon = () => <svg className="w-5 h-5 text-[#FFB700]" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>;
@@ -53,6 +55,7 @@ const QUOTES = [
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [quoteIdx, setQuoteIdx] = useState(0);
+  const [isScanning, setIsScanning] = useState(false);
 
   useEffect(() => {
     const h = () => setScrolled(window.scrollY > 50);
@@ -65,6 +68,16 @@ export default function LandingPage() {
     return () => clearInterval(t);
   }, []);
 
+  const handleScanDemo = () => {
+    playSound('scan');
+    setIsScanning(true);
+    // Auto-close demo after 12 seconds
+    setTimeout(() => {
+      setIsScanning(false);
+      playSound('success');
+    }, 12000);
+  };
+
   return (
     <main className="relative min-h-screen bg-grid scanlines">
       {/* ===== NAVBAR ===== */}
@@ -76,16 +89,39 @@ export default function LandingPage() {
             <span className="text-xl font-extrabold tracking-tight">RADAR</span>
           </motion.div>
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="flex items-center gap-3">
-            <Link href="/sign-in" className="px-5 py-2 text-sm font-medium text-[#64748B] hover:text-white transition-colors rounded-xl hover:bg-white/5">Sign In</Link>
-            <Link href="/sign-up" className="btn-neon text-sm px-6 py-2.5">Start Free</Link>
+            <Link href="/sign-in" className="px-5 py-2 text-sm font-medium text-[#64748B] hover:text-white transition-colors rounded-xl hover:bg-white/5" onMouseEnter={() => playSound('hover')} onClick={() => playSound('click')}>Sign In</Link>
+            <Link href="/sign-up" className="btn-neon text-sm px-6 py-2.5" onMouseEnter={() => playSound('hover')} onClick={() => playSound('click')}>Start Free</Link>
           </motion.div>
         </div>
       </nav>
 
+      {/* ===== SCANNING OVERLAY (MINI-GAME) ===== */}
+      <AnimatePresence>
+        {isScanning && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-black/80 backdrop-blur-md"
+          >
+            <div className="mb-8 text-center">
+              <h2 className="text-3xl font-black text-white mb-2 glitch-text">Intercepting Data Streams</h2>
+              <p className="text-[#00FFD4] text-sm uppercase tracking-[0.2em] animate-pulse">Running 384-dimensional semantic match...</p>
+            </div>
+            <TicTacToe />
+            <button 
+              onClick={() => setIsScanning(false)}
+              className="mt-8 text-xs text-[#64748B] hover:text-white transition-colors uppercase tracking-widest"
+              onMouseEnter={() => playSound('hover')}
+            >
+              [ Abort Scan ]
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* ===== HERO ===== */}
       <section className="relative min-h-screen flex items-center justify-center px-6">
         <RadarScene />
-        <div className="relative z-10 text-center max-w-4xl mx-auto">
+        <div className="relative z-10 text-center max-w-4xl mx-auto mt-12">
           <motion.div initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 1, delay: 0.2 }}>
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-8 text-[11px] font-semibold tracking-[0.15em] uppercase pulse-border bg-[#111111] border border-[#333333] text-[#00FFD4]">
               <span className="w-1.5 h-1.5 rounded-full bg-[#00FFD4] animate-pulse" />
@@ -103,10 +139,18 @@ export default function LandingPage() {
           </motion.p>
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.8 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <Link href="/sign-up" className="btn-neon text-base px-10 py-4 w-full sm:w-auto flex items-center justify-center gap-2">
-              Start Scanning Free
-            </Link>
-            <a href="#how" className="group flex items-center gap-2.5 px-8 py-4 text-sm font-medium rounded-2xl transition-all hover:bg-white/5 border border-white/10 text-[#64748B]">
+            <button 
+              onClick={handleScanDemo}
+              onMouseEnter={() => playSound('hover')}
+              className="btn-neon text-base px-10 py-4 w-full sm:w-auto flex items-center justify-center gap-2"
+            >
+              Demo Scan (Play Game)
+            </button>
+            <a href="#how" 
+              className="group flex items-center justify-center gap-2.5 px-8 py-4 text-sm font-medium rounded-2xl transition-all hover:bg-white/5 border border-white/10 text-[#64748B] w-full sm:w-auto"
+              onMouseEnter={() => playSound('hover')}
+              onClick={() => playSound('click')}
+            >
               See How It Works
             </a>
           </motion.div>
@@ -145,14 +189,14 @@ export default function LandingPage() {
               { n: '03', title: 'Apply Before Anyone', desc: 'Get ranked matches across Dream Companies, AI Picks, and Startup Gems. Posted date. Expiry alerts. One-click apply.', c: '#8B5CF6' },
             ].map((item, i) => (
               <FadeIn key={i} delay={i * 0.15}>
-                <div className="glow-card-hover p-8 h-full cursor-default">
+                <div className="glow-card-hover p-8 h-full cursor-default" onMouseEnter={() => playSound('hover')}>
                   <div className="relative z-10">
                     <div className="flex items-center justify-between mb-6">
                       <span className="text-5xl font-black text-white/5">{item.n}</span>
                     </div>
                     <h3 className="text-xl font-bold text-white mb-3">{item.title}</h3>
                     <p className="text-sm leading-relaxed text-[#94A3B8]">{item.desc}</p>
-                    <div className="mt-6 h-0.5 w-12 rounded-full group-hover:w-full transition-all duration-700" style={{ background: 'linear-gradient(90deg, ' + item.c + ', transparent)' }} />
+                    <div className="mt-6 h-0.5 w-12 rounded-full group-hover:w-full transition-all duration-700" style={{ background: `linear-gradient(90deg, ${item.c}, transparent)` }} />
                   </div>
                 </div>
               </FadeIn>
@@ -178,7 +222,7 @@ export default function LandingPage() {
               { title: 'Hourly Auto-Scan', desc: 'GitHub Actions cron every hour. New jobs appear before they hit LinkedIn.' },
             ].map((f, i) => (
               <FadeIn key={i} delay={i * 0.08}>
-                <div className="glow-card-hover p-6 h-full">
+                <div className="glow-card-hover p-6 h-full" onMouseEnter={() => playSound('hover')}>
                   <div className="relative z-10">
                     <h3 className="text-base font-bold text-white mb-2">{f.title}</h3>
                     <p className="text-sm leading-relaxed text-[#64748B]">{f.desc}</p>
@@ -200,7 +244,13 @@ export default function LandingPage() {
           </AnimatePresence>
           <div className="flex justify-center gap-1.5 mt-6">
             {QUOTES.map((_, i) => (
-              <button key={i} onClick={() => setQuoteIdx(i)} className="w-2 h-2 rounded-full transition-all" style={{ background: i === quoteIdx ? '#00FFD4' : 'rgba(255,255,255,0.1)' }} />
+              <button 
+                key={i} 
+                onClick={() => { playSound('click'); setQuoteIdx(i); }} 
+                onMouseEnter={() => playSound('hover')}
+                className="w-2 h-2 rounded-full transition-all" 
+                style={{ background: i === quoteIdx ? '#00FFD4' : 'rgba(255,255,255,0.1)' }} 
+              />
             ))}
           </div>
         </div>
@@ -214,7 +264,7 @@ export default function LandingPage() {
             <h2 className="text-4xl md:text-5xl font-black text-white">Us vs. <span className="text-glow">Everyone Else</span></h2>
           </FadeIn>
           <FadeIn>
-            <div className="glow-card p-1 overflow-hidden">
+            <div className="glow-card p-1 overflow-hidden" onMouseEnter={() => playSound('hover')}>
               <table className="w-full text-sm">
                 <thead><tr className="text-left border-b border-white/10">
                   <th className="p-4 font-semibold text-[#64748B]">Feature</th>
@@ -232,7 +282,7 @@ export default function LandingPage() {
                     ['Free to Start', {i:'check',t:' 3 Searches'}, {i:'check'}, {i:'check'}],
                     ['Mini-Games', {i:'check'}, {i:'cross'}, {i:'cross'}],
                   ].map((row, i) => (
-                    <tr key={i} className="border-b border-white/5 last:border-0">
+                    <tr key={i} className="border-b border-white/5 last:border-0 hover:bg-white/5 transition-colors">
                       <td className="p-4 font-medium text-white">{row[0] as string}</td>
                       {(row.slice(1) as {i:string, t?:string}[]).map((cell, j) => {
                         const Icon = IconMap[cell.i];
@@ -262,7 +312,7 @@ export default function LandingPage() {
             <h2 className="text-4xl md:text-5xl font-black text-white">Start free. <span className="text-glow">Upgrade when ready.</span></h2>
           </FadeIn>
           <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-            <FadeIn><div className="glow-card p-8">
+            <FadeIn><div className="glow-card p-8 transition-transform hover:-translate-y-1" onMouseEnter={() => playSound('hover')}>
               <div className="relative z-10">
                 <div className="text-sm font-bold uppercase tracking-widest mb-2 text-[#475569]">Free</div>
                 <div className="text-4xl font-black text-white mb-1">₹0</div>
@@ -274,10 +324,10 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/sign-up" className="block w-full py-3.5 text-center text-sm font-semibold rounded-xl transition-all hover:bg-white/5 border border-white/10 text-[#94A3B8]">Try Free</Link>
+                <Link href="/sign-up" className="block w-full py-3.5 text-center text-sm font-semibold rounded-xl transition-all hover:bg-white/5 border border-white/10 text-[#94A3B8]" onClick={() => playSound('click')}>Try Free</Link>
               </div>
             </div></FadeIn>
-            <FadeIn delay={0.15}><div className="glow-card p-8 relative overflow-hidden">
+            <FadeIn delay={0.15}><div className="glow-card p-8 relative overflow-hidden transition-transform hover:-translate-y-1" onMouseEnter={() => playSound('hover')}>
               <div className="absolute inset-0 opacity-[0.05] bg-gradient-to-br from-[#00FFD4] to-transparent" />
               <div className="absolute -top-10 -right-10 w-32 h-32 rounded-full blur-3xl bg-[#00FFD4]/10" />
               <div className="relative z-10">
@@ -294,7 +344,7 @@ export default function LandingPage() {
                     </li>
                   ))}
                 </ul>
-                <Link href="/sign-up" className="btn-neon block w-full py-3.5 text-center text-sm">Get Pro Access</Link>
+                <Link href="/sign-up" className="btn-neon block w-full py-3.5 text-center text-sm" onClick={() => playSound('click')}>Get Pro Access</Link>
               </div>
             </div></FadeIn>
           </div>
@@ -316,8 +366,8 @@ export default function LandingPage() {
             { q: 'What are the mini-games?', a: 'While your RADAR scans for jobs, play Reaction Test, Memory Match (free) or Snake, Word Scramble (pro). Time flies.' },
           ].map((faq, i) => (
             <FadeIn key={i} delay={i * 0.06}>
-              <details className="glow-card-hover mb-3 group">
-                <summary className="p-5 cursor-pointer text-sm font-semibold text-white flex items-center justify-between relative z-10">
+              <details className="glow-card-hover mb-3 group" onMouseEnter={() => playSound('hover')}>
+                <summary className="p-5 cursor-pointer text-sm font-semibold text-white flex items-center justify-between relative z-10" onClick={() => playSound('click')}>
                   {faq.q}
                   <span className="text-[#00FFD4] text-lg transition-transform group-open:rotate-45">+</span>
                 </summary>
@@ -335,7 +385,7 @@ export default function LandingPage() {
             Stop searching.<br /><span className="text-glow">Start intercepting.</span>
           </h2>
           <p className="text-lg mb-10 max-w-xl mx-auto text-[#475569]">Join freshers who let AI find their next role — automatically, hourly, relentlessly.</p>
-          <Link href="/sign-up" className="btn-neon inline-flex items-center gap-3 px-12 py-5 text-lg">
+          <Link href="/sign-up" className="btn-neon inline-flex items-center gap-3 px-12 py-5 text-lg" onMouseEnter={() => playSound('hover')} onClick={() => playSound('click')}>
             Launch Your RADAR
           </Link>
         </div>
