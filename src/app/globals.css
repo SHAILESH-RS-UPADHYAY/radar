@@ -1,187 +1,120 @@
 @import "tailwindcss";
 
 :root {
-  --r-bg: #050816;
-  --r-surface: #0f1129;
-  --r-card: #111338;
+  --r-bg: #080b1a;
+  --r-surface: #0d1025;
+  --r-card: #111427;
   --r-glow: #00FFD4;
   --r-green: #00FF88;
   --r-purple: #8B5CF6;
   --r-pink: #FF3D71;
+  --r-grey: #1a1d2e;
   --r-text: #E2E8F0;
   --r-muted: #64748B;
-  --r-border: rgba(0,255,212,0.08);
 }
-
 @theme inline {
   --color-background: var(--r-bg);
   --color-foreground: var(--r-text);
   --font-sans: var(--font-inter);
 }
-
 * { scrollbar-width: thin; scrollbar-color: var(--r-purple) transparent; }
-*::-webkit-scrollbar { width: 5px; }
-*::-webkit-scrollbar-thumb { background: var(--r-purple); border-radius: 3px; }
 html { scroll-behavior: smooth; }
-::selection { background: rgba(0,255,212,0.25); color: white; }
+::selection { background: rgba(0,255,212,0.2); color: white; }
+body { background: var(--r-bg); color: var(--r-text); overflow-x: hidden; }
 
-body {
-  background: var(--r-bg);
-  color: var(--r-text);
-  font-family: var(--font-inter), system-ui, sans-serif;
-  overflow-x: hidden;
-}
-
-/* Background grid pattern */
+/* Subtle dot grid */
 .bg-grid {
-  background-image:
-    linear-gradient(rgba(0,255,212,0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,255,212,0.03) 1px, transparent 1px);
-  background-size: 60px 60px;
+  background-image: radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
-/* CRT Scanline overlay */
+/* CRT scanlines — very subtle */
 .scanlines::after {
   content: '';
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 9999;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0,0,0,0.03) 2px,
-    rgba(0,0,0,0.03) 4px
-  );
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 9999;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.015) 3px, rgba(0,0,0,0.015) 4px);
 }
 
-/* ===== GLOWING EDGE CARDS ===== */
+/* ===== GLOWING EDGE CARD ===== */
 .glow-card {
   position: relative;
-  background: rgba(15,17,41,0.7);
-  border-radius: 20px;
-  overflow: hidden;
-  backdrop-filter: blur(12px);
+  background: rgba(13,16,37,0.8);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.04);
+  backdrop-filter: blur(8px);
 }
 .glow-card::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 20px;
-  padding: 1px;
-  background: linear-gradient(135deg, rgba(0,255,212,0.3), rgba(139,92,246,0.15), rgba(0,255,136,0.1), transparent 60%);
+  content: ''; position: absolute; inset: -1px;
+  border-radius: 17px; padding: 1px;
+  background: linear-gradient(135deg, rgba(0,255,212,0.15), rgba(139,92,246,0.08), transparent 60%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-}
-.glow-card::after {
-  content: '';
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: radial-gradient(circle at 30% 30%, rgba(0,255,212,0.04), transparent 50%);
+  -webkit-mask-composite: xor; mask-composite: exclude;
   pointer-events: none;
 }
 
-/* Hover-glow card (edges light up on hover) */
+/* Hover-glow card — edges LIGHT UP on hover */
 .glow-card-hover {
   position: relative;
-  background: rgba(15,17,41,0.6);
-  border-radius: 20px;
-  overflow: hidden;
-  transition: all 0.5s cubic-bezier(0.25,0.46,0.45,0.94);
-  backdrop-filter: blur(12px);
+  background: rgba(13,16,37,0.7);
+  border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.04);
+  transition: all 0.4s ease;
+  backdrop-filter: blur(8px);
 }
 .glow-card-hover::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 20px;
-  padding: 1px;
-  background: linear-gradient(135deg, rgba(0,255,212,0.08), transparent 50%);
+  content: ''; position: absolute; inset: -1px;
+  border-radius: 17px; padding: 1px;
+  background: linear-gradient(135deg, rgba(0,255,212,0.05), transparent 50%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  transition: all 0.5s ease;
+  -webkit-mask-composite: xor; mask-composite: exclude;
+  pointer-events: none; transition: all 0.4s ease;
 }
 .glow-card-hover:hover::before {
-  background: linear-gradient(135deg, rgba(0,255,212,0.5), rgba(139,92,246,0.3), rgba(0,255,136,0.4), rgba(0,255,212,0.2));
+  background: linear-gradient(135deg, rgba(0,255,212,0.4), rgba(139,92,246,0.25), rgba(0,255,136,0.3), rgba(0,255,212,0.15));
 }
 .glow-card-hover:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 0 30px rgba(0,255,212,0.08), 0 20px 40px rgba(0,0,0,0.3);
+  transform: translateY(-4px);
+  box-shadow: 0 0 25px rgba(0,255,212,0.06), 0 15px 30px rgba(0,0,0,0.3);
+  border-color: rgba(0,255,212,0.1);
 }
 
-/* ===== GLOWING BUTTON ===== */
+/* ===== NEON BUTTON — CSS glow, no GPU needed ===== */
 .btn-neon {
-  position: relative;
-  padding: 14px 36px;
-  border: none;
-  border-radius: 14px;
-  font-weight: 700;
-  color: white;
-  cursor: pointer;
-  overflow: hidden;
-  transition: all 0.4s ease;
+  position: relative; display: inline-block;
+  padding: 12px 32px; border: none; border-radius: 12px;
+  font-weight: 700; color: white; cursor: pointer;
   background: linear-gradient(135deg, #8B5CF6, #00FFD4);
+  transition: all 0.35s ease;
+  text-decoration: none;
 }
-.btn-neon::before {
-  content: '';
-  position: absolute;
-  inset: -2px;
-  border-radius: 16px;
-  background: linear-gradient(135deg, #00FFD4, #8B5CF6, #00FF88);
-  z-index: -1;
-  filter: blur(8px);
-  opacity: 0;
-  transition: opacity 0.4s ease;
-}
-.btn-neon:hover::before { opacity: 1; }
 .btn-neon:hover {
-  transform: translateY(-3px) scale(1.02);
-  box-shadow: 0 0 40px rgba(0,255,212,0.3), 0 0 80px rgba(139,92,246,0.15);
+  transform: translateY(-2px) scale(1.02);
+  box-shadow: 0 0 20px rgba(0,255,212,0.25), 0 0 50px rgba(139,92,246,0.15), 0 8px 25px rgba(0,0,0,0.3);
 }
 
-/* Glitch text */
+/* Glitch */
 @keyframes glitch {
-  0%, 90%, 100% { transform: none; opacity: 1; }
-  91% { transform: translate(-2px, 1px) skew(-1deg); opacity: 0.8; }
-  92% { transform: translate(2px, -1px) skew(1deg); opacity: 0.9; }
-  93% { transform: translate(-1px, 2px); opacity: 0.7; }
-  94% { transform: none; opacity: 1; }
+  0%,92%,100% { transform: none; opacity: 1; }
+  93% { transform: translate(-2px,1px) skew(-0.5deg); }
+  94% { transform: translate(1px,-1px); }
+  95% { transform: none; }
 }
-.glitch-text { animation: glitch 4s ease-in-out infinite; }
+.glitch-text { animation: glitch 5s ease-in-out infinite; }
 
 /* Gradient text */
 .text-glow {
   background: linear-gradient(135deg, #00FFD4, #8B5CF6, #00FF88);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
 }
 
-/* Floating animation */
-@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
-.animate-float { animation: float 3s ease-in-out infinite; }
+/* Pulse border */
+@keyframes pulse-border { 0%,100% { border-color: rgba(0,255,212,0.1); } 50% { border-color: rgba(0,255,212,0.3); } }
+.pulse-border { animation: pulse-border 2.5s ease-in-out infinite; }
 
-/* Pulse glow */
-@keyframes pulse-border {
-  0%,100% { border-color: rgba(0,255,212,0.15); }
-  50% { border-color: rgba(0,255,212,0.4); }
-}
-.pulse-border { animation: pulse-border 2s ease-in-out infinite; }
+/* Quote glow */
+.quote-glow { text-shadow: 0 0 30px rgba(0,255,212,0.1); }
 
-/* Quote section */
-.quote-glow {
-  text-shadow: 0 0 20px rgba(0,255,212,0.15);
-}
-
-/* Badge styles */
-.badge { padding: 3px 12px; border-radius: 100px; font-size: 0.7rem; font-weight: 600; letter-spacing: 0.05em; }
-.badge-remote { background: rgba(0,255,136,0.12); color: #00FF88; border: 1px solid rgba(0,255,136,0.2); }
-.badge-pro { background: rgba(139,92,246,0.12); color: #8B5CF6; border: 1px solid rgba(139,92,246,0.2); }
+/* Badges */
+.badge { padding: 3px 12px; border-radius: 100px; font-size: 0.68rem; font-weight: 600; }
+.badge-pro { background: rgba(139,92,246,0.1); color: #8B5CF6; border: 1px solid rgba(139,92,246,0.15); }
