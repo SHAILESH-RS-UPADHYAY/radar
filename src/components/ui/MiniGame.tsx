@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState, useEffect } from 'react';
 import { playSound } from '@/lib/audio';
@@ -27,7 +27,7 @@ export default function TicTacToe({ onComplete }: { onComplete?: () => void }) {
     setIsXNext(!isXNext);
     
     if (calculateWinner(newBoard)) {
-      setTimeout(() => playSound('success'), 300);
+      setTimeout(() => playSound('chime'), 300);
     }
   };
 

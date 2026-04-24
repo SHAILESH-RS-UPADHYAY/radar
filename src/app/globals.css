@@ -2,122 +2,149 @@
 
 :root {
   --r-bg: #000000;
-  --r-surface: #0a0a0a;
-  --r-card: #111111;
+  --r-surface: #080808;
+  --r-card: #0f0f0f;
   --r-glow: #00FFD4;
-  --r-green: #00FF88;
   --r-purple: #8B5CF6;
   --r-pink: #FF3D71;
-  --r-grey: #1a1a1a;
+  --r-amber: #FFB700;
   --r-text: #E2E8F0;
-  --r-muted: #64748B;
 }
 
 @theme inline {
   --color-background: var(--r-bg);
   --color-foreground: var(--r-text);
-  --font-sans: var(--font-inter);
 }
 
-* { scrollbar-width: thin; scrollbar-color: #333333 transparent; }
+* { scrollbar-width: thin; scrollbar-color: #222 transparent; }
 html { scroll-behavior: smooth; }
-::selection { background: rgba(0,255,212,0.2); color: white; }
+::selection { background: rgba(0,255,212,0.2); color: #fff; }
 body { background: var(--r-bg); color: var(--r-text); overflow-x: hidden; }
 
-/* Subtle dot grid */
+/* Dot grid */
 .bg-grid {
-  background-image: radial-gradient(rgba(255,255,255,0.04) 1px, transparent 1px);
-  background-size: 40px 40px;
+  background-image: radial-gradient(rgba(255,255,255,0.035) 1px, transparent 1px);
+  background-size: 38px 38px;
 }
 
-/* CRT scanlines — very subtle */
+/* CRT scanlines */
 .scanlines::after {
   content: '';
-  position: fixed; inset: 0;
-  pointer-events: none; z-index: 9999;
-  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.05) 3px, rgba(0,0,0,0.05) 4px);
+  position: fixed; inset: 0; pointer-events: none; z-index: 9999;
+  background: repeating-linear-gradient(0deg, transparent, transparent 3px, rgba(0,0,0,0.04) 3px, rgba(0,0,0,0.04) 4px);
 }
 
-/* ===== GLOWING EDGE CARD ===== */
+/* ── GLOWING EDGE CARD ── */
 .glow-card {
   position: relative;
   background: var(--r-surface);
   border-radius: 16px;
   border: 1px solid rgba(255,255,255,0.05);
-  backdrop-filter: blur(8px);
 }
 .glow-card::before {
-  content: ''; position: absolute; inset: -1px;
-  border-radius: 17px; padding: 1px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent 60%);
+  content: ''; position: absolute; inset: -1px; border-radius: 17px; padding: 1px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.08), transparent 60%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor; mask-composite: exclude;
-  pointer-events: none;
+  -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
 }
 
-/* Hover-glow card — edges LIGHT UP on hover */
+/* ── HOVER GLOW CARD ── */
 .glow-card-hover {
-  position: relative;
-  background: var(--r-surface);
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.05);
-  transition: all 0.4s ease;
-  backdrop-filter: blur(8px);
+  position: relative; background: var(--r-surface); border-radius: 16px;
+  border: 1px solid rgba(255,255,255,0.05); transition: all 0.4s ease; cursor: default;
 }
 .glow-card-hover::before {
-  content: ''; position: absolute; inset: -1px;
-  border-radius: 17px; padding: 1px;
-  background: linear-gradient(135deg, rgba(255,255,255,0.05), transparent 50%);
+  content: ''; position: absolute; inset: -1px; border-radius: 17px; padding: 1px;
+  background: linear-gradient(135deg, rgba(255,255,255,0.04), transparent 50%);
   -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor; mask-composite: exclude;
-  pointer-events: none; transition: all 0.4s ease;
+  -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none; transition: all 0.4s;
 }
 .glow-card-hover:hover::before {
-  background: linear-gradient(135deg, rgba(0,255,212,0.5), rgba(255,255,255,0.2), rgba(0,255,212,0.2));
+  background: linear-gradient(135deg, rgba(0,255,212,0.5), rgba(139,92,246,0.25), rgba(0,255,212,0.15));
 }
 .glow-card-hover:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 0 30px rgba(0,255,212,0.1), 0 15px 30px rgba(0,0,0,0.5);
-  border-color: rgba(0,255,212,0.2);
+  transform: translateY(-5px);
+  box-shadow: 0 0 35px rgba(0,255,212,0.08), 0 20px 40px rgba(0,0,0,0.6);
+  border-color: rgba(0,255,212,0.15);
 }
 
-/* ===== NEON BUTTON — CSS glow, no GPU needed ===== */
-.btn-neon {
-  position: relative; display: inline-block;
-  padding: 12px 32px; border: none; border-radius: 12px;
-  font-weight: 700; color: #000; cursor: pointer;
-  background: #00FFD4;
-  transition: all 0.35s ease;
-  text-decoration: none;
+/* ── EXPLODED CARD (used inside ExplodedView) ── */
+.glow-card-explode {
+  position: relative; background: var(--r-surface); border-radius: 20px;
+  border: 1px solid rgba(255,255,255,0.06);
+  box-shadow: 0 0 0 rgba(0,255,212,0), 0 4px 24px rgba(0,0,0,0.5);
+  transition: box-shadow 0.6s ease;
+  backdrop-filter: blur(4px);
 }
+.glow-card-explode::before {
+  content: ''; position: absolute; inset: -1px; border-radius: 21px; padding: 1px;
+  background: linear-gradient(135deg, rgba(0,255,212,0.35), rgba(139,92,246,0.2), rgba(255,61,113,0.15), transparent 60%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude; pointer-events: none;
+}
+
+/* ── NEON CTA BUTTON ── */
+.btn-neon {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  padding: 13px 32px; border: none; border-radius: 14px;
+  font-weight: 800; color: #000; cursor: pointer;
+  background: #00FFD4; transition: all 0.3s ease; text-decoration: none;
+  letter-spacing: 0.01em;
+}
+.btn-neon::before {
+  content: ''; position: absolute; inset: -1px; border-radius: 15px;
+  background: linear-gradient(135deg, #00FFD4, #8B5CF6, #FF3D71);
+  z-index: -1; opacity: 0; transition: opacity 0.3s;
+}
+.btn-neon:hover::before { opacity: 1; }
 .btn-neon:hover {
   transform: translateY(-2px) scale(1.02);
-  box-shadow: 0 0 20px rgba(0,255,212,0.4), 0 8px 25px rgba(0,0,0,0.5);
-  background: #00e6be;
+  box-shadow: 0 0 25px rgba(0,255,212,0.35), 0 8px 30px rgba(0,0,0,0.5);
+  color: #fff;
 }
 
-/* Glitch */
+/* ── GLITCH ── */
 @keyframes glitch {
-  0%,92%,100% { transform: none; opacity: 1; }
-  93% { transform: translate(-2px,1px) skew(-0.5deg); }
-  94% { transform: translate(1px,-1px); }
-  95% { transform: none; }
+  0%,90%,100% { transform: none; }
+  91% { transform: translate(-2px,1px) skew(-0.5deg); clip-path: polygon(0 0,100% 0,100% 35%,0 35%); }
+  92% { transform: translate(2px,-1px); clip-path: polygon(0 65%,100% 65%,100% 100%,0 100%); }
+  93% { transform: none; clip-path: none; }
 }
-.glitch-text { animation: glitch 5s ease-in-out infinite; }
+.glitch-text { animation: glitch 6s ease-in-out infinite; }
 
-/* Gradient text */
+/* ── GRADIENT TEXT ── */
 .text-glow {
-  background: linear-gradient(135deg, #ffffff, #8B5CF6, #00FFD4);
+  background: linear-gradient(135deg, #ffffff 0%, #8B5CF6 50%, #00FFD4 100%);
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+}
+.text-glow-alt {
+  background: linear-gradient(135deg, #00FFD4 0%, #8B5CF6 50%, #FF3D71 100%);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
 }
 
-/* Pulse border */
-@keyframes pulse-border { 0%,100% { border-color: rgba(0,255,212,0.2); } 50% { border-color: rgba(0,255,212,0.5); } }
+/* ── PULSE ── */
+@keyframes pulse-border {
+  0%,100% { border-color: rgba(0,255,212,0.15); box-shadow: 0 0 0 rgba(0,255,212,0); }
+  50% { border-color: rgba(0,255,212,0.45); box-shadow: 0 0 12px rgba(0,255,212,0.1); }
+}
 .pulse-border { animation: pulse-border 2.5s ease-in-out infinite; }
 
-/* Quote glow */
-.quote-glow { text-shadow: 0 0 30px rgba(255,255,255,0.1); }
+/* ── QUOTE ── */
+.quote-glow { text-shadow: 0 0 40px rgba(255,255,255,0.08); }
 
-/* Badges */
+/* ── BADGES ── */
 .badge { padding: 3px 12px; border-radius: 100px; font-size: 0.68rem; font-weight: 600; }
-.badge-pro { background: rgba(0,255,212,0.1); color: #00FFD4; border: 1px solid rgba(0,255,212,0.2); }
+.badge-pro { background: rgba(0,255,212,0.08); color: #00FFD4; border: 1px solid rgba(0,255,212,0.2); }
+
+/* ── COLORFUL SECTION DIVIDER ── */
+.divider-glow {
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(0,255,212,0.3), rgba(139,92,246,0.3), rgba(255,61,113,0.2), transparent);
+}
+
+/* ── NEON TEXT STROKE ── */
+@keyframes textStroke {
+  0%,100% { text-shadow: 0 0 10px rgba(0,255,212,0.3); }
+  50% { text-shadow: 0 0 20px rgba(139,92,246,0.4), 0 0 40px rgba(0,255,212,0.15); }
+}
+.neon-glow-text { animation: textStroke 3s ease-in-out infinite; }
