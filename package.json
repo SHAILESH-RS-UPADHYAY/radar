@@ -17,6 +17,7 @@
     "@react-three/fiber": "^9.6.0",
     "@react-three/postprocessing": "^3.0.4",
     "@sentry/nextjs": "^10.50.0",
+    "@studio-freight/lenis": "^1.0.42",
     "@supabase/ssr": "^0.10.2",
     "@supabase/supabase-js": "^2.104.1",
     "framer-motion": "^12.38.0",

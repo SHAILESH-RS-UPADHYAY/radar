@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+﻿import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -26,8 +26,8 @@ export default function RootLayout({
 }>) {
   return (
     <ClerkProvider>
-      <html lang="en" className="dark">
-        <body className={inter.variable + " antialiased bg-[#0A0E27] text-white"}>
+      <html lang="en">
+        <body className={inter.variable + " antialiased"} style={{ background: '#FAF7F5', color: '#1C1917' }}>
           {children}
         </body>
       </html>
