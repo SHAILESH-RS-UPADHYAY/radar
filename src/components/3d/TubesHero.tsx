@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 
 const PALETTES = [
@@ -37,10 +37,11 @@ export default function TubesHero({ children }: { children?: React.ReactNode }) 
   }, []);
 
   return (
-    <div className="relative w-full h-full" onClick={handleClick}>
-      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full block" style={{ touchAction: 'none' }} />
-      {/* Warm vignette */}
-      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 50%, transparent 30%, rgba(250,247,245,0.7) 100%)' }} />
+    <div className="relative w-full h-full" style={{ background: '#FAF7F5' }} onClick={handleClick}>
+      {/* Canvas at reduced opacity so white background shows */}
+      <canvas ref={canvasRef} className="absolute inset-0 w-full h-full block" style={{ touchAction: 'none', opacity: 0.35, mixBlendMode: 'multiply' }} />
+      {/* Warm vignette overlay */}
+      <div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 50% 50%, transparent 20%, rgba(250,247,245,0.85) 100%)' }} />
       <div className="relative z-10 w-full h-full pointer-events-none">{children}</div>
       {loaded && (
         <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-20 text-[10px] uppercase tracking-[0.25em] pointer-events-none animate-pulse" style={{ color: 'rgba(166,123,91,0.5)' }}>

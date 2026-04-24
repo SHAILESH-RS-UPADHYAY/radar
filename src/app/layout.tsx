@@ -1,4 +1,4 @@
-﻿import type { Metadata } from "next";
+import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Inter } from "next/font/google";
 import "./globals.css";
@@ -9,14 +9,9 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "RADAR — AI Job Intelligence Engine",
-  description: "Your career, on autopilot. AI-powered job matching that scrapes 50+ company career pages, scores matches against your resume, and surfaces the best opportunities — automatically.",
-  keywords: ["job search", "AI", "career", "resume matching", "job intelligence", "fresher jobs", "India jobs"],
-  openGraph: {
-    title: "RADAR — AI Job Intelligence Engine",
-    description: "Your career, on autopilot. AI-powered job matching for freshers and professionals.",
-    type: "website",
-  },
+  title: "RADAR - AI Job Intelligence Engine",
+  description: "Your career, on autopilot. AI-powered job matching.",
+  keywords: ["job search", "AI", "career", "resume matching"],
 };
 
 export default function RootLayout({
@@ -27,7 +22,12 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <body className={inter.variable + " antialiased"} style={{ background: '#FAF7F5', color: '#1C1917' }}>
+        <head>
+          <link rel="preconnect" href="https://fonts.googleapis.com" />
+          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+          <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap" rel="stylesheet" />
+        </head>
+        <body className={inter.variable + " antialiased"}>
           {children}
         </body>
       </html>

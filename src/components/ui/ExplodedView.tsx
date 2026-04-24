@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 import { useEffect, useRef } from 'react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -7,7 +7,7 @@ gsap.registerPlugin(ScrollTrigger);
 
 const STEPS = [
   { n: '01', title: 'Tell Us Your Dream', desc: "Upload your resume, pick dream companies from 50+ firms, set your location. That's it.", accent: '#A67B5B' },
-  { n: '02', title: 'AI Scans Everything', desc: 'Our engine hits ATS APIs every hour. AI embeddings match jobs to YOUR profile — not keywords, real understanding.', accent: '#1C1917' },
+  { n: '02', title: 'AI Scans Everything', desc: 'Our engine hits ATS APIs every hour. AI embeddings match jobs to YOUR profile â€” not keywords, real understanding.', accent: '#1C1917' },
   { n: '03', title: 'Apply Before Anyone', desc: 'Ranked matches across Dream Companies, AI Picks, and Startup Gems. Expiry alerts. One-click apply.', accent: '#78716C' },
 ];
 
@@ -100,17 +100,17 @@ export default function ExplodedView() {
         <div className="text-center mb-20">
           <div className="section-label justify-center mb-6">How It Works</div>
           <h2 ref={headingRef} className="text-4xl md:text-5xl lg:text-6xl font-black font-display tracking-display leading-tight" style={{ color: '#1C1917' }}>
-            <span className="word inline-block">Three </span>
-            <span className="word inline-block">steps </span>
-            <span className="word inline-block">to </span>
-            <span className="word inline-block">your </span>
-            <span className="word inline-block text-warm-gradient">dream </span>
+            <span className="word inline-block mr-3">Three</span>
+            <span className="word inline-block mr-3">steps</span>
+            <span className="word inline-block mr-3">to</span>
+            <span className="word inline-block mr-3">your</span>
+            <span className="word inline-block mr-3 text-warm-gradient">dream</span>
             <span className="word inline-block text-warm-gradient">job</span>
           </h2>
           <p className="text-base max-w-lg mx-auto mt-5" style={{ color: '#A8A29E' }}>No more scrolling. No more ghosting. RADAR does the hunting.</p>
         </div>
 
-        {/* Cards grid — positioned for GSAP to animate */}
+        {/* Cards grid â€” positioned for GSAP to animate */}
         <div className="grid md:grid-cols-3 gap-8">
           {STEPS.map((step, i) => (
             <div key={i} ref={el => { cardsRef.current[i] = el; }} className="card-premium p-8" style={{ opacity: 0 }}>
@@ -128,3 +128,4 @@ export default function ExplodedView() {
     </section>
   );
 }
+

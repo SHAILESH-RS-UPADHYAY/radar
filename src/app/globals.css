@@ -1,5 +1,4 @@
-@import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+﻿@import "tailwindcss";
 
 :root {
   --stone-50: #FAF7F5;
@@ -25,19 +24,19 @@ html { scroll-behavior: auto; /* Lenis handles smoothness */ }
 ::selection { background: rgba(166,123,91,0.2); color: var(--stone-900); }
 body { background: var(--stone-50); color: var(--stone-900); overflow-x: hidden; font-family: 'Inter', sans-serif; }
 
-/* ── SCROLL PROGRESS BAR ── */
+/* â”€â”€ SCROLL PROGRESS BAR â”€â”€ */
 .scroll-progress {
   position: fixed; top: 0; left: 0; height: 2px; z-index: 9999;
   background: linear-gradient(90deg, var(--wood), var(--wood-light));
   transform-origin: left; transition: none;
 }
 
-/* ── DISPLAY TYPOGRAPHY ── */
+/* â”€â”€ DISPLAY TYPOGRAPHY â”€â”€ */
 .font-display { font-family: 'Outfit', sans-serif; }
 .tracking-display { letter-spacing: -0.05em; }
 .tracking-label { letter-spacing: 0.2em; }
 
-/* ── PREMIUM CARD ── */
+/* â”€â”€ PREMIUM CARD â”€â”€ */
 .card-premium {
   position: relative; background: #ffffff; border-radius: 24px;
   border: 1px solid rgba(0,0,0,0.05);
@@ -48,14 +47,14 @@ body { background: var(--stone-50); color: var(--stone-900); overflow-x: hidden;
   box-shadow: 0 25px 50px rgba(0,0,0,0.06), 0 0 0 1px rgba(166,123,91,0.15);
 }
 
-/* ── GLASS NAV ── */
+/* â”€â”€ GLASS NAV â”€â”€ */
 .glass-nav {
   background: rgba(250,247,245,0.8);
   backdrop-filter: blur(12px) saturate(1.2);
   border-bottom: 1px solid rgba(0,0,0,0.04);
 }
 
-/* ── BUTTONS ── */
+/* â”€â”€ BUTTONS â”€â”€ */
 .btn-primary {
   display: inline-flex; align-items: center; justify-content: center;
   padding: 14px 36px; border: none; border-radius: 100px;
@@ -95,13 +94,13 @@ body { background: var(--stone-50); color: var(--stone-900); overflow-x: hidden;
 }
 .btn-wood:hover { transform: translateY(-2px); box-shadow: 0 12px 30px rgba(166,123,91,0.3); background: var(--wood-light); }
 
-/* ── GRADIENT TEXT ── */
+/* â”€â”€ GRADIENT TEXT â”€â”€ */
 .text-warm-gradient {
   background: linear-gradient(135deg, var(--stone-900) 0%, var(--wood) 100%);
   -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
 }
 
-/* ── SECTION LABEL ── */
+/* â”€â”€ SECTION LABEL â”€â”€ */
 .section-label {
   display: inline-flex; align-items: center; gap: 12px;
   font-size: 11px; font-weight: 700; text-transform: uppercase;
@@ -109,13 +108,13 @@ body { background: var(--stone-50); color: var(--stone-900); overflow-x: hidden;
 }
 .section-label::before { content: ''; width: 32px; height: 1px; background: var(--wood); }
 
-/* ── DIVIDER ── */
+/* â”€â”€ DIVIDER â”€â”€ */
 .divider-warm {
   height: 1px;
   background: linear-gradient(90deg, transparent, var(--stone-200), var(--wood-light), var(--stone-200), transparent);
 }
 
-/* ── SCROLL INDICATOR ── */
+/* â”€â”€ SCROLL INDICATOR â”€â”€ */
 @keyframes scrollLine {
   0% { transform: scaleY(0); opacity: 0; }
   50% { transform: scaleY(1); opacity: 1; }
@@ -127,7 +126,7 @@ body { background: var(--stone-50); color: var(--stone-900); overflow-x: hidden;
   animation: scrollLine 2s ease-in-out infinite;
 }
 
-/* ── WORD REVEAL ── */
+/* â”€â”€ WORD REVEAL â”€â”€ */
 .word-reveal { display: inline-block; overflow: hidden; }
 .word-reveal .word-inner {
   display: inline-block; transform: translateY(100%);
@@ -135,20 +134,20 @@ body { background: var(--stone-50); color: var(--stone-900); overflow-x: hidden;
 }
 .word-reveal.revealed .word-inner { transform: translateY(0); }
 
-/* ── STAGGER REVEAL ── */
+/* â”€â”€ STAGGER REVEAL â”€â”€ */
 .stagger-item {
   opacity: 0; transform: translateY(20px);
   transition: all 0.6s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .stagger-item.visible { opacity: 1; transform: translateY(0); }
 
-/* ── TABLE ── */
+/* â”€â”€ TABLE â”€â”€ */
 .table-premium tr { border-bottom: 1px solid var(--stone-200); }
 .table-premium th { color: var(--stone-400); font-weight: 500; }
 .table-premium td { color: var(--stone-600); }
 .table-premium .featured { background: var(--stone-100); }
 
-/* ── FAQ ── */
+/* â”€â”€ FAQ â”€â”€ */
 .faq-item {
   border-bottom: 1px solid var(--stone-200); transition: all 0.3s ease;
 }
@@ -156,13 +155,13 @@ body { background: var(--stone-50); color: var(--stone-900); overflow-x: hidden;
 .faq-item summary { cursor: pointer; list-style: none; }
 .faq-item summary::-webkit-details-marker { display: none; }
 
-/* ── BADGE ── */
+/* â”€â”€ BADGE â”€â”€ */
 .badge-pro {
   font-size: 10px; font-weight: 600; padding: 3px 12px; border-radius: 100px;
   background: rgba(166,123,91,0.1); color: var(--wood);
 }
 
-/* ── ICON POP ── */
+/* â”€â”€ ICON POP â”€â”€ */
 @keyframes iconPop {
   0% { transform: scale(0); opacity: 0; }
   60% { transform: scale(1.2); }
@@ -170,5 +169,6 @@ body { background: var(--stone-50); color: var(--stone-900); overflow-x: hidden;
 }
 .icon-pop { animation: iconPop 0.4s cubic-bezier(0.4, 0, 0.2, 1) both; }
 
-/* ── MAGNETIC BUTTON EFFECT ── */
+/* â”€â”€ MAGNETIC BUTTON EFFECT â”€â”€ */
 .btn-magnetic { transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1); }
+
