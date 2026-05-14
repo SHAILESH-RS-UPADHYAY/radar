@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
 import Link from 'next/link';
-import { SignedIn, SignedOut, UserButton } from '@clerk/nextjs';
+import { useAuth, UserButton } from '@clerk/nextjs';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -89,6 +89,7 @@ const FAQ = [
 
 export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
+  const { isSignedIn } = useAuth();
   const [qIdx, setQIdx] = useState(0);
   const [scrollP, setScrollP] = useState(0);
   const cardsRef = useRef<HTMLDivElement>(null);
@@ -150,14 +151,17 @@ export default function LandingPage() {
             <a href="#pricing" className="text-xs font-semibold uppercase tracking-label transition-opacity hover:opacity-60" style={{ color: '#888' }}>ARCHITECTURE</a>
           </div>
           <div className="flex items-center gap-3">
-            <SignedIn>
-              <Link href="/dashboard" className="text-sm font-bold uppercase tracking-label transition-opacity hover:opacity-80" style={{ color: '#A67B5B' }}>Dashboard</Link>
-              <UserButton appearance={{ elements: { userButtonAvatarBox: "w-8 h-8 rounded-md border border-[#2A2A2A]" } }} />
-            </SignedIn>
-            <SignedOut>
-              <Link href="/sign-in" className="text-sm font-medium transition-opacity hover:opacity-60" style={{ color: '#888' }}>Sign In</Link>
-              <Link href="/sign-up" className="btn-outline-dark text-xs px-5 py-2" style={{ borderColor: '#EF4444', color: '#EF4444' }}>LOGIN TERMINAL</Link>
-            </SignedOut>
+            {isSignedIn ? (
+              <>
+                <Link href="/dashboard" className="text-sm font-bold uppercase tracking-label transition-opacity hover:opacity-80" style={{ color: '#A67B5B' }}>Dashboard</Link>
+                <UserButton appearance={{ elements: { userButtonAvatarBox: "w-8 h-8 rounded-md border border-[#2A2A2A]" } }} />
+              </>
+            ) : (
+              <>
+                <Link href="/sign-in" className="text-sm font-medium transition-opacity hover:opacity-60" style={{ color: '#888' }}>Sign In</Link>
+                <Link href="/sign-up" className="btn-outline-dark text-xs px-5 py-2" style={{ borderColor: '#EF4444', color: '#EF4444' }}>LOGIN TERMINAL</Link>
+              </>
+            )}
           </div>
         </div>
       </nav>
