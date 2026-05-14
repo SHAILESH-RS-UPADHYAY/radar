@@ -19,10 +19,10 @@ export function getIndex() {
 export async function embedText(text: string): Promise<number[]> {
   const cleanText = text.replace(/\s+/g, ' ').trim().substring(0, 8000);
 
-  const response = await pc.inference.embed('multilingual-e5-large', [cleanText], {
+  const response = await pc.inference.embed({ model: 'multilingual-e5-large', inputs: [cleanText], parameters: {
     inputType: 'passage',
     truncate: 'END',
-  });
+  } });
 
   return Array.from(response.data[0].values as number[]);
 }
@@ -46,10 +46,10 @@ export async function upsertJobVectors(
       return parts.join(' | ');
     });
 
-    const embeddings = await pc.inference.embed('multilingual-e5-large', texts, {
+    const embeddings = await pc.inference.embed({ model: 'multilingual-e5-large', inputs: texts, parameters: {
       inputType: 'passage',
       truncate: 'END',
-    });
+    } });
 
     const vectors = batch.map((j, idx) => ({
       id: j.id,
