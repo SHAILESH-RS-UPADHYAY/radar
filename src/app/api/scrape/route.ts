@@ -1,7 +1,7 @@
 // ============================
-// RADAR — Scrape API Route
+// RADAR ï¿½ Scrape API Route
 // ============================
-// POST /api/scrape — Scrapes all active companies with ATS adapters
+// POST /api/scrape ï¿½ Scrapes all active companies with ATS adapters
 // Upserts jobs into Supabase, logs results to scrape_logs
 
 import { NextRequest, NextResponse } from 'next/server';
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest) {
       const duration = Date.now() - startTime;
 
       if (jobs.length > 0) {
-        // Upsert jobs — ON CONFLICT (company_id, external_id) UPDATE
+        // Upsert jobs ï¿½ ON CONFLICT (company_id, external_id) UPDATE
         const jobRows = jobs.map(j => ({
           company_id: company.id,
           external_id: j.external_id,

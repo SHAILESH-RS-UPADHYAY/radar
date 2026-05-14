@@ -1,13 +1,13 @@
-﻿// ============================
-// RADAR — Onboarding API
 // ============================
-// POST /api/onboarding — Saves user profile + generates resume embedding
+// RADAR � Onboarding API
+// ============================
+// POST /api/onboarding � Saves user profile + generates resume embedding
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/client';
 import { embedText } from '@/lib/ai/embeddings';
-import pdfParse from 'pdf-parse';
+const pdfParse = require('pdf-parse');
 
 export const maxDuration = 30;
 

@@ -1,7 +1,7 @@
-﻿// ============================
-// RADAR — Dashboard Data API
 // ============================
-// GET /api/dashboard — Returns matched jobs for the authenticated user
+// RADAR ï¿½ Dashboard Data API
+// ============================
+// GET /api/dashboard ï¿½ Returns matched jobs for the authenticated user
 
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
@@ -24,6 +24,8 @@ export async function GET() {
         id, title, location, work_type, skills, apply_url, department,
         salary_min, salary_max,
         companies!inner ( name, category )
+      )
+    )
       )
     )
     .eq('user_id', userId)
