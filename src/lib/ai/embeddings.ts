@@ -24,7 +24,7 @@ export async function embedText(text: string): Promise<number[]> {
     truncate: 'END',
   } });
 
-  return Array.from(response.data[0].values as number[]);
+  return Array.from((response.data[0] as any).values as number[]);
 }
 
 /**
@@ -53,7 +53,7 @@ export async function upsertJobVectors(
 
     const vectors = batch.map((j, idx) => ({
       id: j.id,
-      values: Array.from(embeddings.data[idx].values as number[]),
+      values: Array.from((embeddings.data[idx] as any).values as number[]),
       metadata: {
         title: j.title,
         company: j.company_name,
