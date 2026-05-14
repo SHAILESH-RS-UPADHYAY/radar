@@ -1,5 +1,5 @@
 // ============================
-// RADAR � AI Embeddings via Pinecone Inference
+// RADAR --- AI Embeddings via Pinecone Inference
 // ============================
 // Uses Pinecone's built-in embedding model (multilingual-e5-large)
 // 384-dimension vectors, cosine similarity
