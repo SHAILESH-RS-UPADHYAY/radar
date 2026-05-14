@@ -62,9 +62,10 @@ function Earth() {
         />
       </mesh>
 
+
+    </group>
   );
 }
-
 function FloatingGems() {
   return (
     <>
