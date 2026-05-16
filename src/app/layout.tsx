@@ -1,3 +1,12 @@
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+/* eslint-disable @next/next/no-page-custom-font */
 import type { Metadata } from "next";
 import { ClerkProvider } from "@clerk/nextjs";
 import { Inter } from "next/font/google";

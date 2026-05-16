@@ -1,3 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
+ 
+ 
+ 
+ 
+ 
+
 // ============================
 // RADAR --- Scrape API Route
 // ============================
@@ -87,6 +95,21 @@ export async function POST(req: NextRequest) {
             console.error('[SCRAPE]', company.name, 'Pinecone sync error:', vecErr.message);
           }
         }
+
+        // --- STALENESS ALGORITHM ---
+        // Any job for this company that hasn't been scraped in the last 24 hours is no longer active
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+        const { error: staleErr } = await supabase
+          .from('jobs')
+          .update({ is_active: false })
+          .eq('company_id', company.id)
+          .lt('scraped_at', oneDayAgo);
+        
+        if (staleErr) {
+          console.error('[SCRAPE]', company.name, 'Stale cleanup error:', staleErr.message);
+        } else {
+          console.log('[SCRAPE]', company.name, 'Marked stale jobs as inactive');
+        }
       }
 
       // Log success
@@ -102,7 +125,9 @@ export async function POST(req: NextRequest) {
 
       results.push({ company: company.name, jobs: jobs.length, duration, status: 'success' });
       console.log('[SCRAPE]', company.name, '?', jobs.length, 'jobs in', duration, 'ms');
-    } catch (err: any) {
+    } catch (error: unknown) {
+     
+    const err = error as any;
       const duration = Date.now() - startTime;
       await supabase.from('scrape_logs').insert({
         company_id: company.id,

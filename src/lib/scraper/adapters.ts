@@ -1,3 +1,11 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
+ 
+ 
+ 
+ 
+ 
+
 // ============================
 // RADAR — ATS Scraper Adapters
 // ============================

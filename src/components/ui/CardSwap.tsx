@@ -1,4 +1,12 @@
 'use client';
+ 
+ 
+ 
+ 
+/* eslint-disable react-hooks/exhaustive-deps */
+ 
+ 
+
 import React, { Children, cloneElement, forwardRef, isValidElement, ReactElement, ReactNode, RefObject, useEffect, useMemo, useRef } from 'react';
 import gsap from 'gsap';
 

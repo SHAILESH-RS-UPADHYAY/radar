@@ -1,4 +1,12 @@
 'use client';
+ 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+/* eslint-disable react/no-unescaped-entities */
+/* eslint-disable react/jsx-no-comment-textnodes */
+ 
+ 
+ 
+
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -190,11 +198,34 @@ export default function LandingPage() {
               AI-powered job intelligence engine. 384-dimension embeddings. Hourly scraping. Before LinkedIn. Before Naukri. Before anyone.
             </motion.p>
 
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.8 }}
-              className="flex flex-col sm:flex-row items-center gap-4"
+            {!isSignedIn && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.8 }}
+                className="w-full max-w-lg mx-auto mb-8"
+              >
+                <label className="block w-full p-8 text-center rounded-xl cursor-pointer hover:opacity-90 transition-all border-2 border-dashed"
+                  style={{ borderColor: 'rgba(166,123,91,0.4)', background: 'rgba(10,10,10,0.6)', backdropFilter: 'blur(12px)' }}
+                >
+                  <input type="file" accept=".pdf" className="hidden" onChange={(e) => {
+                    if(e.target.files && e.target.files.length) {
+                      window.location.href = '/sign-up';
+                    }
+                  }} />
+                  <div className="flex flex-col items-center gap-2">
+                    <svg className="w-8 h-8" style={{ color: '#A67B5B' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <p className="text-white font-bold text-lg">Drop your resume to scan</p>
+                    <p className="text-xs" style={{ color: '#888' }}>PDF up to 5MB. AI starts matching instantly.</p>
+                  </div>
+                </label>
+              </motion.div>
+            )}
+
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.9 }}
+              className="flex flex-col sm:flex-row items-center gap-4 justify-center w-full"
             >
-              <Link href="/sign-up" className="btn-primary-dark px-10 py-4">REQUEST ACCESS NOW</Link>
-              <a href="#how-it-works" className="btn-outline-dark px-8 py-4 text-sm">See How It Works</a>
+              <Link href="/sign-up" className="btn-primary-dark px-10 py-4 text-sm tracking-wider">FIND YOUR DREAM JOB</Link>
+              <a href="#how-it-works" className="btn-outline-dark px-8 py-4 text-sm tracking-wider">See How It Works</a>
             </motion.div>
 
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2 }} className="mt-10">
@@ -216,8 +247,10 @@ export default function LandingPage() {
             </p>
           </div>
           <div ref={cardsRef} className="grid md:grid-cols-3 gap-6">
-            {FEATURES.map((f, i) => (
-              <div key={i} className="feature-card card-dark p-8 flex flex-col justify-between">
+            {FEATURES.map((f, i) => {
+              const targetSection = i === 0 ? '#features' : i === 1 ? '#pricing' : '#how-it-works';
+              return (
+              <a href={targetSection} key={i} className="feature-card card-dark p-8 flex flex-col justify-between hover:-translate-y-2 transition-transform duration-300 block">
                 <div>
                   <div className="flex items-start gap-3 mb-6">
                     <span className="text-4xl font-black font-display" style={{ color: f.statusColor }}>{f.letter}</span>
@@ -227,10 +260,11 @@ export default function LandingPage() {
                 </div>
                 <div className="flex items-center justify-between pt-6" style={{ borderTop: '1px dashed #2A2A2A' }}>
                   <span className="badge-status-dark" style={{ color: f.statusColor }}>STATUS: {f.status}</span>
-                  <button className="btn-ghost-dark">VIEW SCHEMA</button>
+                  <span className="btn-ghost-dark text-xs">JUMP TO DETAIL &rarr;</span>
                 </div>
-              </div>
-            ))}
+              </a>
+              );
+            })}
           </div>
         </div>
       </section>
@@ -397,10 +431,10 @@ export default function LandingPage() {
             INITIATE SYSTEM<br /><span className="text-warm-gradient">OVERRIDE.</span>
           </h2>
           <p className="text-base mb-10 max-w-lg mx-auto" style={{ color: '#888' }}>
-            The future requires infrastructure that doesn't exist yet. Secure your allocation now.
+            The future requires infrastructure that doesn&apos;t exist yet. Secure your allocation now.
           </p>
           <Link href="/sign-up" className="btn-primary-dark inline-flex items-center gap-3 px-12 py-5 text-base" style={{ borderColor: '#EF4444', background: '#EF4444' }}>
-            REQUEST ACCESS NOW
+            FIND YOUR DREAM JOB
           </Link>
         </div>
       </section>

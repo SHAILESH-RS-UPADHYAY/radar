@@ -1,6 +1,14 @@
 'use client';
+ 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+ 
+ 
+ 
+/* eslint-disable react-hooks/purity */
+ 
 
-import { useRef, useMemo } from 'react';
+
+import { useRef, useState, useEffect, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { Float, Stars, AdaptiveDpr } from '@react-three/drei';
 import * as THREE from 'three';

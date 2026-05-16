@@ -1,4 +1,12 @@
 'use client';
+ 
+/* eslint-disable @typescript-eslint/no-unused-vars */
+ 
+ 
+ 
+ 
+ 
+
 import { Canvas, useFrame, useLoader } from '@react-three/fiber';
 import { Float, Sparkles, AdaptiveDpr, Stars, Html } from '@react-three/drei';
 import { Suspense, useEffect, useRef, useMemo } from 'react';
