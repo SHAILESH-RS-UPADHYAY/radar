@@ -1,4 +1,4 @@
- 
+﻿ 
  
  
  
@@ -10,7 +10,7 @@
 // RADAR --- AI Embeddings via Pinecone Inference
 // ============================
 // Uses Pinecone's built-in embedding model (multilingual-e5-large)
-// 384-dimension vectors, cosine similarity
+// 1024-dimension vectors, cosine similarity
 
 import { Pinecone } from '@pinecone-database/pinecone';
 
@@ -89,4 +89,5 @@ export async function searchSimilarJobs(resumeEmbedding: number[], topK: number 
 
   return results.matches || [];
 }
+
 
