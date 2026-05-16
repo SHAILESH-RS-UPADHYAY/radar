@@ -1,11 +1,4 @@
- 
- 
- 
- 
- 
- 
- 
-
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import * as pdfParseModule from 'pdf-parse';
 const pdfParse = (pdfParseModule as any).PDFParse || pdfParseModule;
 export async function GET() {
