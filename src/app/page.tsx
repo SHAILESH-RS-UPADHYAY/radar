@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 import { motion, AnimatePresence } from 'framer-motion';
+import { TerminalText } from '@/components/TerminalText';
 import Link from 'next/link';
 import { useAuth, UserButton } from '@clerk/nextjs';
 import gsap from 'gsap';
@@ -22,7 +23,7 @@ const CursorSparkle = dynamic(() => import('@/components/ui/CursorSparkle'), { s
 const SmoothScroll = dynamic(() => import('@/components/providers/SmoothScroll'), { ssr: false });
 
 const Chk = () => (
-  <svg className="w-4 h-4 shrink-0" style={{ color: '#A67B5B' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+  <svg className="w-4 h-4 shrink-0" style={{ color: '#00FF41' }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
     <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
   </svg>
 );
@@ -69,7 +70,7 @@ const QUOTES = [
 const FEATURES = [
   { letter: 'A', title: 'DREAM COMPANY TRACKING', desc: 'Select from 50+ top companies. Get matched the instant they post a role — before LinkedIn, before Naukri, before anyone.', status: 'ACTIVE', statusColor: '#10B981' },
   { letter: 'B', title: 'AI SEMANTIC MATCHING', desc: '384-dimension sentence embeddings analyze your resume against every JD. Not keywords — real understanding of your skills.', status: 'OPTIMAL', statusColor: '#F59E0B' },
-  { letter: 'C', title: 'AUTOMATED HOURLY SCRAPE', desc: 'Greenhouse, Lever, Ashby APIs scraped every 60 minutes. Zero manual effort. Jobs flow to you automatically.', status: 'READY', statusColor: '#A67B5B' },
+  { letter: 'C', title: 'AUTOMATED HOURLY SCRAPE', desc: 'Greenhouse, Lever, Ashby APIs scraped every 60 minutes. Zero manual effort. Jobs flow to you automatically.', status: 'READY', statusColor: '#00FF41' },
 ];
 
 const STATS = [
@@ -148,10 +149,10 @@ export default function LandingPage() {
       <nav className={'fixed top-0 left-0 right-0 z-50 transition-all duration-500 ' + (scrolled ? 'glass-nav-dark py-3' : 'py-5')} style={{ background: scrolled ? undefined : 'transparent' }}>
         <div className="max-w-[1280px] mx-auto px-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded flex items-center justify-center" style={{ background: '#A67B5B' }}>
+            <div className="w-8 h-8 rounded flex items-center justify-center" style={{ background: '#00FF41' }}>
               <span className="text-white text-xs font-black font-display">R</span>
             </div>
-            <span className="text-lg font-black font-display tracking-display text-white">RADAR<span style={{ color: '#A67B5B' }}>.CORE</span></span>
+            <span className="text-lg font-black font-display tracking-display text-white">RADAR<span style={{ color: '#00FF41' }}>.CORE</span></span>
           </div>
           <div className="hidden md:flex items-center gap-10">
             <a href="#how-it-works" className="text-xs font-semibold uppercase tracking-label transition-opacity hover:opacity-60" style={{ color: '#888' }}>SYSTEMS</a>
@@ -161,7 +162,7 @@ export default function LandingPage() {
           <div className="flex items-center gap-3">
             {isSignedIn ? (
               <>
-                <Link href="/dashboard" className="text-sm font-bold uppercase tracking-label transition-opacity hover:opacity-80" style={{ color: '#A67B5B' }}>Dashboard</Link>
+                <Link href="/dashboard" className="text-sm font-bold uppercase tracking-label transition-opacity hover:opacity-80" style={{ color: '#00FF41' }}>Dashboard</Link>
                 <UserButton appearance={{ elements: { userButtonAvatarBox: "w-8 h-8 rounded-md border border-[#2A2A2A]" } }} />
               </>
             ) : (
@@ -181,15 +182,14 @@ export default function LandingPage() {
             <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.3 }}>
               <div className="dashed-box-dark inline-flex items-center gap-3 mb-8">
                 <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: '#10B981' }} />
-                <span className="text-xs font-bold uppercase tracking-label" style={{ color: '#A67B5B' }}>Live — Scanning 50+ Companies Worldwide</span>
+                <span className="text-xs font-bold uppercase tracking-label" style={{ color: '#00FF41' }}>Live — Scanning 50+ Companies Worldwide</span>
               </div>
             </motion.div>
 
             <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.9, delay: 0.45 }}
               className="text-4xl sm:text-6xl md:text-[4.5rem] lg:text-[5.5rem] font-black font-display tracking-display leading-[0.9] mb-6 max-w-4xl"
             >
-              <span className="text-white">THE FRAMEWORK{'\n'}FOR FUTURE </span>
-              <span className="text-warm-gradient">CAREER.</span>
+              <TerminalText text="INITIALIZING PROTOCOL" typingSpeed={80} className="text-matrix" />
             </motion.h1>
 
             <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.65 }}
@@ -203,7 +203,7 @@ export default function LandingPage() {
                 className="w-full max-w-lg mx-auto mb-8"
               >
                 <label className="block w-full p-8 text-center rounded-xl cursor-pointer hover:opacity-90 transition-all border-2 border-dashed"
-                  style={{ borderColor: 'rgba(166,123,91,0.4)', background: 'rgba(10,10,10,0.6)', backdropFilter: 'blur(12px)' }}
+                  style={{ borderColor: 'rgba(0,255,65,0.4)', background: 'rgba(10,10,10,0.6)', backdropFilter: 'blur(12px)' }}
                 >
                   <input type="file" accept=".pdf" className="hidden" onChange={(e) => {
                     if(e.target.files && e.target.files.length) {
@@ -211,7 +211,7 @@ export default function LandingPage() {
                     }
                   }} />
                   <div className="flex flex-col items-center gap-2">
-                    <svg className="w-8 h-8" style={{ color: '#A67B5B' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="w-8 h-8" style={{ color: '#00FF41' }} fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                     </svg>
                     <p className="text-white font-bold text-lg">Drop your resume to scan</p>
@@ -277,7 +277,7 @@ export default function LandingPage() {
           <div className="text-center mb-14">
             <div className="section-label-dark justify-center mb-6">Why RADAR</div>
             <h2 className="text-3xl md:text-4xl font-black font-display tracking-display text-white">
-              Us vs. <span className="text-warm-gradient">Everyone Else</span>
+              Us vs. <span className="text-matrix">Everyone Else</span>
             </h2>
           </div>
           <div ref={tableRef} className="card-dark p-1 overflow-hidden">
@@ -285,7 +285,7 @@ export default function LandingPage() {
               <thead>
                 <tr className="text-left">
                   <th className="p-4 font-medium" style={{ color: '#555' }}>Feature</th>
-                  <th className="p-4 font-bold featured" style={{ color: '#A67B5B' }}>RADAR</th>
+                  <th className="p-4 font-bold featured" style={{ color: '#00FF41' }}>RADAR</th>
                   <th className="p-4 font-medium" style={{ color: '#555' }}>LinkedIn</th>
                   <th className="p-4 font-medium" style={{ color: '#555' }}>Naukri</th>
                 </tr>
@@ -300,7 +300,7 @@ export default function LandingPage() {
                         <td key={j} className={'p-4 ' + (j === 0 ? 'featured' : '')}>
                           <div className="flex items-center gap-1.5">
                             <Icon />
-                            {c.t && <span className="font-semibold text-xs" style={{ color: j === 0 ? '#A67B5B' : '#555' }}>{c.t}</span>}
+                            {c.t && <span className="font-semibold text-xs" style={{ color: j === 0 ? '#00FF41' : '#555' }}>{c.t}</span>}
                           </div>
                         </td>
                       );
@@ -321,7 +321,7 @@ export default function LandingPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {STATS.map((s, i) => (
               <div key={i} className="stat-item text-center p-8 card-dark">
-                <div className="text-4xl md:text-5xl font-black font-mono tracking-display mb-2" style={{ color: '#A67B5B' }}>
+                <div className="text-4xl md:text-5xl font-black font-mono tracking-display mb-2" style={{ color: '#00FF41' }}>
                   <Counter target={s.value} suffix={s.suffix} />
                 </div>
                 <div className="text-[11px] font-semibold uppercase tracking-label" style={{ color: '#555' }}>{s.label}</div>
@@ -346,7 +346,7 @@ export default function LandingPage() {
           <div className="flex justify-center gap-2.5 mt-8">
             {QUOTES.map((_, i) => (
               <button key={i} onClick={() => setQIdx(i)} className="transition-all duration-300 rounded-full"
-                style={{ width: i === qIdx ? 28 : 8, height: 8, background: i === qIdx ? '#A67B5B' : '#2A2A2A' }}
+                style={{ width: i === qIdx ? 28 : 8, height: 8, background: i === qIdx ? '#00FF41' : '#2A2A2A' }}
               />
             ))}
           </div>
@@ -361,7 +361,7 @@ export default function LandingPage() {
           <div className="text-center mb-16">
             <div className="section-label-dark justify-center mb-6">Pricing</div>
             <h2 className="text-3xl md:text-4xl font-black font-display tracking-display text-white">
-              Start free. <span className="text-warm-gradient">Upgrade when ready.</span>
+              Start free. <span className="text-matrix">Upgrade when ready.</span>
             </h2>
           </div>
           <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
@@ -376,11 +376,11 @@ export default function LandingPage() {
               </ul>
               <Link href="/sign-up" className="btn-outline-dark block w-full py-3.5 text-center text-sm">Try Free</Link>
             </div>
-            <div className="card-dark p-8 flex flex-col relative overflow-hidden" style={{ border: '2px solid #A67B5B' }}>
-              <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl glow-pulse" style={{ background: 'rgba(166,123,91,0.08)' }} />
+            <div className="card-dark p-8 flex flex-col relative overflow-hidden" style={{ border: '2px solid #00FF41' }}>
+              <div className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl glow-pulse" style={{ background: 'rgba(0,255,65,0.08)' }} />
               <div className="relative z-10 flex flex-col flex-1">
                 <div className="flex items-center gap-2 mb-3">
-                  <span className="text-xs font-bold uppercase tracking-label" style={{ color: '#A67B5B' }}>Pro</span>
+                  <span className="text-xs font-bold uppercase tracking-label" style={{ color: '#00FF41' }}>Pro</span>
                   <span className="badge-pro-dark">Popular</span>
                 </div>
                 <div className="flex items-baseline gap-1 mb-1">
@@ -411,7 +411,7 @@ export default function LandingPage() {
             <details key={i} className="faq-item-dark group">
               <summary className="py-5 px-2 text-sm font-semibold flex items-center justify-between text-white">
                 {f.q}
-                <span className="text-xl transition-transform duration-200 group-open:rotate-45" style={{ color: '#A67B5B' }}>+</span>
+                <span className="text-xl transition-transform duration-200 group-open:rotate-45" style={{ color: '#00FF41' }}>+</span>
               </summary>
               <div className="px-2 pb-5 text-sm leading-relaxed" style={{ color: '#888' }}>{f.a}</div>
             </details>
@@ -423,12 +423,12 @@ export default function LandingPage() {
 
       {/* 9. CTA */}
       <section className="relative py-32 px-6 text-center overflow-hidden">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[16vw] font-black font-display leading-none pointer-events-none select-none" style={{ color: 'rgba(166,123,91,0.04)' }}>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[16vw] font-black font-display leading-none pointer-events-none select-none" style={{ color: 'rgba(0,255,65,0.04)' }}>
           INTERCEPT
         </div>
         <div className="max-w-3xl mx-auto relative z-10">
           <h2 className="text-4xl md:text-6xl font-black font-display tracking-display mb-6 leading-tight text-white">
-            INITIATE SYSTEM<br /><span className="text-warm-gradient">OVERRIDE.</span>
+            INITIATE SYSTEM<br /><span className="text-matrix">OVERRIDE.</span>
           </h2>
           <p className="text-base mb-10 max-w-lg mx-auto" style={{ color: '#888' }}>
             The future requires infrastructure that doesn&apos;t exist yet. Secure your allocation now.
@@ -444,15 +444,15 @@ export default function LandingPage() {
         <div className="max-w-[1280px] mx-auto">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2.5">
-              <div className="w-6 h-6 rounded flex items-center justify-center" style={{ background: '#A67B5B' }}>
+              <div className="w-6 h-6 rounded flex items-center justify-center" style={{ background: '#00FF41' }}>
                 <span className="text-white text-[9px] font-black font-display">R</span>
               </div>
               <span className="text-sm font-black font-display text-white">RADAR</span>
             </div>
             <div className="flex items-center gap-6">
-              <a href="#" className="text-xs font-medium transition-opacity hover:opacity-60" style={{ color: '#A67B5B' }}>// SECURITY</a>
-              <a href="#" className="text-xs font-medium transition-opacity hover:opacity-60" style={{ color: '#A67B5B' }}>// TERMS</a>
-              <a href="#" className="text-xs font-medium transition-opacity hover:opacity-60" style={{ color: '#A67B5B' }}>// DISCONNECT</a>
+              <a href="#" className="text-xs font-medium transition-opacity hover:opacity-60" style={{ color: '#00FF41' }}>// SECURITY</a>
+              <a href="#" className="text-xs font-medium transition-opacity hover:opacity-60" style={{ color: '#00FF41' }}>// TERMS</a>
+              <a href="#" className="text-xs font-medium transition-opacity hover:opacity-60" style={{ color: '#00FF41' }}>// DISCONNECT</a>
             </div>
             <p className="text-[11px]" style={{ color: '#555' }}>
               &copy; 2026 RADAR. AI Job Intelligence Engine. | INTERFACE V. 3.1.4
@@ -464,6 +464,9 @@ export default function LandingPage() {
     </SmoothScroll>
   );
 }
+
+
+
 
 
 

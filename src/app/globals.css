@@ -1,4 +1,4 @@
-﻿@import "tailwindcss";
+@import "tailwindcss";
 
 :root {
   --bg-deep: #0A0A0A;
@@ -163,3 +163,47 @@ body {
 
 @keyframes glow-pulse { 0%,100% { opacity: 0.4; } 50% { opacity: 0.8; } }
 .glow-pulse { animation: glow-pulse 3s ease-in-out infinite; }
+
+/* Terminal Styles */
+.terminal-window {
+  background: var(--terminal-bg);
+  border: 1px solid var(--terminal-border);
+  box-shadow: 0 0 20px rgba(0, 255, 65, 0.05);
+}
+
+.text-matrix {
+  color: var(--matrix-green);
+  text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
+}
+
+.terminal-input-caret {
+  display: inline-block;
+  width: 10px;
+  height: 1.2em;
+  background-color: var(--matrix-green);
+  vertical-align: middle;
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+.scanline-effect::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 10px;
+  background: linear-gradient(to bottom, transparent, rgba(0, 255, 65, 0.2), transparent);
+  opacity: 0.5;
+  animation: scanline 8s linear infinite;
+  pointer-events: none;
+}

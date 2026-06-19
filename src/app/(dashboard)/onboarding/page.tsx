@@ -27,7 +27,7 @@ function TiltCard({ children, className, style, onClick, active }: any) {
       onMouseMove={handleMouse}
       onMouseLeave={() => { x.set(0); y.set(0); }}
       style={{ rotateX, rotateY, ...style }}
-      className={`relative transform-gpu ${className} ${active ? 'ring-2 ring-[#A67B5B]' : ''}`}
+      className={`relative transform-gpu ${className} ${active ? 'ring-2 ring-[#00FF41]' : ''}`}
       whileHover={{ scale: 1.02 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >
@@ -295,17 +295,17 @@ export default function OnboardingPage() {
     : Object.values(COMPANIES_DB).flat();
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-20 relative overflow-hidden" style={{ background: '#0A0A0A' }}>
+    <div className="min-h-screen font-mono uppercase flex items-center justify-center px-4 py-20 relative overflow-hidden" style={{ background: '#000000' }}>
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ 
-        background: 'radial-gradient(circle at 50% 0%, rgba(166,123,91,0.05) 0%, transparent 70%)' 
+        background: 'radial-gradient(circle at 50% 0%, rgba(0,255,65,0.05) 0%, transparent 70%)' 
       }} />
 
       <div className="w-full max-w-2xl relative z-10 flex flex-col max-h-[90vh]">
         <div className="flex items-center gap-2 mb-8 shrink-0">
           {[1, 2, 3, 4, 5, 6, 7].map(s => (
-            <div key={s} className="flex-1 h-1.5 rounded-full relative overflow-hidden" style={{ background: '#1A1A1A' }}>
+            <div key={s} className="flex-1 h-1.5 rounded-none relative overflow-hidden" style={{ background: '#002200' }}>
               <div className="absolute top-0 left-0 h-full w-full transition-transform duration-500 origin-left" style={{ 
-                background: '#A67B5B', 
+                background: '#00FF41', 
                 transform: step > s ? 'scaleX(1)' : step === s ? 'scaleX(0.5)' : 'scaleX(0)' 
               }} />
             </div>
@@ -319,29 +319,29 @@ export default function OnboardingPage() {
             {/* Step 1: Career Stage */}
             {step === 1 && (
               <div>
-                <h1 className="text-3xl md:text-3xl font-black font-display text-white mb-2 tracking-tight">CAREER STAGE</h1>
-                <p className="text-sm mb-10" style={{ color: '#888' }}>Are you entering the workforce or bringing experience?</p>
+                <h1 className="text-3xl md:text-3xl font-black font-mono text-[#00FF41] mb-2 tracking-tight">CAREER STAGE</h1>
+                <p className="text-sm mb-10" style={{ color: '#00aa00' }}>Are you entering the workforce or bringing experience?</p>
                 <div className="grid sm:grid-cols-3 gap-4">
-                  <button onClick={() => selectAndNext(setCareerStage, 'Intern', () => 3)} className="p-4 text-left rounded-xl transition-all hover:-translate-y-1" style={{ 
-                    border: `2px solid ${careerStage === 'Intern' ? '#A67B5B' : '#2A2A2A'}`, background: careerStage === 'Intern' ? 'rgba(166,123,91,0.1)' : '#111' 
+                  <button onClick={() => selectAndNext(setCareerStage, 'Intern', () => 3)} className="p-4 text-left rounded-none transition-all hover:-translate-y-1" style={{ 
+                    border: `2px solid ${careerStage === 'Intern' ? '#00FF41' : '#004400'}`, background: careerStage === 'Intern' ? 'rgba(0,255,65,0.1)' : '#000000' 
                   }}>
                     <div className="text-2xl mb-3">🌱</div>
-                    <h3 className="text-white font-bold mb-1">Intern</h3>
-                    <p className="text-xs" style={{ color: '#888' }}>Still studying</p>
+                    <h3 className="text-[#00FF41] font-bold mb-1">Intern</h3>
+                    <p className="text-xs" style={{ color: '#00aa00' }}>Still studying</p>
                   </button>
-                  <button onClick={() => selectAndNext(setCareerStage, 'Fresher', () => 3)} className="p-4 text-left rounded-xl transition-all hover:-translate-y-1" style={{ 
-                    border: `2px solid ${careerStage === 'Fresher' ? '#A67B5B' : '#2A2A2A'}`, background: careerStage === 'Fresher' ? 'rgba(166,123,91,0.1)' : '#111' 
+                  <button onClick={() => selectAndNext(setCareerStage, 'Fresher', () => 3)} className="p-4 text-left rounded-none transition-all hover:-translate-y-1" style={{ 
+                    border: `2px solid ${careerStage === 'Fresher' ? '#00FF41' : '#004400'}`, background: careerStage === 'Fresher' ? 'rgba(0,255,65,0.1)' : '#000000' 
                   }}>
                     <div className="text-2xl mb-3">🎓</div>
-                    <h3 className="text-white font-bold mb-1">Fresher</h3>
-                    <p className="text-xs" style={{ color: '#888' }}>Recent graduate</p>
+                    <h3 className="text-[#00FF41] font-bold mb-1">Fresher</h3>
+                    <p className="text-xs" style={{ color: '#00aa00' }}>Recent graduate</p>
                   </button>
-                  <button onClick={() => selectAndNext(setCareerStage, 'Experienced', () => 2)} className="p-4 text-left rounded-xl transition-all hover:-translate-y-1" style={{ 
-                    border: `2px solid ${careerStage === 'Experienced' ? '#A67B5B' : '#2A2A2A'}`, background: careerStage === 'Experienced' ? 'rgba(166,123,91,0.1)' : '#111' 
+                  <button onClick={() => selectAndNext(setCareerStage, 'Experienced', () => 2)} className="p-4 text-left rounded-none transition-all hover:-translate-y-1" style={{ 
+                    border: `2px solid ${careerStage === 'Experienced' ? '#00FF41' : '#004400'}`, background: careerStage === 'Experienced' ? 'rgba(0,255,65,0.1)' : '#000000' 
                   }}>
                     <div className="text-2xl mb-3">💼</div>
-                    <h3 className="text-white font-bold mb-1">Experienced</h3>
-                    <p className="text-xs" style={{ color: '#888' }}>Mid/Senior level</p>
+                    <h3 className="text-[#00FF41] font-bold mb-1">Experienced</h3>
+                    <p className="text-xs" style={{ color: '#00aa00' }}>Mid/Senior level</p>
                   </button>
                 </div>
               </div>
@@ -350,15 +350,15 @@ export default function OnboardingPage() {
             {/* Step 2: Experience Details */}
             {step === 2 && careerStage === 'Experienced' && (
               <div>
-                <h1 className="text-3xl md:text-3xl font-black font-display text-white mb-2 tracking-tight">PROFESSIONAL XP</h1>
-                <p className="text-sm mb-10" style={{ color: '#888' }}>Quantify your professional background.</p>
+                <h1 className="text-3xl md:text-3xl font-black font-mono text-[#00FF41] mb-2 tracking-tight">PROFESSIONAL XP</h1>
+                <p className="text-sm mb-10" style={{ color: '#00aa00' }}>Quantify your professional background.</p>
                 
                 <div className="mb-10">
-                  <label className="block text-xs uppercase tracking-wider font-bold mb-3" style={{ color: '#888' }}>Current / Target Role</label>
+                  <label className="block text-xs uppercase tracking-wider font-bold mb-3" style={{ color: '#00aa00' }}>Current / Target Role</label>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
                     {ROLES.map(role => (
-                      <button key={role} onClick={() => { setCurrentRole(role); setCustomRole(''); }} className="px-3 py-3 rounded-lg text-sm font-bold transition-all text-center" style={{ 
-                        border: `1px solid ${currentRole === role ? '#A67B5B' : '#2A2A2A'}`, background: currentRole === role ? 'rgba(166,123,91,0.1)' : '#111', color: currentRole === role ? '#fff' : '#888' 
+                      <button key={role} onClick={() => { setCurrentRole(role); setCustomRole(''); }} className="px-3 py-3 rounded-none text-sm font-bold transition-all text-center" style={{ 
+                        border: `1px solid ${currentRole === role ? '#00FF41' : '#004400'}`, background: currentRole === role ? 'rgba(0,255,65,0.1)' : '#000000', color: currentRole === role ? '#00FF41' : '#00aa00' 
                       }}>
                         {role}
                       </button>
@@ -368,7 +368,7 @@ export default function OnboardingPage() {
                     {currentRole === 'Other' && (
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
                         <input type="text" placeholder="Specify your role..." value={customRole} onChange={e => setCustomRole(e.target.value)}
-                          className="w-full bg-[#111] border border-[#2A2A2A] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#A67B5B] transition-colors focus:ring-1 focus:ring-[#A67B5B]" />
+                          className="w-full bg-black border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors focus:ring-1 focus:ring-[#00FF41]" />
                       </motion.div>
                     )}
                   </AnimatePresence>
@@ -376,11 +376,11 @@ export default function OnboardingPage() {
                 
                 <div>
                   <div className="flex justify-between items-center mb-3">
-                    <label className="text-xs uppercase tracking-wider font-bold" style={{ color: '#888' }}>Years of Experience</label>
-                    <span className="text-white font-bold">{experienceYears} {experienceYears === 1 ? 'year' : 'years'}</span>
+                    <label className="text-xs uppercase tracking-wider font-bold" style={{ color: '#00aa00' }}>Years of Experience</label>
+                    <span className="text-[#00FF41] font-bold">{experienceYears} {experienceYears === 1 ? 'year' : 'years'}</span>
                   </div>
                   <input type="range" min="1" max="20" value={experienceYears} onChange={e => setExperienceYears(parseInt(e.target.value))}
-                    className="w-full accent-[#A67B5B]" />
+                    className="w-full accent-[#00FF41]" />
                 </div>
               </div>
             )}
@@ -388,13 +388,13 @@ export default function OnboardingPage() {
             {/* Step 3: Education */}
             {step === 3 && (
               <div>
-                <h1 className="text-3xl md:text-3xl font-black font-display text-white mb-2 tracking-tight">ACADEMICS</h1>
-                <p className="text-sm mb-10" style={{ color: '#888' }}>Tell us about your educational background.</p>
+                <h1 className="text-3xl md:text-3xl font-black font-mono text-[#00FF41] mb-2 tracking-tight">ACADEMICS</h1>
+                <p className="text-sm mb-10" style={{ color: '#00aa00' }}>Tell us about your educational background.</p>
                 
                 <div className="grid sm:grid-cols-2 gap-4 mb-6">
                   {[(careerStage === 'Intern' ? 'Graduating' : 'Graduate') + ' (B.Tech, B.Sc, etc.)', (careerStage === 'Intern' ? 'Postgraduating' : 'Postgraduate') + ' (M.Tech, MBA, etc.)'].map(lvl => (
-                    <button key={lvl} onClick={() => setEducationLevel(lvl)} className="p-4 text-center rounded-lg border transition-all text-sm font-bold" style={{ 
-                      borderColor: educationLevel === lvl ? '#A67B5B' : '#2A2A2A', background: educationLevel === lvl ? 'rgba(166,123,91,0.1)' : '#111', color: educationLevel === lvl ? '#fff' : '#888' 
+                    <button key={lvl} onClick={() => setEducationLevel(lvl)} className="p-4 text-center rounded-none border transition-all text-sm font-bold" style={{ 
+                      borderColor: educationLevel === lvl ? '#00FF41' : '#004400', background: educationLevel === lvl ? 'rgba(0,255,65,0.1)' : '#000000', color: educationLevel === lvl ? '#00FF41' : '#00aa00' 
                     }}>
                       {lvl.split(' ')[0]}
                     </button>
@@ -403,32 +403,32 @@ export default function OnboardingPage() {
 
                 <div className="grid sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs uppercase tracking-wider font-bold mb-3" style={{ color: '#888' }}>Field of Study</label>
+                    <label className="block text-xs uppercase tracking-wider font-bold mb-3" style={{ color: '#00aa00' }}>Field of Study</label>
                     <div className="relative mb-3">
-                      <select value={fieldOfStudy} onChange={e => { setFieldOfStudy(e.target.value); setCustomField(''); }} className="w-full bg-[#111] border border-[#2A2A2A] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#A67B5B] transition-colors appearance-none focus:ring-1 focus:ring-[#A67B5B]">
+                      <select value={fieldOfStudy} onChange={e => { setFieldOfStudy(e.target.value); setCustomField(''); }} className="w-full bg-black border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors appearance-none focus:ring-1 focus:ring-[#00FF41]">
                         <option value="" disabled>Select Field</option>
                         {FIELDS_OF_STUDY.map(f => <option key={f} value={f}>{f}</option>)}
                       </select>
-                      <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-[#888]">▼</div>
+                      <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-[#00aa00]">▼</div>
                     </div>
                     
                     <AnimatePresence>
                       {fieldOfStudy === 'Other' && (
                         <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }}>
                           <input type="text" placeholder="Specify your field" value={customField} onChange={e => setCustomField(e.target.value)}
-                            className="w-full bg-[#111] border border-[#2A2A2A] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#A67B5B] transition-colors focus:ring-1 focus:ring-[#A67B5B]" />
+                            className="w-full bg-black border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors focus:ring-1 focus:ring-[#00FF41]" />
                         </motion.div>
                       )}
                     </AnimatePresence>
                   </div>
                   <div>
-                    <label className="block text-xs uppercase tracking-wider font-bold mb-3" style={{ color: '#888' }}>Passing Year</label>
+                    <label className="block text-xs uppercase tracking-wider font-bold mb-3" style={{ color: '#00aa00' }}>Passing Year</label>
                     <div className="relative">
-                      <select value={passingYear} onChange={e => setPassingYear(e.target.value)} className="w-full bg-[#111] border border-[#2A2A2A] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#A67B5B] transition-colors appearance-none focus:ring-1 focus:ring-[#A67B5B]">
+                      <select value={passingYear} onChange={e => setPassingYear(e.target.value)} className="w-full bg-black border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors appearance-none focus:ring-1 focus:ring-[#00FF41]">
                         <option value="" disabled>Select Year</option>
                         {passingYearsOptions.map(yr => <option key={yr} value={yr}>{yr}</option>)}
                       </select>
-                      <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-[#888]">▼</div>
+                      <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-[#00aa00]">▼</div>
                     </div>
                   </div>
                 </div>
@@ -438,17 +438,17 @@ export default function OnboardingPage() {
             {/* Step 4: Work Model & Location */}
             {step === 4 && (
               <div>
-                <h1 className="text-3xl md:text-3xl font-black font-display text-white mb-2 tracking-tight">OPERATING BASE</h1>
-                <p className="text-sm mb-10" style={{ color: '#888' }}>Define where and how you prefer to work.</p>
+                <h1 className="text-3xl md:text-3xl font-black font-mono text-[#00FF41] mb-2 tracking-tight">OPERATING BASE</h1>
+                <p className="text-sm mb-10" style={{ color: '#00aa00' }}>Define where and how you prefer to work.</p>
                 
                 <div className="mb-10">
-                  <label className="block text-xs uppercase tracking-wider font-bold mb-4" style={{ color: '#888' }}>1. Work Model</label>
+                  <label className="block text-xs uppercase tracking-wider font-bold mb-4" style={{ color: '#00aa00' }}>1. Work Model</label>
                   <div className="grid grid-cols-2 gap-3">
                     {['Remote', 'In-Office', 'Hybrid', 'Anywhere (Omnipresent)'].map(model => (
-                      <button key={model} onClick={() => {setWorkModel(model); setLocations([]);}} className="p-4 rounded-xl transition-all text-center" style={{ 
-                        border: `1px solid ${workModel === model ? '#A67B5B' : '#2A2A2A'}`, background: workModel === model ? 'rgba(166,123,91,0.1)' : '#111'
+                      <button key={model} onClick={() => {setWorkModel(model); setLocations([]);}} className="p-4 rounded-none transition-all text-center" style={{ 
+                        border: `1px solid ${workModel === model ? '#00FF41' : '#004400'}`, background: workModel === model ? 'rgba(0,255,65,0.1)' : '#000000'
                       }}>
-                        <span className="font-bold text-sm text-white">{model}</span>
+                        <span className="font-bold text-sm text-[#00FF41]">{model}</span>
                       </button>
                     ))}
                   </div>
@@ -457,12 +457,12 @@ export default function OnboardingPage() {
                 <AnimatePresence>
                   {workModel && (
                     <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
-                      <label className="block text-xs uppercase tracking-wider font-bold mb-4" style={{ color: '#888' }}>2. Preferred Geography (Select Multiple)</label>
+                      <label className="block text-xs uppercase tracking-wider font-bold mb-4" style={{ color: '#00aa00' }}>2. Preferred Geography (Select Multiple)</label>
                       {workModel.includes('Remote') || workModel.includes('Anywhere') ? (
                         <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
                           {REMOTE_REGIONS.map(reg => (
-                            <button key={reg} onClick={() => toggleLocation(reg)} className="px-4 py-4 rounded-lg text-sm font-bold transition-all text-center hover:scale-105" style={{ 
-                              border: `1px solid ${locations.includes(reg) ? '#A67B5B' : '#2A2A2A'}`, background: locations.includes(reg) ? 'rgba(166,123,91,0.1)' : '#111', color: locations.includes(reg) ? '#fff' : '#888' 
+                            <button key={reg} onClick={() => toggleLocation(reg)} className="px-4 py-4 rounded-none text-sm font-bold transition-all text-center hover:scale-105" style={{ 
+                              border: `1px solid ${locations.includes(reg) ? '#00FF41' : '#004400'}`, background: locations.includes(reg) ? 'rgba(0,255,65,0.1)' : '#000000', color: locations.includes(reg) ? '#00FF41' : '#00aa00' 
                             }}>
                               {reg}
                             </button>
@@ -471,37 +471,37 @@ export default function OnboardingPage() {
                       ) : (
                         <div>
                           <div className="mb-6">
-                            <label className="block text-xs uppercase tracking-wider font-bold mb-2" style={{ color: '#888' }}>Country</label>
+                            <label className="block text-xs uppercase tracking-wider font-bold mb-2" style={{ color: '#00aa00' }}>Country</label>
                             <div className="relative">
-                              <select value={country} onChange={e => { setCountry(e.target.value); setLocations([]); setShowCustomCity(false); }} className="w-full bg-[#111] border border-[#2A2A2A] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#A67B5B] transition-colors appearance-none focus:ring-1 focus:ring-[#A67B5B]">
+                              <select value={country} onChange={e => { setCountry(e.target.value); setLocations([]); setShowCustomCity(false); }} className="w-full bg-black border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors appearance-none focus:ring-1 focus:ring-[#00FF41]">
                                 {Object.keys(TOP_CITIES).map(c => <option key={c} value={c}>{c}</option>)}
                                 <option value="Other">Other</option>
                               </select>
-                              <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-[#888]">▼</div>
+                              <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-[#00aa00]">▼</div>
                             </div>
                           </div>
                           {country !== 'Other' && TOP_CITIES[country] ? (
                             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                               {TOP_CITIES[country].map(city => (
-                                <button key={city} onClick={() => toggleLocation(city)} className="px-4 py-3 rounded-lg text-sm font-bold transition-all text-center hover:scale-105" style={{ 
-                                  border: `1px solid ${locations.includes(city) ? '#A67B5B' : '#2A2A2A'}`, background: locations.includes(city) ? 'rgba(166,123,91,0.1)' : '#111', color: locations.includes(city) ? '#fff' : '#888' 
+                                <button key={city} onClick={() => toggleLocation(city)} className="px-4 py-3 rounded-none text-sm font-bold transition-all text-center hover:scale-105" style={{ 
+                                  border: `1px solid ${locations.includes(city) ? '#00FF41' : '#004400'}`, background: locations.includes(city) ? 'rgba(0,255,65,0.1)' : '#000000', color: locations.includes(city) ? '#00FF41' : '#00aa00' 
                                 }}>
                                   {city}
                                 </button>
                               ))}
                               {locations.filter(loc => !TOP_CITIES[country].includes(loc)).map(custom => (
-                                <button key={custom} onClick={() => toggleLocation(custom)} className="px-4 py-3 rounded-lg text-sm font-bold transition-all text-center border-[#A67B5B] bg-[#A67B5B]/10 text-white">
+                                <button key={custom} onClick={() => toggleLocation(custom)} className="px-4 py-3 rounded-none text-sm font-bold transition-all text-center border-[#00FF41] bg-[#00FF41]/10 text-[#00FF41]">
                                   {custom}
                                 </button>
                               ))}
                               {!showCustomCity ? (
-                                <button onClick={() => setShowCustomCity(true)} className="px-4 py-3 rounded-lg text-sm font-bold transition-all text-center border border-dashed border-[#2A2A2A] hover:border-[#A67B5B] text-[#888]">
+                                <button onClick={() => setShowCustomCity(true)} className="px-4 py-3 rounded-none text-sm font-bold transition-all text-center border border-dashed border-[#004400] hover:border-[#00FF41] text-[#00aa00]">
                                   + Other
                                 </button>
                               ) : (
                                 <div className="col-span-2 sm:col-span-3 md:col-span-4 flex gap-2">
-                                  <input type="text" placeholder="Type city name..." value={customCity} onChange={e => setCustomCity(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCustomCity()} className="flex-1 bg-[#111] border border-[#2A2A2A] rounded-lg px-3 py-2 text-white text-sm focus:outline-none focus:border-[#A67B5B]" />
-                                  <button onClick={addCustomCity} className="px-4 py-2 bg-[#A67B5B] text-white rounded-lg text-sm font-bold">Add</button>
+                                  <input type="text" placeholder="Type city name..." value={customCity} onChange={e => setCustomCity(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCustomCity()} className="flex-1 bg-black border border-[#004400] rounded-none px-3 py-2 text-[#00FF41] text-sm focus:outline-none focus:border-[#00FF41]" />
+                                  <button onClick={addCustomCity} className="px-4 py-2 bg-[#00FF41] text-[#00FF41] rounded-none text-sm font-bold">Add</button>
                                 </div>
                               )}
                             </div>
@@ -509,16 +509,16 @@ export default function OnboardingPage() {
                             <div>
                               <div className="flex flex-wrap gap-2 mb-3">
                                 {locations.map(loc => (
-                                  <div key={loc} className="px-3 py-1.5 rounded-lg text-sm font-bold flex items-center gap-2 border-[#A67B5B] bg-[#A67B5B]/10 border text-white">
+                                  <div key={loc} className="px-3 py-1.5 rounded-none text-sm font-bold flex items-center gap-2 border-[#00FF41] bg-[#00FF41]/10 border text-[#00FF41]">
                                     <span>{loc}</span>
-                                    <button onClick={() => toggleLocation(loc)} className="text-[#A67B5B] hover:text-white">×</button>
+                                    <button onClick={() => toggleLocation(loc)} className="text-[#00FF41] hover:text-[#00FF41]">×</button>
                                   </div>
                                 ))}
                               </div>
                               <div className="flex gap-2">
                                 <input type="text" placeholder="e.g. New York, London, Dubai" value={customCity} onChange={e => setCustomCity(e.target.value)} onKeyDown={e => e.key === 'Enter' && addCustomCity()}
-                                  className="flex-1 bg-[#111] border border-[#2A2A2A] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#A67B5B] transition-colors focus:ring-1 focus:ring-[#A67B5B]" />
-                                <button onClick={addCustomCity} className="px-6 py-3 bg-[#A67B5B] text-white rounded-lg text-sm font-bold hover:bg-opacity-80">Add</button>
+                                  className="flex-1 bg-black border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors focus:ring-1 focus:ring-[#00FF41]" />
+                                <button onClick={addCustomCity} className="px-6 py-3 bg-[#00FF41] text-[#00FF41] rounded-none text-sm font-bold hover:bg-opacity-80">Add</button>
                               </div>
                             </div>
                           )}
@@ -533,20 +533,20 @@ export default function OnboardingPage() {
             {/* Step 5: Organization Culture */}
             {step === 5 && (
               <div>
-                <h1 className="text-3xl md:text-3xl font-black font-display text-white mb-2 tracking-tight">THE BATTLEGROUND</h1>
-                <p className="text-sm mb-10" style={{ color: '#888' }}>Select the corporate environments where you thrive. (Select all that apply)</p>
+                <h1 className="text-3xl md:text-3xl font-black font-mono text-[#00FF41] mb-2 tracking-tight">THE BATTLEGROUND</h1>
+                <p className="text-sm mb-10" style={{ color: '#00aa00' }}>Select the corporate environments where you thrive. (Select all that apply)</p>
                 <div className="grid sm:grid-cols-2 gap-4">
                   {ORG_CULTURES.map((culture, index) => (
                     <TiltCard key={culture.id} onClick={() => toggleCulture(culture.title)} active={orgCultures.includes(culture.title)} 
-                      className={`p-5 rounded-xl text-left flex flex-col gap-1 w-full ${index === 4 ? "sm:col-span-2 sm:w-[calc(50%-0.5rem)] sm:mx-auto" : ""}`}
+                      className={`p-5 rounded-none text-left flex flex-col gap-1 w-full ${index === 4 ? "sm:col-span-2 sm:w-[calc(50%-0.5rem)] sm:mx-auto" : ""}`}
                       style={{ 
-                        background: orgCultures.includes(culture.title) ? 'rgba(166,123,91,0.1)' : '#111',
-                        border: `1px solid ${orgCultures.includes(culture.title) ? '#A67B5B' : '#2A2A2A'}`
+                        background: orgCultures.includes(culture.title) ? 'rgba(0,255,65,0.1)' : '#000000',
+                        border: `1px solid ${orgCultures.includes(culture.title) ? '#00FF41' : '#004400'}`
                       }}
                     >
                       <div className="text-3xl mb-1 pointer-events-none">{culture.icon}</div>
-                      <span className="font-bold text-lg text-white tracking-tight pointer-events-none">{culture.title}</span>
-                      <span className="text-xs font-medium text-[#888] pointer-events-none">{culture.desc}</span>
+                      <span className="font-bold text-lg text-[#00FF41] tracking-tight pointer-events-none">{culture.title}</span>
+                      <span className="text-xs font-medium text-[#00aa00] pointer-events-none">{culture.desc}</span>
                     </TiltCard>
                   ))}
                 </div>
@@ -558,23 +558,23 @@ export default function OnboardingPage() {
               <div>
                 <div className="flex justify-between items-end mb-10">
                   <div>
-                    <h1 className="text-3xl md:text-3xl font-black font-display text-white mb-2 tracking-tight">DREAM STACK</h1>
-                    <p className="text-sm" style={{ color: '#888' }}>Select at least 5 target companies from your selected cultures.</p>
+                    <h1 className="text-3xl md:text-3xl font-black font-mono text-[#00FF41] mb-2 tracking-tight">DREAM STACK</h1>
+                    <p className="text-sm" style={{ color: '#00aa00' }}>Select at least 5 target companies from your selected cultures.</p>
                   </div>
                   <div className="text-right">
-                    <span className="text-2xl font-black text-white">{dreamCompanies.length}</span>
-                    <span className="text-sm block" style={{ color: '#888' }}>Selected</span>
+                    <span className="text-2xl font-black text-[#00FF41]">{dreamCompanies.length}</span>
+                    <span className="text-sm block" style={{ color: '#00aa00' }}>Selected</span>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                   {displayedCompanies.map(company => (
                     <TiltCard key={company.name} onClick={() => toggleCompany(company.name)} active={dreamCompanies.includes(company.name)}
-                      className="px-4 py-3 rounded-lg text-sm font-bold text-center truncate" 
+                      className="px-4 py-3 rounded-none text-sm font-bold text-center truncate" 
                       style={{ 
-                        background: dreamCompanies.includes(company.name) ? 'rgba(166,123,91,0.1)' : '#111',
-                        border: `1px solid ${dreamCompanies.includes(company.name) ? '#A67B5B' : '#2A2A2A'}`,
-                        color: dreamCompanies.includes(company.name) ? '#fff' : '#888' 
+                        background: dreamCompanies.includes(company.name) ? 'rgba(0,255,65,0.1)' : '#000000',
+                        border: `1px solid ${dreamCompanies.includes(company.name) ? '#00FF41' : '#004400'}`,
+                        color: dreamCompanies.includes(company.name) ? '#00FF41' : '#00aa00' 
                       }}
                     >
                       <span className="pointer-events-none">{company.name}</span>
@@ -587,80 +587,80 @@ export default function OnboardingPage() {
             {/* Step 7: Resume Upload / Manual Entry */}
             {step === 7 && (
               <div>
-                <h1 className="text-3xl md:text-3xl font-black font-display text-white mb-2 tracking-tight">UPLOAD CONTEXT</h1>
-                <p className="text-sm mb-10" style={{ color: '#888' }}>Provide your resume or enter details manually for AI matching.</p>
+                <h1 className="text-3xl md:text-3xl font-black font-mono text-[#00FF41] mb-2 tracking-tight">UPLOAD CONTEXT</h1>
+                <p className="text-sm mb-10" style={{ color: '#00aa00' }}>Provide your resume or enter details manually for AI matching.</p>
 
                 <AnimatePresence mode="wait">
                   {!showManualEntry ? (
                     <motion.div key="upload" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-                      <label onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop} className={`w-full flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-xl cursor-pointer transition-all ${isDragging ? 'border-[#A67B5B] bg-[#A67B5B]/5' : 'border-[#2A2A2A] bg-[#111] hover:border-[#A67B5B]/50'}`}>
+                      <label onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop} className={`w-full flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-none cursor-pointer transition-all ${isDragging ? 'border-[#00FF41] bg-[#00FF41]/5' : 'border-[#004400] bg-black hover:border-[#00FF41]/50'}`}>
                         <input type="file" className="hidden" accept=".pdf,.doc,.docx" onChange={e => e.target.files && setResumeFile(e.target.files[0])} />
-                        <div className="w-16 h-16 rounded-full flex items-center justify-center mb-4" style={{ background: 'rgba(166,123,91,0.1)' }}>
+                        <div className="w-16 h-16 rounded-none flex items-center justify-center mb-4" style={{ background: 'rgba(0,255,65,0.1)' }}>
                           <span className="text-2xl">📄</span>
                         </div>
                         {resumeFile ? (
                           <div className="text-center">
-                            <p className="text-white font-bold text-lg mb-1">{resumeFile.name}</p>
-                            <p className="text-sm" style={{ color: '#888' }}>{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                            <p className="text-[#00FF41] font-bold text-lg mb-1">{resumeFile.name}</p>
+                            <p className="text-sm" style={{ color: '#00aa00' }}>{(resumeFile.size / 1024 / 1024).toFixed(2)} MB</p>
                           </div>
                         ) : (
                           <div className="text-center">
-                            <p className="text-white font-bold text-lg mb-2">Drop your resume here</p>
-                            <p className="text-sm" style={{ color: '#888' }}>PDF, DOC, DOCX up to 5MB</p>
-                            <p className="text-xs mt-6" style={{ color: '#A67B5B' }}>Required for AI Matching</p>
+                            <p className="text-[#00FF41] font-bold text-lg mb-2">Drop your resume here</p>
+                            <p className="text-sm" style={{ color: '#00aa00' }}>PDF, DOC, DOCX up to 5MB</p>
+                            <p className="text-xs mt-6" style={{ color: '#00FF41' }}>Required for AI Matching</p>
                           </div>
                         )}
                       </label>
 
-                      <div className="mt-8 text-center border-t border-[#1A1A1A] pt-8">
-                        <p className="text-sm text-[#888] mb-4">Don't have a resume ready? No sweat. We can do this the hard way.</p>
-                        <button onClick={() => setShowManualEntry(true)} className="px-6 py-2.5 border-2 border-[#A67B5B] text-[#A67B5B] rounded-lg text-sm font-bold hover:bg-[#A67B5B] hover:text-white transition-all shadow-[0_0_15px_rgba(166,123,91,0.15)]">
+                      <div className="mt-8 text-center border-t border-[#002200] pt-8">
+                        <p className="text-sm text-[#00aa00] mb-4">Don't have a resume ready? No sweat. We can do this the hard way.</p>
+                        <button onClick={() => setShowManualEntry(true)} className="px-6 py-2.5 border-2 border-[#00FF41] text-[#00FF41] rounded-none text-sm font-bold hover:bg-[#00FF41] hover:text-[#00FF41] transition-all shadow-[0_0_15px_rgba(0,255,65,0.15)]">
                           Build Profile Manually ⚡
                         </button>
                       </div>
                     </motion.div>
                   ) : (
-                    <motion.div key="manual" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-[#111] border border-[#2A2A2A] rounded-xl p-4 shadow-2xl relative">
-                      <button onClick={() => setShowManualEntry(false)} className="absolute top-4 right-4 text-[#888] hover:text-white transition-colors text-sm font-bold">
+                    <motion.div key="manual" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-black border border-[#004400] rounded-none p-4 shadow-2xl relative">
+                      <button onClick={() => setShowManualEntry(false)} className="absolute top-4 right-4 text-[#00aa00] hover:text-[#00FF41] transition-colors text-sm font-bold">
                         ✕ Cancel
                       </button>
                       
-                      <h2 className="text-xl font-bold text-white mb-6 flex items-center gap-2">
-                        <span className="text-[#A67B5B]">⚡</span> The Builder Console
+                      <h2 className="text-xl font-bold text-[#00FF41] mb-6 flex items-center gap-2">
+                        <span className="text-[#00FF41]">⚡</span> The Builder Console
                       </h2>
 
                       {/* Skills */}
                       <div className="mb-6">
-                        <label className="block text-xs uppercase tracking-wider font-bold mb-2 text-[#888]">Core Skills (Required)</label>
+                        <label className="block text-xs uppercase tracking-wider font-bold mb-2 text-[#00aa00]">Core Skills (Required)</label>
                         <div className="flex flex-wrap gap-2 mb-3">
                           <AnimatePresence>
                             {manualSkills.map(skill => (
-                              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} key={skill} className="px-3 py-1.5 rounded-full text-sm font-bold flex items-center gap-2 bg-[#A67B5B]/10 border border-[#A67B5B] text-white shadow-[0_0_10px_rgba(166,123,91,0.2)]">
+                              <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} key={skill} className="px-3 py-1.5 rounded-none text-sm font-bold flex items-center gap-2 bg-[#00FF41]/10 border border-[#00FF41] text-[#00FF41] shadow-[0_0_10px_rgba(0,255,65,0.2)]">
                                 {skill}
-                                <button onClick={() => removeManualSkill(skill)} className="text-[#A67B5B] hover:text-[#EF4444] transition-colors">×</button>
+                                <button onClick={() => removeManualSkill(skill)} className="text-[#00FF41] hover:text-[#EF4444] transition-colors">×</button>
                               </motion.div>
                             ))}
                           </AnimatePresence>
                         </div>
                         <div className="flex gap-2">
                           <input type="text" placeholder="e.g. React, Python, Product Strategy..." value={skillInput} onChange={e => setSkillInput(e.target.value)} onKeyDown={e => e.key === 'Enter' && addManualSkill()}
-                            className="flex-1 bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#A67B5B] transition-colors focus:ring-1 focus:ring-[#A67B5B]" />
-                          <button onClick={addManualSkill} className="px-6 py-3 bg-[#2A2A2A] text-white rounded-lg font-bold hover:bg-[#A67B5B] transition-colors">Add</button>
+                            className="flex-1 bg-[#000000] border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors focus:ring-1 focus:ring-[#00FF41]" />
+                          <button onClick={addManualSkill} className="px-6 py-3 bg-[#004400] text-[#00FF41] rounded-none font-bold hover:bg-[#00FF41] transition-colors">Add</button>
                         </div>
                       </div>
 
                       {/* Projects */}
                       <div className="mb-6">
-                        <label className="block text-xs uppercase tracking-wider font-bold mb-2 text-[#888]">Top Projects (Optional)</label>
+                        <label className="block text-xs uppercase tracking-wider font-bold mb-2 text-[#00aa00]">Top Projects (Optional)</label>
                         <textarea placeholder="Briefly describe 1-2 impactful projects you've built or contributed to..." rows={3} value={manualProjects} onChange={e => setManualProjects(e.target.value)}
-                          className="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#A67B5B] transition-colors focus:ring-1 focus:ring-[#A67B5B] resize-none" />
+                          className="w-full bg-[#000000] border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors focus:ring-1 focus:ring-[#00FF41] resize-none" />
                       </div>
 
                       {/* Bio / Other */}
                       <div>
-                        <label className="block text-xs uppercase tracking-wider font-bold mb-2 text-[#888]">The X-Factor / Bio (Optional)</label>
+                        <label className="block text-xs uppercase tracking-wider font-bold mb-2 text-[#00aa00]">The X-Factor / Bio (Optional)</label>
                         <textarea placeholder="What makes you unique? Hackathons, open-source, blogs, or just your drive..." rows={2} value={manualBio} onChange={e => setManualBio(e.target.value)}
-                          className="w-full bg-[#0A0A0A] border border-[#2A2A2A] rounded-lg px-4 py-3 text-white focus:outline-none focus:border-[#A67B5B] transition-colors focus:ring-1 focus:ring-[#A67B5B] resize-none" />
+                          className="w-full bg-[#000000] border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors focus:ring-1 focus:ring-[#00FF41] resize-none" />
                       </div>
 
                     </motion.div>
@@ -670,7 +670,7 @@ export default function OnboardingPage() {
             )}
 
         {error && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6 text-[#EF4444] text-sm text-center font-bold bg-[#EF4444] bg-opacity-10 py-3 rounded border border-[#EF4444] shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-6 text-[#EF4444] text-sm text-center font-bold bg-[#EF4444] bg-opacity-10 py-3 rounded-none border border-[#EF4444] shadow-[0_0_15px_rgba(239,68,68,0.2)]">
             {typeof error === 'string' ? error : JSON.stringify(error)}
           </motion.div>
         )}
@@ -680,9 +680,9 @@ export default function OnboardingPage() {
         </div>
 
         {/* Navigation Buttons */}
-        <div className="flex justify-between items-center pt-6 shrink-0 mt-4" style={{ borderTop: '1px solid #2A2A2A' }}>
+        <div className="flex justify-between items-center pt-6 shrink-0 mt-4" style={{ borderTop: '1px solid #004400' }}>
           {step > 1 ? (
-            <button onClick={handleBack} className="px-6 py-2.5 text-sm font-bold uppercase tracking-wider rounded transition-colors hover:bg-[#1A1A1A]" style={{ color: '#888', border: '1px solid #2A2A2A' }}>
+            <button onClick={handleBack} className="px-6 py-2.5 text-sm font-bold uppercase tracking-wider rounded-none transition-colors hover:bg-[#002200]" style={{ color: '#00aa00', border: '1px solid #004400' }}>
               Back
             </button>
           ) : <div />}
@@ -690,12 +690,12 @@ export default function OnboardingPage() {
           {/* Hide Continue button on auto-continue steps */}
           {step < 7 ? (
             step !== 1 && (
-              <button onClick={handleNext} className="px-8 py-2.5 text-sm font-bold uppercase tracking-wider rounded text-white transition-all hover:-translate-y-0.5 shadow-[0_0_20px_rgba(166,123,91,0.3)] hover:shadow-[0_0_30px_rgba(166,123,91,0.5)]" style={{ background: '#A67B5B' }}>
+              <button onClick={handleNext} className="px-8 py-2.5 text-sm font-bold uppercase tracking-wider rounded-none text-[#00FF41] transition-all hover:-translate-y-0.5 shadow-[0_0_20px_rgba(0,255,65,0.3)] hover:shadow-[0_0_30px_rgba(0,255,65,0.5)]" style={{ background: '#00FF41' }}>
                 Continue
               </button>
             )
           ) : (
-            <button onClick={handleSubmit} disabled={loading} className="px-8 py-2.5 text-sm font-bold uppercase tracking-wider rounded text-white transition-all hover:-translate-y-0.5 shadow-[0_0_30px_rgba(166,123,91,0.5)] disabled:opacity-50 disabled:hover:translate-y-0" style={{ background: '#A67B5B' }}>
+            <button onClick={handleSubmit} disabled={loading} className="px-8 py-2.5 text-sm font-bold uppercase tracking-wider rounded-none text-[#00FF41] transition-all hover:-translate-y-0.5 shadow-[0_0_30px_rgba(0,255,65,0.5)] disabled:opacity-50 disabled:hover:translate-y-0" style={{ background: '#00FF41' }}>
               {loading ? 'INITIALIZING...' : 'LAUNCH RADAR'}
             </button>
           )}
