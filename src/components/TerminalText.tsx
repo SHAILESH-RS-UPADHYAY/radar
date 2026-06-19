@@ -47,7 +47,7 @@ export function TerminalText({
   }, [displayedText, isTyping, text, typingSpeed, hasStarted, delay, onComplete]);
 
   return (
-    <span className={\	ext-matrix font-mono \\}>
+    <span className={`text-matrix font-mono ${className}`}>
       {displayedText}
       {(isTyping || !hasStarted) && <span className="terminal-input-caret ml-1"></span>}
     </span>
