@@ -1,23 +1,42 @@
-﻿/* eslint-disable @typescript-eslint/no-explicit-any */
- 
- 
- 
- 
- 
- 
-
-// ============================
-// RADAR - Onboarding API
-// ============================
-// POST /api/onboarding - Saves user profile + generates resume embedding
-
-import { NextRequest, NextResponse } from 'next/server';
+﻿import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import * as pdfParseModule from 'pdf-parse';
 import { createServerClient } from '@/lib/supabase/client';
-import { embedText } from '@/lib/ai/embeddings';
+import { embedText, toVectorLiteral } from '@/lib/ai/embeddings';
+import { extractSkills } from '@/lib/scraper/utils';
+import { resolveDreamCompanyIds } from '@/lib/dream-companies';
 
 export const maxDuration = 30;
+
+function parseJsonArray(value: FormDataEntryValue | null): string[] {
+  if (!value || typeof value !== 'string') return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((item) => typeof item === 'string') : [];
+  } catch {
+    return value ? [value] : [];
+  }
+}
+
+async function extractPdfText(resumeFile: File): Promise<string> {
+  const buffer = Buffer.from(await resumeFile.arrayBuffer());
+  const PDFParse = (pdfParseModule as unknown as { PDFParse?: unknown }).PDFParse || pdfParseModule;
+  if (typeof PDFParse === 'function') {
+    try {
+      const parser = new (
+        PDFParse as new (opts: { data: Uint8Array }) => { getText: () => Promise<{ text?: string }> }
+      )({
+        data: new Uint8Array(buffer),
+      });
+      const parsed = await parser.getText();
+      return parsed.text?.substring(0, 15000) || '';
+    } catch {
+      const parsed = await (PDFParse as (buf: Buffer) => Promise<{ text?: string }>)(buffer);
+      return parsed.text?.substring(0, 15000) || '';
+    }
+  }
+  return '';
+}
 
 export async function POST(req: NextRequest) {
   const { userId } = await auth();
@@ -26,99 +45,105 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const resumeFile = formData.get('resume') as File | null;
-    let location = '';
-    try {
-      const locs = JSON.parse(formData.get('location') as string || '[]');
-      location = locs.join(', ');
-    } catch {
-      location = formData.get('location') as string || '';
-    }
-    const careerStage = formData.get('career_stage') as string || 'Experienced';
+    const locations = parseJsonArray(formData.get('location'));
+    const location = locations.join(', ');
+    const country = (formData.get('country') as string) || 'India';
+    const careerStage = (formData.get('career_stage') as string) || 'Experienced';
     const isFresher = careerStage === 'Fresher' || careerStage === 'Intern';
-    const workModel = formData.get('work_model') as string || '';
-    const experienceYears = parseInt(formData.get('experience_years') as string || '0');
-    
-    // Core fields
-    const currentRole = formData.get('current_role') as string || '';
-    const educationLevel = formData.get('education_level') as string || '';
-    const passingYear = formData.get('passing_year') as string || '';
-    const fieldOfStudy = formData.get('field_of_study') as string || '';
-    
-    // Arrays
-    let dreamCompanies: string[] = [];
-    let orgCulture: string[] = [];
-    try { dreamCompanies = JSON.parse(formData.get('dream_companies') as string || '[]'); } catch {}
-    try { orgCulture = JSON.parse(formData.get('org_culture') as string || '[]'); } catch {}
-
-    // Manual Form Details
-    const manualSkills = formData.get('manual_skills') as string || '';
-    const manualProjects = formData.get('manual_projects') as string || '';
-    const manualBio = formData.get('manual_bio') as string || '';
+    const workModel = (formData.get('work_model') as string) || '';
+    const experienceYears = parseInt((formData.get('experience_years') as string) || '0', 10) || 0;
+    const currentRole = (formData.get('current_role') as string) || '';
+    const educationLevel = (formData.get('education_level') as string) || '';
+    const passingYear = (formData.get('passing_year') as string) || '';
+    const fieldOfStudy = (formData.get('field_of_study') as string) || '';
+    const dreamCompanies = parseJsonArray(formData.get('dream_companies'));
+    const orgCulture = parseJsonArray(formData.get('org_culture'));
+    const manualSkillsRaw = (formData.get('manual_skills') as string) || '';
+    const manualProjects = (formData.get('manual_projects') as string) || '';
+    const manualBio = (formData.get('manual_bio') as string) || '';
 
     const supabase = createServerClient();
     let resumeText = '';
-    let resumeEmbedding: number[] | null = null;
 
-    // 1. Extract text from PDF if exists
-    if (resumeFile) {
-      const buffer = Buffer.from(await resumeFile.arrayBuffer());
-      const PDFParse = (pdfParseModule as any).PDFParse || pdfParseModule;
-      const parser = new PDFParse({ data: new Uint8Array(buffer) });
-      const parsed = await parser.getText();
-      resumeText = parsed.text?.substring(0, 15000) || '';
+    if (resumeFile && resumeFile.size > 0) {
+      resumeText = await extractPdfText(resumeFile);
     }
 
-    // 2. Append Manual Details
-    if (manualSkills || manualProjects || manualBio) {
+    if (manualSkillsRaw || manualProjects || manualBio) {
       resumeText += '\n\n--- USER PROVIDED DETAILS ---\n';
-      if (manualSkills) resumeText += `SKILLS: ${manualSkills}\n`;
+      if (manualSkillsRaw) resumeText += `SKILLS: ${manualSkillsRaw}\n`;
       if (manualProjects) resumeText += `PROJECTS: ${manualProjects}\n`;
       if (manualBio) resumeText += `ADDITIONAL BIO: ${manualBio}\n`;
     }
 
-    // 3. Generate Embedding if ANY context exists
-    if (resumeText.trim() || careerStage) {
-      const embeddingInput = [
-        'Career Stage: ' + (isFresher ? careerStage : `Experienced (${experienceYears} years)`),
-        currentRole ? `Target/Current Role: ${currentRole}` : '',
-        `Education: ${educationLevel} in ${fieldOfStudy} (Class of ${passingYear})`,
-        'Org Culture Prefs: ' + orgCulture.join(', '),
-        'Dream Companies: ' + dreamCompanies.join(', '),
-        workModel ? `Work Model: ${workModel}` : '',
-        'Location: ' + location,
-        resumeText,
-      ].filter(Boolean).join(' | ');
+    const parsedManualSkills = manualSkillsRaw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    const extracted = extractSkills(resumeText);
+    const skills = [...new Set([...parsedManualSkills, ...extracted])];
 
-      resumeEmbedding = await embedText(embeddingInput);
+    const embeddingInput = [
+      'Career Stage: ' + (isFresher ? careerStage : `Experienced (${experienceYears} years)`),
+      currentRole ? `Target/Current Role: ${currentRole}` : '',
+      `Education: ${educationLevel} in ${fieldOfStudy} (Class of ${passingYear})`,
+      orgCulture.length ? 'Org Culture Prefs: ' + orgCulture.join(', ') : '',
+      dreamCompanies.length ? 'Dream Companies: ' + dreamCompanies.join(', ') : '',
+      workModel ? `Work Model: ${workModel}` : '',
+      location ? 'Location: ' + location : '',
+      resumeText,
+    ]
+      .filter(Boolean)
+      .join(' | ');
+
+    let resumeEmbedding: number[] | null = null;
+    if (embeddingInput.trim()) {
+      try {
+        resumeEmbedding = await embedText(embeddingInput);
+      } catch (embedErr) {
+        // Profile still saves; the match step builds the embedding once Pinecone is configured.
+        console.warn('[ONBOARDING] Embedding skipped:', embedErr instanceof Error ? embedErr.message : embedErr);
+      }
     }
 
-    // Upsert user profile
-    const { error: upsertErr } = await supabase.from('user_profiles').upsert({
-      id: userId,
-      location,
-      is_fresher: isFresher,
-      experience_years: experienceYears,
-      resume_text: resumeText || null,
-      // Suppress saving embedding to DB due to 384 vs 1024 dimension mismatch
-      // resume_embedding: resumeEmbedding ? '[' + resumeEmbedding.join(',') + ']' : null,
-    }, { onConflict: 'id' });
+    const { error: upsertErr } = await supabase.from('user_profiles').upsert(
+      {
+        id: userId,
+        location,
+        country,
+        is_fresher: isFresher,
+        experience_years: experienceYears,
+        skills,
+        resume_text: resumeText || null,
+        resume_embedding: resumeEmbedding ? toVectorLiteral(resumeEmbedding) : null,
+      },
+      { onConflict: 'id' },
+    );
 
     if (upsertErr) {
       console.error('[ONBOARDING] DB Error:', upsertErr);
       return NextResponse.json({ error: upsertErr.message }, { status: 500 });
     }
 
+    const dreamIds = await resolveDreamCompanyIds(supabase, dreamCompanies);
+    await supabase.from('user_dream_companies').delete().eq('user_id', userId);
+    if (dreamIds.length > 0) {
+      const { error: dreamErr } = await supabase
+        .from('user_dream_companies')
+        .insert(dreamIds.map((company_id) => ({ user_id: userId, company_id })));
+      if (dreamErr) console.error('[ONBOARDING] Dream companies error:', dreamErr.message);
+    }
+
     return NextResponse.json({
       success: true,
       hasResume: !!resumeText,
       hasEmbedding: !!resumeEmbedding,
-      skillCount: 0,
+      skillCount: skills.length,
+      dreamCompanyCount: dreamIds.length,
     });
   } catch (error: unknown) {
-   
-  const err = error as any;
+    const err = error as { message?: string };
     console.error('[ONBOARDING] General Error:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    return NextResponse.json({ error: err.message || 'Onboarding failed' }, { status: 500 });
   }
 }
-

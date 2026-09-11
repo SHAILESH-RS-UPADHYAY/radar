@@ -1,196 +1,431 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
- 
- 
- 
- 
- 
- 
 
 // ============================
-// RADAR — ATS Scraper Adapters
+// RADAR — Company ATS adapters
 // ============================
-// Greenhouse, Lever, Ashby — all have FREE public JSON APIs
-// No authentication required. Structured data. Highly reliable.
+// One adapter per applicant-tracking system. All of them use the public, unauthenticated
+// job-board endpoints the ATS itself serves to the company's careers page.
+//
+// ats_identifier formats:
+//   greenhouse       board token          e.g. "stripe"
+//   lever            site slug            e.g. "meesho"   (prefix "eu:" for api.eu.lever.co)
+//   ashby            board name           e.g. "linear"
+//   workable         account slug         e.g. "blueground"
+//   smartrecruiters  company identifier   e.g. "ServiceNow"
+//   recruitee        subdomain            e.g. "bunq"
+//   personio         subdomain            e.g. "personio"
+//   breezy           subdomain            e.g. "acme"
+//   workday          tenant/wdN/site      e.g. "nvidia/wd5/NVIDIAExternalCareerSite"
+//   amazon           ISO-3 country code   e.g. "IND"
 
-export interface ScrapedJob {
-  external_id: string;
-  title: string;
-  description: string;
-  location: string;
-  apply_url: string;
-  department: string | null;
-  work_type: 'remote' | 'hybrid' | 'in-office' | null;
-  salary_min: number | null;
-  salary_max: number | null;
-  experience_required: string | null;
-  skills: string[];
+import {
+  fetchJson,
+  fetchText,
+  finalizeJob,
+  htmlToText,
+  inferWorkType,
+  isRelevantTitle,
+  mapLimit,
+  parseSalaryNumber,
+  parseSalaryRange,
+  toIso,
+  decodeEntities,
+  type ScrapedJob,
+} from './utils';
+import { scrapeBoard, BOARD_PROVIDERS } from './boards';
+
+export type { ScrapedJob } from './utils';
+
+// Big employers list thousands of roles; cap how many we pull (and fetch details for) per company.
+const MAX_PER_COMPANY = Number(process.env.RADAR_MAX_JOBS_PER_COMPANY || 150);
+
+function searchTerms(): string[] {
+  return (process.env.RADAR_SEARCH_TERMS || 'software engineer,developer,data')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
 }
 
-// ============================
-// GREENHOUSE ADAPTER
-// Endpoint: https://api.greenhouse.io/v1/boards/{token}/jobs?content=true
-// No auth. Returns clean JSON with job details.
-// ============================
-export async function scrapeGreenhouse(boardToken: string): Promise<ScrapedJob[]> {
-  try {
-    const url = 'https://api.greenhouse.io/v1/boards/' + boardToken + '/jobs?content=true';
-    const res = await fetch(url, { next: { revalidate: 0 } });
-    if (!res.ok) throw new Error('Greenhouse API error: ' + res.status);
-    const data = await res.json();
-
-    return (data.jobs || []).map((job: any) => ({
+// ---------- Greenhouse ----------
+export async function scrapeGreenhouse(token: string): Promise<ScrapedJob[]> {
+  const data = await fetchJson<any>('https://boards-api.greenhouse.io/v1/boards/' + token + '/jobs?content=true');
+  return (data.jobs || []).map((job: any) => {
+    const description = htmlToText(job.content);
+    const pay = job.pay_input_ranges?.[0];
+    return finalizeJob({
       external_id: String(job.id),
       title: job.title || '',
-      description: stripHtml(job.content || ''),
-      location: job.location?.name || 'Not specified',
+      description,
+      location: job.location?.name || '',
       apply_url: job.absolute_url || '',
       department: job.departments?.[0]?.name || null,
-      work_type: inferWorkType(job.location?.name || ''),
+      salary_min: pay ? Math.round(pay.min_cents / 100) : null,
+      salary_max: pay ? Math.round(pay.max_cents / 100) : null,
+      salary_currency: pay?.currency_type || null,
+      posted_at: toIso(job.first_published || job.updated_at),
+      employer: null,
+    });
+  });
+}
+
+// ---------- Lever ----------
+export async function scrapeLever(slug: string): Promise<ScrapedJob[]> {
+  const eu = slug.startsWith('eu:');
+  const site = eu ? slug.slice(3) : slug;
+  const host = eu ? 'https://api.eu.lever.co' : 'https://api.lever.co';
+  const data = await fetchJson<any[]>(host + '/v0/postings/' + site + '?mode=json');
+  return (data || []).map((job: any) => {
+    const lists = (job.lists || []).map((l: any) => l.text + '\n' + htmlToText(l.content)).join('\n\n');
+    const description = [job.descriptionPlain || htmlToText(job.description), lists, job.additionalPlain || '']
+      .filter(Boolean)
+      .join('\n\n');
+    const location = job.categories?.allLocations?.join(' / ') || job.categories?.location || '';
+    return finalizeJob({
+      external_id: job.id,
+      title: job.text || '',
+      description,
+      location,
+      apply_url: job.hostedUrl || job.applyUrl || '',
+      department: job.categories?.team || job.categories?.department || null,
+      work_type:
+        job.workplaceType === 'remote'
+          ? 'remote'
+          : job.workplaceType === 'hybrid'
+            ? 'hybrid'
+            : job.workplaceType === 'onsite'
+              ? 'in-office'
+              : inferWorkType(location),
+      salary_min: parseSalaryNumber(job.salaryRange?.min),
+      salary_max: parseSalaryNumber(job.salaryRange?.max),
+      salary_currency: job.salaryRange?.currency || null,
+      posted_at: toIso(job.createdAt),
+      employer: null,
+    });
+  });
+}
+
+// ---------- Ashby ----------
+export async function scrapeAshby(board: string): Promise<ScrapedJob[]> {
+  const data = await fetchJson<any>(
+    'https://api.ashbyhq.com/posting-api/job-board/' + board + '?includeCompensation=true',
+  );
+  return (data.jobs || [])
+    .filter((job: any) => job.isListed !== false)
+    .map((job: any) => {
+      const pay = parseSalaryRange(
+        job.compensation?.compensationTierSummary || job.compensation?.scrapeableCompensationSalarySummary,
+      );
+      const location = [job.location, ...(job.secondaryLocations || []).map((l: any) => l.location)]
+        .filter(Boolean)
+        .join(' / ');
+      return finalizeJob({
+        external_id: job.id,
+        title: job.title || '',
+        description: job.descriptionPlain || htmlToText(job.descriptionHtml),
+        location,
+        apply_url: job.jobUrl || job.applyUrl || '',
+        department: job.department || job.team || null,
+        work_type:
+          job.workplaceType === 'Remote' || job.isRemote
+            ? 'remote'
+            : job.workplaceType === 'Hybrid'
+              ? 'hybrid'
+              : job.workplaceType === 'OnSite'
+                ? 'in-office'
+                : null,
+        salary_min: pay.min,
+        salary_max: pay.max,
+        salary_currency: pay.currency,
+        posted_at: toIso(job.publishedAt),
+        employer: null,
+      });
+    });
+}
+
+// ---------- Workable ----------
+export async function scrapeWorkable(account: string): Promise<ScrapedJob[]> {
+  const data = await fetchJson<any>('https://apply.workable.com/api/v1/widget/accounts/' + account + '?details=true');
+  return (data.jobs || []).map((job: any) => {
+    const location = [job.city, job.state, job.country].filter(Boolean).join(', ');
+    return finalizeJob({
+      external_id: job.shortcode || job.code,
+      title: job.title || '',
+      description: htmlToText(job.description),
+      location: job.telecommuting ? (location ? location + ' (Remote)' : 'Remote') : location,
+      apply_url: job.url || job.application_url || '',
+      department: job.department || job.function || null,
+      work_type: job.telecommuting ? 'remote' : null,
       salary_min: null,
       salary_max: null,
-      experience_required: inferExperience(job.title + ' ' + (job.content || '')),
-      skills: extractSkills(job.content || ''),
-    }));
-  } catch (error) {
-    console.error('[GREENHOUSE] Error scraping ' + boardToken + ':', error);
-    return [];
-  }
+      salary_currency: null,
+      posted_at: toIso(job.published_on || job.created_at),
+      employer: null,
+    });
+  });
 }
 
-// ============================
-// LEVER ADAPTER
-// Endpoint: https://api.lever.co/v0/postings/{company}
-// No auth. Returns JSON array of postings.
-// ============================
-export async function scrapeLever(companySlug: string): Promise<ScrapedJob[]> {
-  try {
-    const url = 'https://api.lever.co/v0/postings/' + companySlug;
-    const res = await fetch(url, { next: { revalidate: 0 } });
-    if (!res.ok) throw new Error('Lever API error: ' + res.status);
-    const data = await res.json();
-
-    return (data || []).map((job: any) => ({
-      external_id: job.id || '',
-      title: job.text || '',
-      description: stripHtml(job.descriptionPlain || job.description || ''),
-      location: job.categories?.location || 'Not specified',
-      apply_url: job.hostedUrl || job.applyUrl || '',
-      department: job.categories?.department || job.categories?.team || null,
-      work_type: inferWorkType((job.categories?.location || '') + ' ' + (job.workplaceType || '')),
-      salary_min: parseSalary(job.salaryRange?.min),
-      salary_max: parseSalary(job.salaryRange?.max),
-      experience_required: inferExperience(job.text + ' ' + (job.descriptionPlain || '')),
-      skills: extractSkills(job.descriptionPlain || job.description || ''),
-    }));
-  } catch (error) {
-    console.error('[LEVER] Error scraping ' + companySlug + ':', error);
-    return [];
+// ---------- SmartRecruiters ----------
+// The list endpoint has no description, so we fetch details for relevant postings only.
+export async function scrapeSmartRecruiters(company: string): Promise<ScrapedJob[]> {
+  const base = 'https://api.smartrecruiters.com/v1/companies/' + company + '/postings';
+  const listings: any[] = [];
+  for (let offset = 0; offset < 1000; offset += 100) {
+    const page = await fetchJson<any>(base + '?limit=100&offset=' + offset);
+    listings.push(...(page.content || []));
+    if (listings.length >= (page.totalFound || 0) || !page.content?.length) break;
   }
-}
+  const relevant = listings.filter((p) => isRelevantTitle(p.name || '')).slice(0, MAX_PER_COMPANY);
 
-// ============================
-// ASHBY ADAPTER
-// Endpoint: https://api.ashbyhq.com/posting-api/job-board/{client}
-// No auth. Returns JSON with jobs array. Supports compensation data.
-// ============================
-export async function scrapeAshby(clientName: string): Promise<ScrapedJob[]> {
-  try {
-    const url = 'https://api.ashbyhq.com/posting-api/job-board/' + clientName + '?includeCompensation=true';
-    const res = await fetch(url, { next: { revalidate: 0 } });
-    if (!res.ok) throw new Error('Ashby API error: ' + res.status);
-    const data = await res.json();
-
-    return (data.jobs || []).map((job: any) => ({
-      external_id: job.id || '',
-      title: job.title || '',
-      description: stripHtml(job.descriptionHtml || job.descriptionPlain || ''),
-      location: job.location || 'Not specified',
-      apply_url: job.jobUrl || '',
-      department: job.departmentName || null,
-      work_type: inferWorkType((job.location || '') + ' ' + (job.isRemote ? 'remote' : '')),
-      salary_min: job.compensation?.compensationTierSummary ? parseSalaryFromText(job.compensation.compensationTierSummary) : null,
+  const jobs = await mapLimit(relevant, 6, async (p) => {
+    let description = '';
+    let url = 'https://jobs.smartrecruiters.com/' + company + '/' + p.id;
+    try {
+      const detail = await fetchJson<any>(base + '/' + p.id, { retries: 1 });
+      const s = detail.jobAd?.sections || {};
+      description = [s.jobDescription?.text, s.qualifications?.text, s.additionalInformation?.text]
+        .map(htmlToText)
+        .filter(Boolean)
+        .join('\n\n');
+      url = detail.postingUrl || url;
+    } catch {
+      // keep the listing even when its detail page fails
+    }
+    const loc = p.location || {};
+    return finalizeJob({
+      external_id: String(p.id),
+      title: (p.name || '').trim(),
+      description,
+      location: loc.fullLocation || [loc.city, loc.region, loc.country?.toUpperCase()].filter(Boolean).join(', '),
+      apply_url: url,
+      department: p.department?.label || p.function?.label || null,
+      work_type: loc.remote ? 'remote' : loc.hybrid ? 'hybrid' : null,
+      salary_min: null,
       salary_max: null,
-      experience_required: inferExperience(job.title + ' ' + (job.descriptionPlain || '')),
-      skills: extractSkills(job.descriptionHtml || job.descriptionPlain || ''),
-    }));
-  } catch (error) {
-    console.error('[ASHBY] Error scraping ' + clientName + ':', error);
-    return [];
-  }
+      salary_currency: null,
+      posted_at: toIso(p.releasedDate),
+      employer: null,
+    });
+  });
+  return jobs;
 }
 
-// ============================
-// SCRAPE DISPATCHER
-// Routes to the correct adapter based on ATS provider
-// ============================
-export async function scrapeCompany(
-  atsProvider: string | null,
-  atsIdentifier: string | null,
-): Promise<ScrapedJob[]> {
-  if (!atsProvider || !atsIdentifier) return [];
+// ---------- Recruitee ----------
+export async function scrapeRecruitee(subdomain: string): Promise<ScrapedJob[]> {
+  const data = await fetchJson<any>('https://' + subdomain + '.recruitee.com/api/offers/');
+  return (data.offers || []).map((job: any) =>
+    finalizeJob({
+      external_id: String(job.id),
+      title: job.title || '',
+      description: [htmlToText(job.description), htmlToText(job.requirements)].filter(Boolean).join('\n\n'),
+      location: job.location || [job.city, job.country].filter(Boolean).join(', '),
+      apply_url: job.careers_url || job.careers_apply_url || '',
+      department: job.department || null,
+      work_type: job.remote ? 'remote' : job.hybrid ? 'hybrid' : job.on_site ? 'in-office' : null,
+      salary_min: parseSalaryNumber(job.salary?.min),
+      salary_max: parseSalaryNumber(job.salary?.max),
+      salary_currency: job.salary?.currency || null,
+      posted_at: toIso(job.published_at || job.created_at),
+      employer: null,
+    }),
+  );
+}
 
-  switch (atsProvider) {
+// ---------- Personio (XML feed) ----------
+export async function scrapePersonio(subdomain: string): Promise<ScrapedJob[]> {
+  const xml = await fetchText('https://' + subdomain + '.jobs.personio.de/xml?language=en');
+  const tag = (block: string, name: string) => {
+    const m = block.match(new RegExp('<' + name + '>([\\s\\S]*?)</' + name + '>'));
+    return m ? decodeEntities(m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')).trim() : '';
+  };
+  const positions = xml.match(/<position>[\s\S]*?<\/position>/g) || [];
+  return positions.map((block) => {
+    const id = tag(block, 'id');
+    const sections = (block.match(/<jobDescription>[\s\S]*?<\/jobDescription>/g) || [])
+      .map((d) => tag(d, 'name') + '\n' + htmlToText(tag(d, 'value')))
+      .join('\n\n');
+    const years = tag(block, 'yearsOfExperience');
+    return finalizeJob({
+      external_id: id,
+      title: tag(block, 'name'),
+      description: sections + (years ? '\n\nExperience: ' + years + ' years' : ''),
+      location: tag(block, 'office'),
+      apply_url: 'https://' + subdomain + '.jobs.personio.de/job/' + id,
+      department: tag(block, 'department') || null,
+      salary_min: null,
+      salary_max: null,
+      salary_currency: null,
+      posted_at: toIso(tag(block, 'createdAt')),
+      employer: null,
+    });
+  });
+}
+
+// ---------- Breezy HR ----------
+export async function scrapeBreezy(subdomain: string): Promise<ScrapedJob[]> {
+  const data = await fetchJson<any[]>('https://' + subdomain + '.breezy.hr/json');
+  return (data || []).map((job: any) => {
+    const pay = parseSalaryRange(job.salary);
+    return finalizeJob({
+      external_id: job.id,
+      title: job.name || '',
+      // The public feed has no description; the title + department still embed usefully.
+      description: [job.name, job.department, job.type?.name].filter(Boolean).join(' · '),
+      location: job.location?.name || '',
+      apply_url: job.url || '',
+      department: job.department || null,
+      work_type: job.location?.is_remote ? 'remote' : null,
+      salary_min: pay.min,
+      salary_max: pay.max,
+      salary_currency: pay.currency,
+      posted_at: toIso(job.published_date),
+      employer: null,
+    });
+  });
+}
+
+// ---------- Workday ----------
+// Uses the JSON endpoints behind every *.myworkdayjobs.com careers site. Large tenants have
+// thousands of roles, so we search with RADAR_SEARCH_TERMS and cap the result.
+export async function scrapeWorkday(identifier: string): Promise<ScrapedJob[]> {
+  const [tenant, wd, site] = identifier.split('/');
+  if (!tenant || !wd || !site) throw new Error('Workday identifier must be tenant/wdN/site, got "' + identifier + '"');
+  const host = 'https://' + tenant + '.' + wd + '.myworkdayjobs.com';
+  const api = host + '/wday/cxs/' + tenant + '/' + site;
+
+  const postings = new Map<string, any>();
+  for (const term of searchTerms()) {
+    for (let offset = 0; offset < 200 && postings.size < MAX_PER_COMPANY; offset += 20) {
+      const page = await fetchJson<any>(api + '/jobs', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ appliedFacets: {}, limit: 20, offset, searchText: term }),
+      });
+      const batch = page.jobPostings || [];
+      for (const p of batch) if (p.externalPath && isRelevantTitle(p.title || '')) postings.set(p.externalPath, p);
+      if (batch.length < 20) break;
+    }
+  }
+
+  const list = [...postings.values()].slice(0, MAX_PER_COMPANY);
+  return mapLimit(list, 5, async (p) => {
+    let info: any = {};
+    try {
+      info = (await fetchJson<any>(api + p.externalPath, { retries: 1 })).jobPostingInfo || {};
+    } catch {
+      // fall back to the listing fields
+    }
+    const location =
+      [info.location, ...(info.additionalLocations || [])].filter(Boolean).join(' / ') || p.locationsText || '';
+    return finalizeJob({
+      external_id: info.jobReqId || p.bulletFields?.[0] || p.externalPath,
+      title: info.title || p.title || '',
+      description: htmlToText(info.jobDescription),
+      location,
+      apply_url: info.externalUrl || host + '/' + site + p.externalPath,
+      department: null,
+      work_type: inferWorkType(location + ' ' + (info.remoteType || '')),
+      salary_min: null,
+      salary_max: null,
+      salary_currency: null,
+      posted_at: toIso(info.startDate),
+      employer: null,
+    });
+  });
+}
+
+// ---------- Amazon (amazon.jobs search API) ----------
+export async function scrapeAmazon(countryCode: string): Promise<ScrapedJob[]> {
+  const seen = new Map<string, any>();
+  for (const term of searchTerms()) {
+    for (let offset = 0; offset < 200 && seen.size < MAX_PER_COMPANY; offset += 100) {
+      const url =
+        'https://www.amazon.jobs/en/search.json?result_limit=100&sort=recent&offset=' +
+        offset +
+        '&base_query=' +
+        encodeURIComponent(term) +
+        '&normalized_country_code%5B%5D=' +
+        encodeURIComponent(countryCode || 'IND');
+      const data = await fetchJson<any>(url);
+      const batch = data.jobs || [];
+      for (const j of batch) if (isRelevantTitle(j.title || '')) seen.set(j.id_icims || j.id, j);
+      if (batch.length < 100) break;
+    }
+  }
+  return [...seen.values()].slice(0, MAX_PER_COMPANY).map((job: any) =>
+    finalizeJob({
+      external_id: String(job.id_icims || job.id),
+      title: job.title || '',
+      description: [
+        htmlToText(job.description),
+        'Basic qualifications:\n' + htmlToText(job.basic_qualifications),
+        'Preferred qualifications:\n' + htmlToText(job.preferred_qualifications),
+      ].join('\n\n'),
+      location: job.normalized_location || job.location || '',
+      apply_url: 'https://www.amazon.jobs' + (job.job_path || ''),
+      department: job.job_category || null,
+      salary_min: null,
+      salary_max: null,
+      salary_currency: null,
+      posted_at: toIso(job.posted_date),
+      employer: null,
+    }),
+  );
+}
+
+// ---------- Dispatcher ----------
+export const ATS_PROVIDERS = [
+  'greenhouse',
+  'lever',
+  'ashby',
+  'workable',
+  'smartrecruiters',
+  'recruitee',
+  'personio',
+  'breezy',
+  'workday',
+  'amazon',
+] as const;
+
+export async function scrapeCompany(provider: string | null, identifier: string | null): Promise<ScrapedJob[]> {
+  if (!provider) return [];
+  let jobs: ScrapedJob[];
+  switch (provider) {
     case 'greenhouse':
-      return scrapeGreenhouse(atsIdentifier);
+      jobs = await scrapeGreenhouse(identifier!);
+      break;
     case 'lever':
-      return scrapeLever(atsIdentifier);
+      jobs = await scrapeLever(identifier!);
+      break;
     case 'ashby':
-      return scrapeAshby(atsIdentifier);
+      jobs = await scrapeAshby(identifier!);
+      break;
+    case 'workable':
+      jobs = await scrapeWorkable(identifier!);
+      break;
+    case 'smartrecruiters':
+      jobs = await scrapeSmartRecruiters(identifier!);
+      break;
+    case 'recruitee':
+      jobs = await scrapeRecruitee(identifier!);
+      break;
+    case 'personio':
+      jobs = await scrapePersonio(identifier!);
+      break;
+    case 'breezy':
+      jobs = await scrapeBreezy(identifier!);
+      break;
+    case 'workday':
+      jobs = await scrapeWorkday(identifier!);
+      break;
+    case 'amazon':
+      jobs = await scrapeAmazon(identifier || 'IND');
+      break;
     default:
-      console.log('[SCRAPER] No adapter for provider: ' + atsProvider);
-      return [];
+      if ((BOARD_PROVIDERS as readonly string[]).includes(provider)) {
+        jobs = await scrapeBoard(provider);
+        break;
+      }
+      throw new Error('No adapter for provider: ' + provider);
   }
-}
-
-// ============================
-// HELPER FUNCTIONS
-// ============================
-
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
-}
-
-function inferWorkType(text: string): 'remote' | 'hybrid' | 'in-office' | null {
-  const lower = text.toLowerCase();
-  if (lower.includes('remote')) return 'remote';
-  if (lower.includes('hybrid')) return 'hybrid';
-  if (lower.includes('on-site') || lower.includes('onsite') || lower.includes('office')) return 'in-office';
-  return null;
-}
-
-function inferExperience(text: string): string | null {
-  const lower = text.toLowerCase();
-  if (lower.includes('fresher') || lower.includes('entry level') || lower.includes('entry-level') || lower.includes('new grad') || lower.includes('0-1 year') || lower.includes('intern')) return 'fresher';
-  if (lower.match(/1[\s-]+3\s*year/)) return '1-3';
-  if (lower.match(/3[\s-]+5\s*year/)) return '3-5';
-  if (lower.match(/5\+?\s*year/) || lower.includes('senior')) return '5+';
-  if (lower.match(/0[\s-]+1\s*year/) || lower.includes('junior')) return '0-1';
-  return null;
-}
-
-const TECH_SKILLS = [
-  'python', 'javascript', 'typescript', 'react', 'next.js', 'node.js',
-  'java', 'c++', 'go', 'rust', 'sql', 'postgresql', 'mongodb', 'redis',
-  'aws', 'gcp', 'azure', 'docker', 'kubernetes', 'terraform',
-  'machine learning', 'deep learning', 'nlp', 'computer vision',
-  'git', 'ci/cd', 'rest api', 'graphql', 'microservices',
-  'pandas', 'numpy', 'pytorch', 'tensorflow', 'fastapi', 'django', 'flask',
-  'html', 'css', 'tailwind', 'figma', 'ui/ux',
-  'agile', 'scrum', 'jira', 'data structures', 'algorithms',
-];
-
-function extractSkills(text: string): string[] {
-  const lower = text.toLowerCase();
-  return TECH_SKILLS.filter(skill => lower.includes(skill));
-}
-
-function parseSalary(value: any): number | null {
-  if (!value) return null;
-  const num = typeof value === 'string' ? parseInt(value.replace(/[^0-9]/g, '')) : Number(value);
-  return isNaN(num) ? null : num;
-}
-
-function parseSalaryFromText(text: string): number | null {
-  const match = text.match(/[\d,]+/);
-  return match ? parseInt(match[0].replace(/,/g, '')) : null;
+  return jobs.filter((j) => j.external_id && j.title && j.apply_url && isRelevantTitle(j.title));
 }

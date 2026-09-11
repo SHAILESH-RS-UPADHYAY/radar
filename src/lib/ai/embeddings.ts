@@ -1,52 +1,68 @@
-﻿ 
- 
- 
- 
- 
- 
- 
-
-// ============================
-// RADAR --- AI Embeddings via Pinecone Inference
-// ============================
-// Uses Pinecone's built-in embedding model (multilingual-e5-large)
-// 1024-dimension vectors, cosine similarity
-
 import { Pinecone } from '@pinecone-database/pinecone';
+import { env } from '@/lib/env';
 
-const pc = new Pinecone({ apiKey: process.env.PINECONE_API_KEY! });
-const INDEX_NAME = process.env.PINECONE_INDEX_NAME || 'radar-jobs';
+function getPinecone() {
+  return new Pinecone({ apiKey: env.pineconeApiKey() });
+}
 
 export function getIndex() {
-  return pc.index(INDEX_NAME);
+  return getPinecone().index(env.pineconeIndex());
 }
 
-/**
- * Generate embedding for a text using Pinecone's inference API
- */
+export function toVectorLiteral(values: number[]): string {
+  return '[' + values.join(',') + ']';
+}
+
+export function parseEmbedding(value: unknown): number[] | null {
+  if (Array.isArray(value) && value.every((n) => typeof n === 'number')) {
+    return value as number[];
+  }
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      if (Array.isArray(parsed)) return parsed as number[];
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 export async function embedText(text: string): Promise<number[]> {
+  const pc = getPinecone();
   const cleanText = text.replace(/\s+/g, ' ').trim().substring(0, 8000);
 
-  const response = await pc.inference.embed({ model: 'multilingual-e5-large', inputs: [cleanText], parameters: {
-    inputType: 'passage',
-    truncate: 'END',
-  } });
+  const response = await pc.inference.embed({
+    model: 'multilingual-e5-large',
+    inputs: [cleanText],
+    parameters: {
+      inputType: 'passage',
+      truncate: 'END',
+    },
+  });
 
-  return Array.from((response.data[0] as { values: number[] }).values as number[]);
+  const values = (response.data[0] as { values: number[] }).values;
+  if (!values?.length) throw new Error('Pinecone returned an empty embedding');
+  return Array.from(values);
 }
 
-/**
- * Upsert job vectors to Pinecone index
- */
 export async function upsertJobVectors(
-  jobs: Array<{ id: string; title: string; description: string | null; company_name: string; skills: string[]; location: string | null }>
+  jobs: Array<{
+    id: string;
+    title: string;
+    description: string | null;
+    company_name: string;
+    skills: string[];
+    location: string | null;
+  }>,
 ) {
-  const index = getIndex();
+  const pc = getPinecone();
+  const index = pc.index(env.pineconeIndex());
   const batchSize = 50;
 
   for (let i = 0; i < jobs.length; i += batchSize) {
     const batch = jobs.slice(i, i + batchSize);
-    const texts = batch.map(j => {
+    const texts = batch.map((j) => {
       const parts = [j.title, j.company_name];
       if (j.skills.length) parts.push('Skills: ' + j.skills.join(', '));
       if (j.location) parts.push('Location: ' + j.location);
@@ -54,10 +70,14 @@ export async function upsertJobVectors(
       return parts.join(' | ');
     });
 
-    const embeddings = await pc.inference.embed({ model: 'multilingual-e5-large', inputs: texts, parameters: {
-      inputType: 'passage',
-      truncate: 'END',
-    } });
+    const embeddings = await pc.inference.embed({
+      model: 'multilingual-e5-large',
+      inputs: texts,
+      parameters: {
+        inputType: 'passage',
+        truncate: 'END',
+      },
+    });
 
     const vectors = batch.map((j, idx) => ({
       id: j.id,
@@ -75,19 +95,12 @@ export async function upsertJobVectors(
   }
 }
 
-/**
- * Search Pinecone for jobs matching a resume
- */
 export async function searchSimilarJobs(resumeEmbedding: number[], topK: number = 50) {
   const index = getIndex();
-
   const results = await index.query({
     vector: resumeEmbedding,
     topK,
     includeMetadata: true,
   });
-
   return results.matches || [];
 }
-
-

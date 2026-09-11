@@ -1,81 +1,125 @@
-﻿// ============================
-// RADAR — Company Seed Data
 // ============================
-// 50+ companies mapped to their ATS providers and board tokens
-// This is the backbone of our scraping engine
+// RADAR — Company & source seed data
+// ============================
+// Every scraped entry below was checked against its live endpoint on 2026-09-11.
+// `custom` = no public feed we can use yet; the company stays selectable as a dream company
+// but is not scraped. To add a company, find its ATS token (see adapters.ts for formats).
+
+import type { CompanyCategory, Provider } from '@/types';
+
+export type SeedProvider = Provider;
 
 export interface CompanySeed {
   name: string;
   careers_url: string;
-  ats_provider: 'greenhouse' | 'lever' | 'ashby' | 'custom' | null;
+  ats_provider: SeedProvider;
   ats_identifier: string | null;
-  category: 'MNC' | 'Growth' | 'Startup';
+  category: CompanyCategory;
   country: string;
   city: string | null;
   logo_url: string | null;
 }
 
+const c = (
+  name: string,
+  careers_url: string,
+  ats_provider: SeedProvider,
+  ats_identifier: string | null,
+  category: CompanySeed['category'],
+  city: string | null,
+  country = 'India',
+): CompanySeed => ({ name, careers_url, ats_provider, ats_identifier, category, country, city, logo_url: null });
+
 export const COMPANY_SEEDS: CompanySeed[] = [
-  // ============================
-  // MNC — Multinational Corporations
-  // ============================
-  { name: 'Google', careers_url: 'https://www.google.com/about/careers/', ats_provider: 'custom', ats_identifier: null, category: 'MNC', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Microsoft', careers_url: 'https://careers.microsoft.com/', ats_provider: 'custom', ats_identifier: null, category: 'MNC', country: 'India', city: 'Hyderabad', logo_url: null },
-  { name: 'Amazon', careers_url: 'https://www.amazon.jobs/', ats_provider: 'custom', ats_identifier: null, category: 'MNC', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Meta', careers_url: 'https://www.metacareers.com/', ats_provider: 'custom', ats_identifier: null, category: 'MNC', country: 'India', city: 'Gurugram', logo_url: null },
-  { name: 'Apple', careers_url: 'https://jobs.apple.com/', ats_provider: 'custom', ats_identifier: null, category: 'MNC', country: 'India', city: 'Hyderabad', logo_url: null },
-  { name: 'Netflix', careers_url: 'https://jobs.netflix.com/', ats_provider: 'greenhouse', ats_identifier: 'netflix', category: 'MNC', country: 'India', city: 'Mumbai', logo_url: null },
-  { name: 'Uber', careers_url: 'https://www.uber.com/careers/', ats_provider: 'greenhouse', ats_identifier: 'uber', category: 'MNC', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Salesforce', careers_url: 'https://www.salesforce.com/company/careers/', ats_provider: 'custom', ats_identifier: null, category: 'MNC', country: 'India', city: 'Hyderabad', logo_url: null },
-  { name: 'Adobe', careers_url: 'https://www.adobe.com/careers.html', ats_provider: 'custom', ats_identifier: null, category: 'MNC', country: 'India', city: 'Noida', logo_url: null },
-  { name: 'Oracle', careers_url: 'https://www.oracle.com/careers/', ats_provider: 'custom', ats_identifier: null, category: 'MNC', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Goldman Sachs', careers_url: 'https://www.goldmansachs.com/careers/', ats_provider: 'custom', ats_identifier: null, category: 'MNC', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'JPMorgan Chase', careers_url: 'https://careers.jpmorgan.com/', ats_provider: 'custom', ats_identifier: null, category: 'MNC', country: 'India', city: 'Mumbai', logo_url: null },
-  { name: 'Stripe', careers_url: 'https://stripe.com/jobs', ats_provider: 'greenhouse', ats_identifier: 'stripe', category: 'MNC', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Atlassian', careers_url: 'https://www.atlassian.com/company/careers', ats_provider: 'greenhouse', ats_identifier: 'atlassian', category: 'MNC', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Spotify', careers_url: 'https://www.lifeatspotify.com/', ats_provider: 'greenhouse', ats_identifier: 'spotify', category: 'MNC', country: 'India', city: 'Mumbai', logo_url: null },
+  // ---------- MNC ----------
+  c('Amazon', 'https://www.amazon.jobs/', 'amazon', 'IND', 'MNC', 'Bangalore'),
+  c('Stripe', 'https://stripe.com/jobs', 'greenhouse', 'stripe', 'MNC', 'Bangalore'),
+  c(
+    'Salesforce',
+    'https://careers.salesforce.com/',
+    'workday',
+    'salesforce/wd12/External_Career_Site',
+    'MNC',
+    'Hyderabad',
+  ),
+  c('Adobe', 'https://www.adobe.com/careers.html', 'workday', 'adobe/wd5/external_experienced', 'MNC', 'Noida'),
+  c(
+    'NVIDIA',
+    'https://www.nvidia.com/en-us/about-nvidia/careers/',
+    'workday',
+    'nvidia/wd5/NVIDIAExternalCareerSite',
+    'MNC',
+    'Bangalore',
+  ),
+  c('Intel', 'https://jobs.intel.com/', 'workday', 'intel/wd1/External', 'MNC', 'Bangalore'),
+  c('Cisco', 'https://jobs.cisco.com/', 'workday', 'cisco/wd5/Cisco_Careers', 'MNC', 'Bangalore'),
+  c('PayPal', 'https://careers.pypl.com/', 'workday', 'paypal/wd1/jobs', 'MNC', 'Chennai'),
+  c('Mastercard', 'https://careers.mastercard.com/', 'workday', 'mastercard/wd1/CorporateCareers', 'MNC', 'Pune'),
+  c('ServiceNow', 'https://careers.servicenow.com/', 'smartrecruiters', 'ServiceNow', 'MNC', 'Hyderabad'),
+  c('Canva', 'https://www.canva.com/careers/', 'smartrecruiters', 'canva', 'MNC', 'Remote'),
+  c('Google', 'https://www.google.com/about/careers/', 'custom', null, 'MNC', 'Bangalore'),
+  c('Microsoft', 'https://careers.microsoft.com/', 'custom', null, 'MNC', 'Hyderabad'),
+  c('Meta', 'https://www.metacareers.com/', 'custom', null, 'MNC', 'Gurugram'),
+  c('Apple', 'https://jobs.apple.com/', 'custom', null, 'MNC', 'Hyderabad'),
+  c('Netflix', 'https://jobs.netflix.com/', 'custom', null, 'MNC', 'Mumbai'),
+  c('Uber', 'https://www.uber.com/careers/', 'custom', null, 'MNC', 'Bangalore'),
+  c('Oracle', 'https://www.oracle.com/careers/', 'custom', null, 'MNC', 'Bangalore'),
+  c('Goldman Sachs', 'https://www.goldmansachs.com/careers/', 'custom', null, 'MNC', 'Bangalore'),
+  c('JPMorgan Chase', 'https://careers.jpmorgan.com/', 'custom', null, 'MNC', 'Mumbai'),
+  c('Atlassian', 'https://www.atlassian.com/company/careers', 'custom', null, 'MNC', 'Bangalore'),
+  c('Spotify', 'https://www.lifeatspotify.com/', 'custom', null, 'MNC', 'Mumbai'),
 
-  // ============================
-  // Growth-Stage — Indian Unicorns & High-Growth
-  // ============================
-  { name: 'Razorpay', careers_url: 'https://razorpay.com/jobs/', ats_provider: 'greenhouse', ats_identifier: 'razorpay', category: 'Growth', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Zerodha', careers_url: 'https://zerodha.com/careers', ats_provider: 'custom', ats_identifier: null, category: 'Growth', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'CRED', careers_url: 'https://careers.cred.club/', ats_provider: 'lever', ats_identifier: 'cred', category: 'Growth', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Swiggy', careers_url: 'https://careers.swiggy.com/', ats_provider: 'custom', ats_identifier: null, category: 'Growth', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Zomato', careers_url: 'https://www.zomato.com/careers', ats_provider: 'custom', ats_identifier: null, category: 'Growth', country: 'India', city: 'Gurugram', logo_url: null },
-  { name: 'Postman', careers_url: 'https://www.postman.com/company/careers/', ats_provider: 'greenhouse', ats_identifier: 'postman', category: 'Growth', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Freshworks', careers_url: 'https://www.freshworks.com/company/careers/', ats_provider: 'greenhouse', ats_identifier: 'freshworks', category: 'Growth', country: 'India', city: 'Chennai', logo_url: null },
-  { name: 'PhonePe', careers_url: 'https://www.phonepe.com/careers/', ats_provider: 'custom', ats_identifier: null, category: 'Growth', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Groww', careers_url: 'https://groww.in/careers', ats_provider: 'lever', ats_identifier: 'groww', category: 'Growth', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Meesho', careers_url: 'https://meesho.io/careers', ats_provider: 'lever', ats_identifier: 'meesho', category: 'Growth', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Lenskart', careers_url: 'https://lenskart.com/careers', ats_provider: 'custom', ats_identifier: null, category: 'Growth', country: 'India', city: 'Delhi', logo_url: null },
-  { name: 'Urban Company', careers_url: 'https://www.urbancompany.com/careers', ats_provider: 'lever', ats_identifier: 'urbancompany', category: 'Growth', country: 'India', city: 'Gurugram', logo_url: null },
-  { name: 'BrowserStack', careers_url: 'https://www.browserstack.com/careers', ats_provider: 'greenhouse', ats_identifier: 'browserstack', category: 'Growth', country: 'India', city: 'Mumbai', logo_url: null },
-  { name: 'Dream11', careers_url: 'https://www.dreamsports.group/careers', ats_provider: 'greenhouse', ats_identifier: 'dream11', category: 'Growth', country: 'India', city: 'Mumbai', logo_url: null },
-  { name: 'ShareChat', careers_url: 'https://sharechat.com/careers', ats_provider: 'lever', ats_identifier: 'sharechat', category: 'Growth', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Jupiter', careers_url: 'https://jupiter.money/careers/', ats_provider: 'ashby', ats_identifier: 'jupiter', category: 'Growth', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Slice', careers_url: 'https://www.sliceit.com/careers', ats_provider: 'lever', ats_identifier: 'sliceit', category: 'Growth', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Notion', careers_url: 'https://www.notion.so/careers', ats_provider: 'greenhouse', ats_identifier: 'notion', category: 'Growth', country: 'India', city: 'Remote', logo_url: null },
-  { name: 'Figma', careers_url: 'https://www.figma.com/careers/', ats_provider: 'greenhouse', ats_identifier: 'figma', category: 'Growth', country: 'India', city: 'Remote', logo_url: null },
-  { name: 'Canva', careers_url: 'https://www.canva.com/careers/', ats_provider: 'greenhouse', ats_identifier: 'canva', category: 'Growth', country: 'India', city: 'Remote', logo_url: null },
+  // ---------- Growth ----------
+  c('Razorpay', 'https://razorpay.com/jobs/', 'greenhouse', 'razorpaysoftwareprivatelimited', 'Growth', 'Bangalore'),
+  c('CRED', 'https://careers.cred.club/', 'lever', 'cred', 'Growth', 'Bangalore'),
+  c('Postman', 'https://www.postman.com/company/careers/', 'greenhouse', 'postman', 'Growth', 'Bangalore'),
+  c('Freshworks', 'https://www.freshworks.com/company/careers/', 'smartrecruiters', 'Freshworks', 'Growth', 'Chennai'),
+  c('Groww', 'https://groww.in/careers', 'greenhouse', 'groww', 'Growth', 'Bangalore'),
+  c('Meesho', 'https://meesho.io/careers', 'lever', 'meesho', 'Growth', 'Bangalore'),
+  c('BrowserStack', 'https://www.browserstack.com/careers', 'workday', 'browserstack/wd3/External', 'Growth', 'Mumbai'),
+  c('Notion', 'https://www.notion.so/careers', 'ashby', 'notion', 'Growth', 'Remote'),
+  c('Figma', 'https://www.figma.com/careers/', 'greenhouse', 'figma', 'Growth', 'Remote'),
+  c('Zerodha', 'https://zerodha.com/careers', 'custom', null, 'Growth', 'Bangalore'),
+  c('Swiggy', 'https://careers.swiggy.com/', 'custom', null, 'Growth', 'Bangalore'),
+  c('Zomato', 'https://www.zomato.com/careers', 'custom', null, 'Growth', 'Gurugram'),
+  c('PhonePe', 'https://www.phonepe.com/careers/', 'custom', null, 'Growth', 'Bangalore'),
+  c('Lenskart', 'https://lenskart.com/careers', 'custom', null, 'Growth', 'Delhi'),
+  c('Urban Company', 'https://www.urbancompany.com/careers', 'custom', null, 'Growth', 'Gurugram'),
+  c('Dream11', 'https://www.dreamsports.group/careers', 'custom', null, 'Growth', 'Mumbai'),
+  c('ShareChat', 'https://sharechat.com/careers', 'custom', null, 'Growth', 'Bangalore'),
+  c('Jupiter', 'https://jupiter.money/careers/', 'custom', null, 'Growth', 'Bangalore'),
+  c('Slice', 'https://www.sliceit.com/careers', 'custom', null, 'Growth', 'Bangalore'),
 
-  // ============================
-  // Startups — YC / Remote-First / Early-Stage
-  // ============================
-  { name: 'Vercel', careers_url: 'https://vercel.com/careers', ats_provider: 'greenhouse', ats_identifier: 'vercel', category: 'Startup', country: 'India', city: 'Remote', logo_url: null },
-  { name: 'Supabase', careers_url: 'https://supabase.com/careers', ats_provider: 'ashby', ats_identifier: 'supabase', category: 'Startup', country: 'India', city: 'Remote', logo_url: null },
-  { name: 'Resend', careers_url: 'https://resend.com/jobs', ats_provider: 'ashby', ats_identifier: 'resend', category: 'Startup', country: 'India', city: 'Remote', logo_url: null },
-  { name: 'Linear', careers_url: 'https://linear.app/careers', ats_provider: 'ashby', ats_identifier: 'linear', category: 'Startup', country: 'India', city: 'Remote', logo_url: null },
-  { name: 'Dukaan', careers_url: 'https://mydukaan.io/careers', ats_provider: 'lever', ats_identifier: 'dukaan', category: 'Startup', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Instahyre', careers_url: 'https://www.instahyre.com/careers/', ats_provider: 'custom', ats_identifier: null, category: 'Startup', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Rocketlane', careers_url: 'https://rocketlane.com/careers', ats_provider: 'lever', ats_identifier: 'rocketlane', category: 'Startup', country: 'India', city: 'Chennai', logo_url: null },
-  { name: 'Hasura', careers_url: 'https://hasura.io/careers', ats_provider: 'greenhouse', ats_identifier: 'hasura', category: 'Startup', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Chargebee', careers_url: 'https://www.chargebee.com/company/careers/', ats_provider: 'greenhouse', ats_identifier: 'chargebee', category: 'Startup', country: 'India', city: 'Chennai', logo_url: null },
-  { name: 'CleverTap', careers_url: 'https://clevertap.com/careers/', ats_provider: 'greenhouse', ats_identifier: 'clevertap', category: 'Startup', country: 'India', city: 'Mumbai', logo_url: null },
-  { name: 'Sarvam AI', careers_url: 'https://www.sarvam.ai/careers', ats_provider: 'ashby', ats_identifier: 'sarvam', category: 'Startup', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Krutrim', careers_url: 'https://olakrutrim.com/careers', ats_provider: 'custom', ats_identifier: null, category: 'Startup', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Polygon', careers_url: 'https://polygon.technology/careers', ats_provider: 'greenhouse', ats_identifier: 'polygon-technology', category: 'Startup', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Turing', careers_url: 'https://www.turing.com/careers', ats_provider: 'greenhouse', ats_identifier: 'turing', category: 'Startup', country: 'India', city: 'Remote', logo_url: null },
-  { name: 'Navi', careers_url: 'https://navi.com/careers', ats_provider: 'lever', ats_identifier: 'navi', category: 'Startup', country: 'India', city: 'Bangalore', logo_url: null },
-  { name: 'Coinbase', careers_url: 'https://www.coinbase.com/careers', ats_provider: 'greenhouse', ats_identifier: 'coinbase', category: 'Startup', country: 'India', city: 'Remote', logo_url: null },
+  // ---------- Startups ----------
+  c('Vercel', 'https://vercel.com/careers', 'greenhouse', 'vercel', 'Startup', 'Remote'),
+  c('Supabase', 'https://supabase.com/careers', 'ashby', 'supabase', 'Startup', 'Remote'),
+  c('Resend', 'https://resend.com/jobs', 'ashby', 'resend', 'Startup', 'Remote'),
+  c('Linear', 'https://linear.app/careers', 'ashby', 'linear', 'Startup', 'Remote'),
+  c('Sarvam AI', 'https://www.sarvam.ai/careers', 'ashby', 'sarvam', 'Startup', 'Bangalore'),
+  c('Turing', 'https://www.turing.com/careers', 'greenhouse', 'turing', 'Startup', 'Remote'),
+  c('Coinbase', 'https://www.coinbase.com/careers', 'greenhouse', 'coinbase', 'Startup', 'Remote'),
+  c('Dukaan', 'https://mydukaan.io/careers', 'custom', null, 'Startup', 'Bangalore'),
+  c('Instahyre', 'https://www.instahyre.com/careers/', 'custom', null, 'Startup', 'Bangalore'),
+  c('Rocketlane', 'https://rocketlane.com/careers', 'custom', null, 'Startup', 'Chennai'),
+  c('Hasura', 'https://hasura.io/careers', 'custom', null, 'Startup', 'Bangalore'),
+  c('Chargebee', 'https://www.chargebee.com/company/careers/', 'custom', null, 'Startup', 'Chennai'),
+  c('CleverTap', 'https://clevertap.com/careers/', 'custom', null, 'Startup', 'Mumbai'),
+  c('Krutrim', 'https://olakrutrim.com/careers', 'custom', null, 'Startup', 'Bangalore'),
+  c('Polygon', 'https://polygon.technology/careers', 'custom', null, 'Startup', 'Bangalore'),
+  c('Navi', 'https://navi.com/careers', 'custom', null, 'Startup', 'Bangalore'),
+
+  // ---------- Job boards (many employers each) ----------
+  c(
+    'Hacker News: Who is hiring',
+    'https://news.ycombinator.com/submitted?id=whoishiring',
+    'hackernews',
+    null,
+    'Startup',
+    'Remote',
+    'Global',
+  ),
+  c('Remotive', 'https://remotive.com/', 'remotive', null, 'Board', 'Remote', 'Global'),
+  c('Remote OK', 'https://remoteok.com/', 'remoteok', null, 'Board', 'Remote', 'Global'),
+  c('Arbeitnow', 'https://www.arbeitnow.com/', 'arbeitnow', null, 'Board', 'Remote', 'Europe'),
+  c('Himalayas', 'https://himalayas.app/', 'himalayas', null, 'Board', 'Remote', 'Global'),
 ];

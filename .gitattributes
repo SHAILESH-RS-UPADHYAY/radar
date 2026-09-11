@@ -1,0 +1,4 @@
+# Normalize line endings (the repo mixes CRLF from Windows and LF from WSL)
+* text=auto eol=lf
+*.png binary
+*.ico binary

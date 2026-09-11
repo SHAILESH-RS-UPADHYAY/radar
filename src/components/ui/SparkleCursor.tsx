@@ -17,7 +17,7 @@ class Particle {
     this.size = Math.random() * 2 + 0.5;
     this.speedX = Math.random() * 2 - 1;
     this.speedY = Math.random() * 2 - 1;
-    
+
     // Aesthetic colors (Gold/Blue mix)
     const colors = ['#C4A882', '#5599DD', '#A67B5B', '#FFFFFF'];
     this.color = colors[Math.floor(Math.random() * colors.length)];
@@ -38,7 +38,7 @@ class Particle {
     ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
     ctx.closePath();
     ctx.fill();
-    
+
     // Add glow
     ctx.shadowBlur = 8;
     ctx.shadowColor = this.color;
@@ -76,17 +76,17 @@ export default function SparkleCursor() {
 
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
+
       for (let i = 0; i < particles.current.length; i++) {
         particles.current[i].update();
         particles.current[i].draw(ctx);
-        
+
         if (particles.current[i].life <= 0) {
           particles.current.splice(i, 1);
           i--;
         }
       }
-      
+
       animationFrameId = requestAnimationFrame(animate);
     };
 
@@ -99,10 +99,5 @@ export default function SparkleCursor() {
     };
   }, []);
 
-  return (
-    <canvas
-      ref={canvasRef}
-      className="pointer-events-none fixed top-0 left-0 z-50 w-full h-full"
-    />
-  );
+  return <canvas ref={canvasRef} className="pointer-events-none fixed top-0 left-0 z-50 w-full h-full" />;
 }

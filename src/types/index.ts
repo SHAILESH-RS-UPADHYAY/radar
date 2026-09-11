@@ -1,27 +1,37 @@
-﻿// ============================
-// RADAR — Core Type Definitions
+// ============================
+// RADAR — Domain types (mirror supabase/migrations/*.sql)
 // ============================
 
-export type ATSProvider = 'greenhouse' | 'lever' | 'ashby' | 'workday' | 'custom';
-export type CompanyCategory = 'MNC' | 'Growth' | 'Startup';
+export type AtsProvider =
+  | 'greenhouse'
+  | 'lever'
+  | 'ashby'
+  | 'workable'
+  | 'smartrecruiters'
+  | 'recruitee'
+  | 'personio'
+  | 'breezy'
+  | 'workday'
+  | 'amazon';
+export type BoardProvider = 'hackernews' | 'remotive' | 'remoteok' | 'arbeitnow' | 'himalayas';
+export type Provider = AtsProvider | BoardProvider | 'custom';
+
+export type CompanyCategory = 'MNC' | 'Growth' | 'Startup' | 'Board';
 export type WorkType = 'remote' | 'hybrid' | 'in-office';
 export type ExperienceLevel = 'fresher' | '0-1' | '1-3' | '3-5' | '5+';
-export type UserTier = 'free' | 'pro';
 export type JobSection = 'dream' | 'recommended' | 'startup';
-export type SortMode = 'match' | 'location' | 'pay' | 'remote';
+export type MatchStatus = 'new' | 'saved' | 'applied' | 'dismissed';
 
 export interface Company {
   id: string;
   name: string;
   logo_url: string | null;
   careers_url: string;
-  ats_provider: ATSProvider | null;
+  ats_provider: Provider | null;
   ats_identifier: string | null;
   category: CompanyCategory;
   country: string;
   city: string | null;
-  lat: number | null;
-  lng: number | null;
   last_scraped_at: string | null;
   is_active: boolean;
 }
@@ -29,7 +39,6 @@ export interface Company {
 export interface Job {
   id: string;
   company_id: string;
-  company?: Company;
   external_id: string | null;
   title: string;
   description: string | null;
@@ -37,11 +46,15 @@ export interface Job {
   work_type: WorkType | null;
   salary_min: number | null;
   salary_max: number | null;
-  salary_currency: string;
+  salary_currency: string | null;
   experience_required: ExperienceLevel | null;
   skills: string[];
   apply_url: string;
   department: string | null;
+  /** Real employer when the job came from a job board. */
+  employer: string | null;
+  posted_at: string | null;
+  content_hash: string | null;
   is_active: boolean;
   scraped_at: string;
 }
@@ -49,20 +62,17 @@ export interface Job {
 export interface UserProfile {
   id: string;
   email: string | null;
-  phone: string | null;
   full_name: string | null;
   is_fresher: boolean;
   experience_years: number;
   skills: string[];
+  /** Comma-separated target cities; may include "Remote". */
   location: string | null;
-  lat: number | null;
-  lng: number | null;
   country: string;
-  resume_url: string | null;
   resume_text: string | null;
-  tier: UserTier;
-  stripe_customer_id: string | null;
-  subscription_expires_at: string | null;
+  vault_min_score: number;
+  auto_vault: boolean;
+  last_matched_at: string | null;
   created_at: string;
 }
 
@@ -70,39 +80,14 @@ export interface MatchScore {
   id: string;
   user_id: string;
   job_id: string;
-  job?: Job;
   score: number;
   reasoning: string | null;
   matching_skills: string[];
   missing_skills: string[];
   section: JobSection;
+  status: MatchStatus;
+  auto_saved: boolean;
+  status_changed_at: string | null;
+  first_seen_at: string;
   computed_at: string;
-}
-
-export interface ScrapeLog {
-  id: string;
-  company_id: string;
-  status: 'success' | 'failed' | 'partial';
-  jobs_found: number;
-  error_message: string | null;
-  duration_ms: number;
-  scraped_at: string;
-}
-
-// Dashboard display types
-export interface JobCard {
-  job: Job;
-  company: Company;
-  matchScore: number;
-  matchingSkills: string[];
-  missingSkills: string[];
-  distance_km: number | null;
-}
-
-export interface DashboardSection {
-  title: string;
-  section: JobSection;
-  icon: string;
-  jobs: JobCard[];
-  sortMode: SortMode;
 }

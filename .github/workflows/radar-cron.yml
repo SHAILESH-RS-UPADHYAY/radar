@@ -1,0 +1,25 @@
+name: RADAR pipeline
+# Runs scrape → match → auto-vault every 6 hours (Vercel Hobby cron only allows once a day).
+# Needs repo secrets: RADAR_URL (e.g. https://your-app.vercel.app) and CRON_SECRET.
+on:
+  schedule:
+    - cron: '15 */6 * * *'
+  workflow_dispatch:
+
+jobs:
+  run-pipeline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Trigger /api/cron
+        env:
+          RADAR_URL: ${{ secrets.RADAR_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$RADAR_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "Set RADAR_URL and CRON_SECRET repo secrets to enable the schedule."; exit 0
+          fi
+          status=$(curl -sS -o response.json -w '%{http_code}' --max-time 320 \
+            -H "Authorization: Bearer $CRON_SECRET" "$RADAR_URL/api/cron?trigger=github-actions")
+          head -c 4000 response.json; echo
+          test "$status" = "200"
