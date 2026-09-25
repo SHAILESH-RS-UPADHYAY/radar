@@ -67,7 +67,7 @@ export const COMPANY_SEEDS: CompanySeed[] = [
   c('Goldman Sachs', 'https://www.goldmansachs.com/careers/', 'custom', null, 'MNC', 'Bangalore'),
   c('JPMorgan Chase', 'https://careers.jpmorgan.com/', 'custom', null, 'MNC', 'Mumbai'),
   c('Atlassian', 'https://www.atlassian.com/company/careers', 'custom', null, 'MNC', 'Bangalore'),
-  c('Spotify', 'https://www.lifeatspotify.com/', 'custom', null, 'MNC', 'Mumbai'),
+  c('Spotify', 'https://www.lifeatspotify.com/', 'lever', 'spotify', 'MNC', 'Mumbai'),
 
   // ---------- Growth ----------
   c('Razorpay', 'https://razorpay.com/jobs/', 'greenhouse', 'razorpaysoftwareprivatelimited', 'Growth', 'Bangalore'),
@@ -80,7 +80,7 @@ export const COMPANY_SEEDS: CompanySeed[] = [
   c('Notion', 'https://www.notion.so/careers', 'ashby', 'notion', 'Growth', 'Remote'),
   c('Figma', 'https://www.figma.com/careers/', 'greenhouse', 'figma', 'Growth', 'Remote'),
   c('Zerodha', 'https://zerodha.com/careers', 'custom', null, 'Growth', 'Bangalore'),
-  c('Swiggy', 'https://careers.swiggy.com/', 'custom', null, 'Growth', 'Bangalore'),
+  c('Swiggy', 'https://careers.swiggy.com/', 'smartrecruiters', 'swiggy', 'Growth', 'Bangalore'),
   c('Zomato', 'https://www.zomato.com/careers', 'custom', null, 'Growth', 'Gurugram'),
   c('PhonePe', 'https://www.phonepe.com/careers/', 'custom', null, 'Growth', 'Bangalore'),
   c('Lenskart', 'https://lenskart.com/careers', 'custom', null, 'Growth', 'Delhi'),
