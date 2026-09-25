@@ -1,12 +1,13 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import * as pdfParseModule from 'pdf-parse';
 import { createServerClient } from '@/lib/supabase/client';
 import { embedText, toVectorLiteral } from '@/lib/ai/embeddings';
 import { extractSkills } from '@/lib/scraper/utils';
 import { resolveDreamCompanyIds } from '@/lib/dream-companies';
+import { runScrape } from '@/lib/pipeline/scrape';
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 function parseJsonArray(value: FormDataEntryValue | null): string[] {
   if (!value || typeof value !== 'string') return [];
@@ -132,6 +133,22 @@ export async function POST(req: NextRequest) {
         .from('user_dream_companies')
         .insert(dreamIds.map((company_id) => ({ user_id: userId, company_id })));
       if (dreamErr) console.error('[ONBOARDING] Dream companies error:', dreamErr.message);
+    }
+
+    // Refresh the user's dream companies after the response is sent, so a slow ATS can't
+    // time out onboarding. Runs within the same maxDuration; the cron picks up anything cut off.
+    if (dreamIds.length > 0) {
+      after(async () => {
+        try {
+          const summary = await runScrape(supabase, { budgetMs: 45_000, companyIds: dreamIds });
+          console.log('[ONBOARDING] Dream-company scrape:', summary.scraped, 'companies,', summary.totalJobs, 'jobs');
+        } catch (scrapeErr) {
+          console.warn(
+            '[ONBOARDING] Dream-company scrape failed:',
+            scrapeErr instanceof Error ? scrapeErr.message : scrapeErr,
+          );
+        }
+      });
     }
 
     return NextResponse.json({
