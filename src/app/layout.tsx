@@ -1,13 +1,12 @@
 import type { Metadata } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
-import { Inter } from 'next/font/google';
+import { Inter, JetBrains_Mono, Outfit } from 'next/font/google';
 import './globals.css';
 import SparkleCursor from '@/components/ui/SparkleCursor';
 
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-inter',
-});
+const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
+const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
+const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' });
 
 export const metadata: Metadata = {
   title: 'RADAR - AI Job Intelligence Engine',
@@ -23,15 +22,7 @@ export default function RootLayout({
   return (
     <ClerkProvider>
       <html lang="en">
-        <head>
-          <link rel="preconnect" href="https://fonts.googleapis.com" />
-          <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-          <link
-            href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@400;500;600;700;800;900&display=swap"
-            rel="stylesheet"
-          />
-        </head>
-        <body className={inter.variable + ' antialiased'}>
+        <body className={[inter.variable, outfit.variable, mono.variable, 'antialiased'].join(' ')}>
           {children}
           <SparkleCursor />
         </body>
