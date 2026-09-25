@@ -10,7 +10,7 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { scrapeCompany, type ScrapedJob } from '@/lib/scraper/adapters';
 import { mapLimit } from '@/lib/scraper/utils';
 import { ensureCompaniesSeeded } from '@/lib/scraper/seed';
-import { upsertJobVectors } from '@/lib/ai/embeddings';
+import { deleteJobVectors, upsertJobVectors } from '@/lib/ai/embeddings';
 
 export interface CompanyScrapeResult {
   company: string;
@@ -155,6 +155,11 @@ async function scrapeOne(
         .select('id');
       if (staleErr) console.error('[SCRAPE]', company.name, 'stale cleanup failed:', staleErr.message);
       deactivated = gone?.length || 0;
+      if (deactivated) {
+        await deleteJobVectors(gone!.map((g) => g.id)).catch((e) =>
+          console.error('[SCRAPE]', company.name, 'vector cleanup failed:', e instanceof Error ? e.message : e),
+        );
+      }
     }
 
     const durationMs = Date.now() - start;
