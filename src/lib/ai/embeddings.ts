@@ -46,6 +46,12 @@ export async function embedText(text: string): Promise<number[]> {
   return Array.from(values);
 }
 
+/** Drop vectors of closed jobs so they stop taking top-K slots in searchSimilarJobs. */
+export async function deleteJobVectors(ids: string[]) {
+  const index = getIndex();
+  for (let i = 0; i < ids.length; i += 1000) await index.deleteMany({ ids: ids.slice(i, i + 1000) });
+}
+
 export async function upsertJobVectors(
   jobs: Array<{
     id: string;
