@@ -68,12 +68,30 @@ export interface UserProfile {
   skills: string[];
   /** Comma-separated target cities; may include "Remote". */
   location: string | null;
+  /** Comma-separated target roles, e.g. "AI Engineer, Software Engineer". */
+  current_role: string | null;
   country: string;
   resume_text: string | null;
   vault_min_score: number;
   auto_vault: boolean;
   last_matched_at: string | null;
   created_at: string;
+}
+
+/** GET /api/settings (and POST /api/settings/resume): the editable profile, without resume text or vectors. */
+export interface SettingsProfile {
+  full_name: string | null;
+  location: string | null;
+  is_fresher: boolean;
+  experience_years: number;
+  skills: string[];
+  target_roles: string[];
+  has_resume: boolean;
+  /** Skills found in the resume; used for matching until the user confirms their own. */
+  resume_skills: string[];
+  vault_min_score: number;
+  auto_vault: boolean;
+  last_matched_at: string | null;
 }
 
 export interface MatchScore {

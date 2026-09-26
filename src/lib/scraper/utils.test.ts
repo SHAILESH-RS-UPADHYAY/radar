@@ -33,6 +33,15 @@ describe('extractSkills', () => {
     );
     expect(extractSkills('C++ and C#')).toEqual(expect.arrayContaining(['c++', 'c#']));
   });
+  it('does not read "Go-to-market" as the Go language', () => {
+    expect(extractSkills('Own the Go-to-market plan and go to market fast')).not.toContain('go');
+    expect(extractSkills('Services in Go and Python')).toEqual(expect.arrayContaining(['go', 'python']));
+  });
+  it('recognises AI engineering skills', () => {
+    expect(extractSkills('Built RAG agents with LangChain, OpenAI and Pinecone; fine-tuning via LoRA')).toEqual(
+      expect.arrayContaining(['rag', 'langchain', 'openai', 'vector database', 'fine-tuning']),
+    );
+  });
 });
 
 describe('normalizeSkill', () => {

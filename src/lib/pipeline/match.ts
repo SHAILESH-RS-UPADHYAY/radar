@@ -8,6 +8,8 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { embedText, parseEmbedding, searchSimilarJobs, toVectorLiteral } from '@/lib/ai/embeddings';
 import { computeMatchScore } from '@/lib/ai/matcher';
+import { extractSkills } from '@/lib/scraper/utils';
+import { splitList } from '@/lib/profile';
 
 export interface UserMatchSummary {
   userId: string;
@@ -72,6 +74,7 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
 
   type JobRow = {
     id: string;
+    title: string;
     skills: string[] | null;
     experience_required: string | null;
     location: string | null;
@@ -84,7 +87,7 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
   for (let i = 0; i < allIds.length; i += 100) {
     const { data, error } = await supabase
       .from('jobs')
-      .select('id, skills, experience_required, location, work_type, company_id, companies!inner(category)')
+      .select('id, title, skills, experience_required, location, work_type, company_id, companies!inner(category)')
       .in('id', allIds.slice(i, i + 100))
       .eq('is_active', true);
     if (error) throw new MatchError('Loading jobs failed: ' + error.message, 500);
@@ -94,11 +97,14 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
 
   // Jobs outside the vector top-K get the lowest similarity we saw as a conservative stand-in.
   const floorSim = Math.min(...vectorMatches.map((m) => m.score || 0));
+  // Skills the user confirmed win; until they add some, fall back to what the resume mentions.
+  const userSkills: string[] = profile.skills?.length ? profile.skills : extractSkills(profile.resume_text || '');
+  const targetRoles = splitList(profile.current_role);
   const now = new Date().toISOString();
   const rows = jobs.map((job) => {
     const company = Array.isArray(job.companies) ? job.companies[0] : job.companies;
     const result = computeMatchScore({
-      userSkills: profile.skills || [],
+      userSkills,
       jobSkills: job.skills || [],
       vectorSimilarity: simById.get(job.id) ?? floorSim,
       isDreamCompany: dreamIds.has(job.company_id),
@@ -106,9 +112,11 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
       userIsFresher: profile.is_fresher ?? true,
       userExperienceYears: profile.experience_years ?? 0,
       jobExperience: job.experience_required,
-      userCities: String(profile.location || '').split(','),
+      userCities: splitList(profile.location),
       jobLocation: job.location,
       jobWorkType: job.work_type,
+      targetRoles,
+      jobTitle: job.title,
     });
     return {
       user_id: userId,
