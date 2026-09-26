@@ -1,0 +1,192 @@
+'use client';
+
+import { useEffect, useState, type ReactNode } from 'react';
+import { useApi } from '@/lib/use-api';
+import type { TailoredView } from '@/lib/overclock';
+import { CopyButton } from '@/components/hud/CopyButton';
+import { scoreColor, type MatchedJob, type TailoredSummary } from './types';
+
+const primary =
+  'inline-flex items-center justify-center gap-2 bg-phosphor px-5 py-3 font-mono text-xs font-bold tracking-[0.22em] text-black shadow-[0_0_22px_rgba(0,255,65,0.35)] transition-colors hover:bg-[#33FF66] disabled:cursor-not-allowed disabled:bg-phosphor/30';
+const secondary =
+  'inline-flex items-center justify-center gap-2 border border-phosphor/40 px-5 py-3 font-mono text-xs font-bold tracking-[0.22em] text-phosphor transition-colors hover:bg-phosphor/10';
+
+function Step({ n, title, done, children }: { n: string; title: string; done?: boolean; children: ReactNode }) {
+  return (
+    <section className="relative border-l border-phosphor/20 pb-7 pl-6 last:pb-0">
+      <span
+        className={
+          'absolute -left-[9px] top-0 flex h-[18px] w-[18px] items-center justify-center border font-mono text-[9px] ' +
+          (done ? 'border-phosphor bg-phosphor text-black' : 'border-phosphor/50 bg-void text-phosphor')
+        }
+      >
+        {done ? '✓' : n}
+      </span>
+      <p className="font-mono text-[11px] tracking-[0.3em] text-phosphor">{title}</p>
+      <div className="mt-3">{children}</div>
+    </section>
+  );
+}
+
+function Field({ label, value }: { label: string; value: string }) {
+  if (!value) return null;
+  return (
+    <div className="flex items-start justify-between gap-3 border-b border-phosphor/10 py-2 last:border-b-0">
+      <div className="min-w-0">
+        <p className="font-mono text-[10px] tracking-[0.25em] text-dim">{label}</p>
+        <p className="mt-0.5 break-words text-sm text-ink">{value}</p>
+      </div>
+      <CopyButton value={value} />
+    </div>
+  );
+}
+
+/**
+ * Assisted apply for one Vault job: the tailored resume, copy-ready answers, the real application page,
+ * then a confirmation that records the application (and the resume version) in C2 · OPS.
+ * RADAR prepares everything; the final submit on the employer's site stays with the candidate.
+ */
+export function RunPanel({
+  match,
+  position,
+  total,
+  tailored,
+  tailoring,
+  fullName,
+  email,
+  onTailor,
+  onReview,
+  onApplied,
+  onSkip,
+}: {
+  match: MatchedJob;
+  position: number;
+  total: number;
+  tailored: TailoredSummary | undefined;
+  tailoring: boolean;
+  fullName: string;
+  email: string;
+  onTailor: (matchId: string) => void;
+  onReview: (tailoredId: string) => void;
+  onApplied: (matchId: string, resumeVersionId: string | null) => void;
+  onSkip: () => void;
+}) {
+  const api = useApi();
+  const [view, setView] = useState<TailoredView | null>(null);
+  const [opened, setOpened] = useState(false);
+  const { job } = match;
+
+  // Full tailored version (contact lines, headline, cover note) for the answers step.
+  useEffect(() => {
+    if (!tailored) return;
+    let cancelled = false;
+    api('/api/overclock/' + tailored.id)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => !cancelled && setView(d))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [api, tailored]);
+
+  const shown = tailored && view?.id === tailored.id ? view : null;
+  const projected = tailored?.projected_score ?? null;
+
+  return (
+    <div>
+      <div className="mb-7 flex flex-col gap-3 border-b border-phosphor/15 pb-5 sm:flex-row sm:items-end sm:justify-between">
+        <div className="min-w-0">
+          <p className="font-mono text-[10px] tracking-[0.3em] text-dim">
+            TARGET {position}/{total} · {job.company.name.toUpperCase()}
+          </p>
+          <h2 className="mt-1 text-xl font-bold leading-snug text-white">{job.title}</h2>
+          <p className="mt-1 font-mono text-[11px] text-dim">{job.location}</p>
+        </div>
+        <p className="font-mono text-3xl font-extrabold" style={{ color: scoreColor(projected ?? match.score) }}>
+          {projected ?? match.score}
+          <span className="text-base">%</span>
+        </p>
+      </div>
+
+      <Step n="01" title="RESUME" done={!!tailored}>
+        {tailored ? (
+          <div className="flex flex-wrap items-center gap-3">
+            <a href={`/api/overclock/${tailored.id}/pdf`} className={primary}>
+              ⬇ TAILORED PDF
+            </a>
+            <button type="button" onClick={() => onReview(tailored.id)} className={secondary}>
+              REVIEW
+            </button>
+            {projected !== null && (
+              <span className="font-mono text-[11px] text-dim">
+                projected {projected}% (was {match.score}%)
+              </span>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-wrap items-center gap-3">
+            <button type="button" onClick={() => onTailor(match.id)} disabled={tailoring} className={primary}>
+              {tailoring && (
+                <span className="h-3 w-3 animate-spin rounded-full border-2 border-black/30 border-t-black" />
+              )}
+              {tailoring ? 'TAILORING · ~1 MIN' : 'OVERCLOCK THIS JOB ▸'}
+            </button>
+            <span className="text-sm text-dim">or apply with the resume you already have.</span>
+          </div>
+        )}
+      </Step>
+
+      <Step n="02" title="ANSWERS, READY TO PASTE">
+        <div className="border border-phosphor/15 bg-black/50 px-4">
+          <Field label="FULL NAME" value={shown?.resume.name || fullName} />
+          <Field label="EMAIL" value={email} />
+          {shown?.resume.contact
+            .filter((c) => c !== email)
+            .map((c) => (
+              <Field key={c} label="CONTACT" value={c} />
+            ))}
+          <Field label="HEADLINE" value={shown?.resume.headline || ''} />
+          <Field label="WHY THIS ROLE" value={shown?.cover_note || ''} />
+          <Field label="MATCHING SKILLS" value={match.matching_skills.join(', ')} />
+        </div>
+        {!tailored && (
+          <p className="mt-2 text-xs text-dim">Overclock the job to add a tailored headline and cover note here.</p>
+        )}
+      </Step>
+
+      <Step n="03" title="LAUNCH" done={opened}>
+        <button
+          type="button"
+          onClick={() => {
+            window.open(job.apply_url, '_blank', 'noopener,noreferrer');
+            setOpened(true);
+          }}
+          className={primary}
+        >
+          OPEN APPLICATION ↗
+        </button>
+        <p className="mt-2 text-xs text-dim">Opens the employer’s own form in a new tab. Paste, attach, submit.</p>
+      </Step>
+
+      <Step n="04" title="CONFIRM">
+        <div className="flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={() => onApplied(match.id, tailored?.id ?? null)}
+            disabled={!opened}
+            className={primary}
+          >
+            ✓ MARK APPLIED
+          </button>
+          <button type="button" onClick={onSkip} className={secondary}>
+            {position < total ? 'SKIP →' : 'CLOSE'}
+          </button>
+        </div>
+        <p className="mt-2 text-xs text-dim">
+          Moves the job to C2 · OPS{tailored ? ' with this tailored resume attached' : ''}. RADAR keeps watch from
+          there.
+        </p>
+      </Step>
+    </div>
+  );
+}

@@ -7,9 +7,10 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { embedText, parseEmbedding, searchSimilarJobs, toVectorLiteral } from '@/lib/ai/embeddings';
-import { computeMatchScore } from '@/lib/ai/matcher';
+import { computeMatchScore, type MatchInput } from '@/lib/ai/matcher';
 import { extractSkills } from '@/lib/scraper/utils';
 import { splitList } from '@/lib/profile';
+import { gateForVault } from './verify';
 
 export interface UserMatchSummary {
   userId: string;
@@ -20,6 +21,56 @@ export interface UserMatchSummary {
 }
 
 const TOP_K = Number(process.env.RADAR_MATCH_TOP_K || 400);
+
+/** The profile fields scoring reads. */
+export interface ScoringProfile {
+  skills: string[] | null;
+  resume_text: string | null;
+  current_role: string | null;
+  location: string | null;
+  is_fresher: boolean | null;
+  experience_years: number | null;
+}
+
+/** The job fields scoring reads. */
+export interface ScoringJob {
+  title: string;
+  skills: string[] | null;
+  experience_required: string | null;
+  location: string | null;
+  work_type: string | null;
+}
+
+/** Skills the user confirmed win; until they add some, fall back to what the resume mentions. */
+export const profileSkills = (p: ScoringProfile): string[] =>
+  p.skills?.length ? p.skills : extractSkills(p.resume_text || '');
+
+/**
+ * Everything computeMatchScore needs for one user and job at a given similarity.
+ * Shared by scans and OVERCLOCK projections, so a projection is scored exactly like a scan.
+ */
+export function matchInput(
+  profile: ScoringProfile,
+  job: ScoringJob,
+  similarity: number,
+  opts: { isDreamCompany: boolean; companyCategory: string; userSkills?: string[] },
+): MatchInput {
+  return {
+    userSkills: opts.userSkills ?? profileSkills(profile),
+    jobSkills: job.skills || [],
+    vectorSimilarity: similarity,
+    isDreamCompany: opts.isDreamCompany,
+    companyCategory: opts.companyCategory,
+    userIsFresher: profile.is_fresher ?? true,
+    userExperienceYears: profile.experience_years ?? 0,
+    jobExperience: job.experience_required,
+    userCities: splitList(profile.location),
+    jobLocation: job.location,
+    jobWorkType: job.work_type,
+    targetRoles: splitList(profile.current_role),
+    jobTitle: job.title,
+  };
+}
 
 export class MatchError extends Error {
   constructor(
@@ -97,27 +148,17 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
 
   // Jobs outside the vector top-K get the lowest similarity we saw as a conservative stand-in.
   const floorSim = Math.min(...vectorMatches.map((m) => m.score || 0));
-  // Skills the user confirmed win; until they add some, fall back to what the resume mentions.
-  const userSkills: string[] = profile.skills?.length ? profile.skills : extractSkills(profile.resume_text || '');
-  const targetRoles = splitList(profile.current_role);
+  const userSkills = profileSkills(profile);
   const now = new Date().toISOString();
   const rows = jobs.map((job) => {
     const company = Array.isArray(job.companies) ? job.companies[0] : job.companies;
-    const result = computeMatchScore({
-      userSkills,
-      jobSkills: job.skills || [],
-      vectorSimilarity: simById.get(job.id) ?? floorSim,
-      isDreamCompany: dreamIds.has(job.company_id),
-      companyCategory: company?.category || '',
-      userIsFresher: profile.is_fresher ?? true,
-      userExperienceYears: profile.experience_years ?? 0,
-      jobExperience: job.experience_required,
-      userCities: splitList(profile.location),
-      jobLocation: job.location,
-      jobWorkType: job.work_type,
-      targetRoles,
-      jobTitle: job.title,
-    });
+    const result = computeMatchScore(
+      matchInput(profile, job, simById.get(job.id) ?? floorSim, {
+        isDreamCompany: dreamIds.has(job.company_id),
+        companyCategory: company?.category || '',
+        userSkills,
+      }),
+    );
     return {
       user_id: userId,
       job_id: job.id,
@@ -140,8 +181,22 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
 
   let vaulted = 0;
   if (profile.auto_vault !== false) {
-    const minScore = profile.vault_min_score ?? 70;
-    const qualifying = rows.filter((r) => r.score >= minScore).map((r) => r.job_id);
+    const minScore = profile.vault_min_score ?? 80;
+    const strong = rows.filter((r) => r.score >= minScore).map((r) => r.job_id);
+    // Only jobs still waiting in Discovery, and only postings that are not known to be closed:
+    // board jobs have their apply link opened first, and a closed one never reaches the Vault.
+    const waiting: string[] = [];
+    for (let i = 0; i < strong.length; i += 200) {
+      const { data } = await supabase
+        .from('match_scores')
+        .select('job_id')
+        .eq('user_id', userId)
+        .eq('status', 'new')
+        .in('job_id', strong.slice(i, i + 200));
+      waiting.push(...(data || []).map((r) => r.job_id as string));
+    }
+    const open = await gateForVault(supabase, waiting);
+    const qualifying = waiting.filter((id) => open.has(id));
     for (let i = 0; i < qualifying.length; i += 200) {
       const { data, error } = await supabase
         .from('match_scores')

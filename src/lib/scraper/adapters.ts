@@ -15,6 +15,7 @@
 //   recruitee        subdomain            e.g. "bunq"
 //   personio         subdomain            e.g. "personio"
 //   breezy           subdomain            e.g. "acme"
+//   teamtailor       career-site host     e.g. "careers.neat.no" or "chip.teamtailor.com"
 //   workday          tenant/wdN/site      e.g. "nvidia/wd5/NVIDIAExternalCareerSite"
 //   amazon           ISO-3 country code   e.g. "IND"
 
@@ -277,6 +278,33 @@ export async function scrapeBreezy(subdomain: string): Promise<ScrapedJob[]> {
   });
 }
 
+// ---------- Teamtailor ----------
+// Every Teamtailor career site (custom domain or *.teamtailor.com) serves a public JSON Feed at /jobs.json,
+// with a schema.org JobPosting per item.
+export async function scrapeTeamtailor(host: string): Promise<ScrapedJob[]> {
+  const feed = await fetchJson<any>('https://' + host + '/jobs.json');
+  return (feed.items || []).map((item: any) => {
+    const posting = item._jobposting || {};
+    const places = (posting.jobLocation || [])
+      .map((p: any) => String(p.address?.addressLocality || '').trim())
+      .filter(Boolean);
+    return finalizeJob({
+      external_id: String(posting.identifier?.value ?? item.id ?? ''),
+      title: item.title || '',
+      description: htmlToText(item.content_html),
+      location: [...new Set(places)].join(' / '),
+      apply_url: item.url || '',
+      department: null,
+      work_type: posting.jobLocationType === 'TELECOMMUTE' ? 'remote' : null,
+      salary_min: null,
+      salary_max: null,
+      salary_currency: null,
+      posted_at: toIso(item.date_published || posting.datePosted),
+      employer: null,
+    });
+  });
+}
+
 // ---------- Workday ----------
 // Uses the JSON endpoints behind every *.myworkdayjobs.com careers site. Large tenants have
 // thousands of roles, so we search with RADAR_SEARCH_TERMS and cap the result.
@@ -376,6 +404,7 @@ export const ATS_PROVIDERS = [
   'recruitee',
   'personio',
   'breezy',
+  'teamtailor',
   'workday',
   'amazon',
 ] as const;
@@ -407,6 +436,9 @@ export async function scrapeCompany(provider: string | null, identifier: string 
       break;
     case 'breezy':
       jobs = await scrapeBreezy(identifier!);
+      break;
+    case 'teamtailor':
+      jobs = await scrapeTeamtailor(identifier!);
       break;
     case 'workday':
       jobs = await scrapeWorkday(identifier!);

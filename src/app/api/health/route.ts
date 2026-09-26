@@ -1,7 +1,9 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/client';
 import { getIndex } from '@/lib/ai/embeddings';
-import { missingServerEnv } from '@/lib/env';
+import { env, missingServerEnv } from '@/lib/env';
+
+const STALE_MS = 48 * 3600_000;
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +19,7 @@ async function probe(check: () => Promise<void>) {
 }
 
 // GET /api/health — for uptime monitors. 200 when the database and the vector index answer, 503 otherwise.
-// Reports only up/down and latency; details go to the server log.
+// Reports up/down, latency and whether the automatic loop has run in the last 48h; details go to the server log.
 export async function GET() {
   const missingEnv = missingServerEnv();
   const skipped = { ok: false, ms: 0 };
@@ -33,8 +35,25 @@ export async function GET() {
         }),
       ]);
   const ok = !missingEnv.length && database.ok && vectors.ok;
+  // Is the automatic loop alive? Without CRON_SECRET in production every scheduled run is refused.
+  let lastRunAt: string | null = null;
+  if (database.ok) {
+    const { data } = await createServerClient()
+      .from('pipeline_runs')
+      .select('finished_at')
+      .not('finished_at', 'is', null)
+      .order('finished_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    lastRunAt = data?.finished_at ?? null;
+  }
+  const pipeline = {
+    cronSecretSet: !!env.cronSecret(),
+    lastRunAt,
+    stale: !lastRunAt || Date.now() - Date.parse(lastRunAt) > STALE_MS,
+  };
   return NextResponse.json(
-    { ok, database, vectors, missingEnv, checkedAt: new Date().toISOString() },
+    { ok, database, vectors, pipeline, missingEnv, checkedAt: new Date().toISOString() },
     { status: ok ? 200 : 503, headers: { 'cache-control': 'no-store' } },
   );
 }

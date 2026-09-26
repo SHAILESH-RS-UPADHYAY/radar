@@ -2,17 +2,21 @@
 
 import { motion } from 'framer-motion';
 import { Brackets } from '@/components/hud/Hud';
-import { ScoreMeter, SkillChips } from './SkillChips';
+import { BriefingButton, JobTitle, openOnClick, ScoreMeter, SkillChips } from './SkillChips';
 import { formatSalary, timeAgo, type MatchAction, type MatchedJob } from './types';
 
 export function DiscoveryCard({
   match,
   onAction,
+  onOpen,
 }: {
   match: MatchedJob;
   onAction: (id: string, action: MatchAction) => void;
+  /** Opens the JD terminal for this match. */
+  onOpen?: (id: string) => void;
 }) {
   const { job } = match;
+  const open = onOpen ? () => onOpen(match.id) : undefined;
   const meta = [job.location, job.department, formatSalary(job), timeAgo(job.posted_at)].filter(Boolean);
 
   return (
@@ -22,7 +26,11 @@ export function DiscoveryCard({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -80 }}
       transition={{ duration: 0.2 }}
-      className="group relative border border-phosphor/15 bg-black/70 p-5 transition-colors hover:border-phosphor/45 sm:p-6"
+      onClick={openOnClick(open)}
+      className={
+        'group relative border border-phosphor/15 bg-black/70 p-5 transition-colors hover:border-phosphor/45 sm:p-6' +
+        (open ? ' cursor-pointer' : '')
+      }
     >
       <Brackets className="border-phosphor opacity-0 transition-opacity group-hover:opacity-100" />
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
@@ -43,13 +51,14 @@ export function DiscoveryCard({
             )}
             {job.company.source && <span className="text-dim">via {job.company.source}</span>}
           </div>
-          <h3 className="text-lg font-bold leading-snug text-white sm:text-xl">{job.title}</h3>
+          <JobTitle title={job.title} onOpen={open} className="text-lg font-bold leading-snug text-white sm:text-xl" />
           <p className="mt-1.5 font-mono text-[11px] text-dim">{meta.join(' · ')}</p>
           <SkillChips matching={match.matching_skills} missing={match.missing_skills} />
           <p className="mt-4 text-sm leading-relaxed text-dim">
             <span className="text-phosphor">&gt; </span>
             {match.reasoning}
           </p>
+          {open && <BriefingButton onOpen={open} />}
         </div>
 
         <div className="flex w-full flex-col gap-2 sm:w-44">

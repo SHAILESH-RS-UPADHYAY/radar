@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { STAGES, type Stage } from '@/types';
 import { Brackets, StatusLight } from '@/components/hud/Hud';
+import { JobTitle, openOnClick } from './SkillChips';
 import { ACTIVE_STAGES, STAGE_META, opsSignals, timeAgo, type MatchAction, type MatchedJob } from './types';
 
 const SIGNAL_STYLE = {
@@ -22,8 +23,11 @@ export function OpsCard({
   onStage,
   onNotes,
   onAction,
+  onOpen,
 }: {
   match: MatchedJob;
+  /** Opens the JD terminal for this match. */
+  onOpen?: (id: string) => void;
   /** False until migration 005 adds the stage columns. */
   editable: boolean;
   onStage: (id: string, stage: Stage) => void;
@@ -37,6 +41,7 @@ export function OpsCard({
   const next = at >= 0 && at < ACTIVE_STAGES.length - 1 ? ACTIVE_STAGES[at + 1] : null;
   const signals = opsSignals(match);
   const { job } = match;
+  const open = onOpen ? () => onOpen(match.id) : undefined;
 
   const saveNotes = () => {
     setEditing(false);
@@ -49,7 +54,11 @@ export function OpsCard({
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.96 }}
-      className="group relative border border-phosphor/20 bg-black/75 p-4 transition-colors hover:border-phosphor/45"
+      onClick={openOnClick(open)}
+      className={
+        'group relative border border-phosphor/20 bg-black/75 p-4 transition-colors hover:border-phosphor/45' +
+        (open ? ' cursor-pointer' : '')
+      }
     >
       <Brackets className="border-hud-cyan opacity-0 transition-opacity group-hover:opacity-100" />
       <div className="flex items-start justify-between gap-3">
@@ -60,7 +69,7 @@ export function OpsCard({
           {STAGE_META[stage].label}
         </StatusLight>
       </div>
-      <h3 className="mt-3 text-sm font-bold leading-snug text-white">{job.title}</h3>
+      <JobTitle title={job.title} onOpen={open} className="mt-3 text-sm font-bold leading-snug text-white" />
       <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-dim">
         {[
           job.location,
@@ -83,6 +92,18 @@ export function OpsCard({
             </span>
           ))}
         </div>
+      )}
+
+      {match.last_event && (
+        <p
+          title={match.last_event.summary}
+          className="mt-3 border-l-2 border-hud-cyan/50 pl-2 font-mono text-[10px] leading-relaxed text-ink/75"
+        >
+          <span className="block tracking-[0.2em] text-hud-cyan">
+            {match.last_event.source === 'gmail' ? '✉ GMAIL' : 'RADAR'} · {timeAgo(match.last_event.occurred_at)}
+          </span>
+          <span className="line-clamp-2">{match.last_event.summary}</span>
+        </p>
       )}
 
       {editable &&
@@ -150,11 +171,24 @@ export function OpsCard({
             ))}
           </select>
         )}
+        {match.resume_version_id && (
+          <a
+            href={`/api/overclock/${match.resume_version_id}/pdf`}
+            title="The tailored resume sent with this application"
+            className={button + ' ml-auto border-phosphor/40 text-phosphor hover:bg-phosphor/10'}
+          >
+            SENT CV ⬇
+          </a>
+        )}
         <a
           href={job.apply_url}
           target="_blank"
           rel="noopener noreferrer"
-          className={button + ' ml-auto border-hud-cyan/40 text-hud-cyan hover:bg-hud-cyan/10'}
+          className={
+            button +
+            (match.resume_version_id ? '' : ' ml-auto') +
+            ' border-hud-cyan/40 text-hud-cyan hover:bg-hud-cyan/10'
+          }
         >
           OPEN ↗
         </a>

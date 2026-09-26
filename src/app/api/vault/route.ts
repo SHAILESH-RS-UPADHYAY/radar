@@ -9,12 +9,17 @@ export const dynamic = 'force-dynamic';
 const STATUSES = ['new', 'saved', 'applied', 'dismissed'] as const;
 type Status = (typeof STATUSES)[number];
 
-// PATCH { ids: string[], status } — move matches between Discovery / Vault / Applied / dismissed.
+// PATCH { ids: string[], status, resumeVersionId? } — move matches between Discovery / Vault / Applied /
+// dismissed. resumeVersionId (from RUN) records which tailored resume went out with the application.
 export async function PATCH(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
-  const body = (await req.json().catch(() => null)) as { ids?: unknown; status?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as {
+    ids?: unknown;
+    status?: unknown;
+    resumeVersionId?: unknown;
+  } | null;
   const ids = Array.isArray(body?.ids) ? body.ids.filter(isUuid).slice(0, 500) : [];
   const status = body?.status as Status;
   if (!ids.length || !STATUSES.includes(status)) {
@@ -32,6 +37,12 @@ export async function PATCH(req: NextRequest) {
     status === 'applied'
       ? { stage: 'applied', stage_changed_at: now, applied_at: now }
       : { stage: null, stage_changed_at: null, applied_at: null };
+  const version =
+    status === 'applied' && isUuid(body?.resumeVersionId)
+      ? { resume_version_id: body.resumeVersionId }
+      : status === 'applied'
+        ? {}
+        : { resume_version_id: null };
 
   const run = (update: Record<string, unknown>) => {
     let q = createServerClient().from('match_scores').update(update).eq('user_id', userId).in('id', ids);
@@ -40,9 +51,10 @@ export async function PATCH(req: NextRequest) {
     return q.select('id');
   };
 
-  let { data, error } = await run({ ...base, ...ops });
-  // Before migration 005 the stage columns do not exist; the status change still has to work.
-  if (isSchemaMissing(error)) ({ data, error } = await run(base));
+  // Newest schema first (006 resume versions, then 005 stages); the status change works at every step.
+  const attempts = [{ ...base, ...ops, ...version }, { ...base, ...ops }, base];
+  let { data, error } = await run(attempts[0]);
+  for (let i = 1; i < attempts.length && isSchemaMissing(error); i++) ({ data, error } = await run(attempts[i]));
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ updated: data?.length || 0 });

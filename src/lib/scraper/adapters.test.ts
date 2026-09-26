@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mockFetch } from '@/test/mock-fetch';
-import { scrapeAshby, scrapeCompany, scrapeGreenhouse, scrapeLever, scrapePersonio } from './adapters';
+import {
+  scrapeAshby,
+  scrapeCompany,
+  scrapeGreenhouse,
+  scrapeLever,
+  scrapePersonio,
+  scrapeTeamtailor,
+} from './adapters';
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -126,5 +133,41 @@ describe('scrapeCompany', () => {
   it('rejects unknown providers and ignores custom', async () => {
     await expect(scrapeCompany('nope', 'x')).rejects.toThrow('No adapter');
     await expect(scrapeCompany(null, null)).resolves.toEqual([]);
+  });
+});
+
+describe('scrapeTeamtailor', () => {
+  it('reads the public JSON feed of a custom-domain career site', async () => {
+    mockFetch({
+      'careers.neat.no/jobs.json': {
+        items: [
+          {
+            id: 'd1743d02',
+            title: 'Senior Backend Engineer',
+            url: 'https://careers.neat.no/jobs/8452054-senior-backend-engineer',
+            date_published: '2026-09-25T01:41:55+02:00',
+            content_html: '<p>Build APIs in <strong>TypeScript</strong> and Postgres.</p>',
+            _jobposting: {
+              identifier: { value: 8452054 },
+              jobLocation: [
+                { address: { addressLocality: 'London' } },
+                { address: { addressLocality: 'United Kingdom ' } },
+                { address: { addressLocality: 'London' } },
+              ],
+            },
+          },
+        ],
+      },
+    });
+    const [job] = await scrapeTeamtailor('careers.neat.no');
+    expect(job).toMatchObject({
+      external_id: '8452054',
+      title: 'Senior Backend Engineer',
+      location: 'London / United Kingdom',
+      apply_url: 'https://careers.neat.no/jobs/8452054-senior-backend-engineer',
+      description: 'Build APIs in TypeScript and Postgres.',
+      posted_at: '2026-09-24T23:41:55.000Z',
+    });
+    expect(job.skills).toEqual(expect.arrayContaining(['typescript', 'postgresql']));
   });
 });

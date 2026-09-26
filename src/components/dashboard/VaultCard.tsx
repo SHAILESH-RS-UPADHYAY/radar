@@ -1,9 +1,8 @@
 'use client';
 
-import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Brackets } from '@/components/hud/Hud';
-import { ScoreMeter, SkillChips } from './SkillChips';
+import { BriefingButton, JobTitle, openOnClick, ScoreMeter, SkillChips } from './SkillChips';
 import { formatSalary, timeAgo, type MatchAction, type MatchedJob } from './types';
 
 const badge = 'border px-2 py-1 font-mono text-[10px] font-bold tracking-[0.2em]';
@@ -11,12 +10,18 @@ const badge = 'border px-2 py-1 font-mono text-[10px] font-bold tracking-[0.2em]
 export function VaultCard({
   match,
   onAction,
+  onRun,
+  onOpen,
 }: {
   match: MatchedJob;
   onAction: (id: string, action: MatchAction) => void;
+  /** Opens the HACK flow (assisted apply) for this job. */
+  onRun: (id: string) => void;
+  /** Opens the JD terminal for this match. */
+  onOpen?: (id: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const { job } = match;
+  const open = onOpen ? () => onOpen(match.id) : undefined;
   const facts = [
     job.location,
     job.work_type?.toUpperCase(),
@@ -32,7 +37,11 @@ export function VaultCard({
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -80 }}
-      className="group relative border border-phosphor/30 bg-black/75 p-5 shadow-[0_0_40px_rgba(0,255,65,0.04)] transition-colors hover:border-phosphor/60 sm:p-6"
+      onClick={openOnClick(open)}
+      className={
+        'group relative border border-phosphor/30 bg-black/75 p-5 shadow-[0_0_40px_rgba(0,255,65,0.04)] transition-colors hover:border-phosphor/60 sm:p-6' +
+        (open ? ' cursor-pointer' : '')
+      }
     >
       <Brackets />
       <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
@@ -44,41 +53,36 @@ export function VaultCard({
             {match.auto_saved && <span className={badge + ' border-hud-cyan/40 text-hud-cyan'}>AUTO-MATCHED</span>}
             {!job.is_active && <span className={badge + ' border-hud-red/40 text-hud-red'}>POSTING CLOSED</span>}
           </div>
-          <h3 className="text-lg font-bold leading-snug text-white sm:text-xl">{job.title}</h3>
+          <JobTitle title={job.title} onOpen={open} className="text-lg font-bold leading-snug text-white sm:text-xl" />
           <p className="mt-1.5 font-mono text-[11px] text-dim">{facts.join(' · ')}</p>
           <SkillChips matching={match.matching_skills} missing={match.missing_skills} maxMatching={8} maxMissing={5} />
           <p className="mt-4 text-sm leading-relaxed text-dim">
             <span className="text-phosphor">&gt; </span>
             {match.reasoning}
           </p>
-          {job.description && (
-            <>
-              <button
-                onClick={() => setOpen((o) => !o)}
-                aria-expanded={open}
-                className="mt-4 font-mono text-[10px] font-bold tracking-[0.25em] text-phosphor/80 transition-colors hover:text-phosphor"
-              >
-                {open ? '[-] HIDE BRIEFING' : '[+] FULL BRIEFING'}
-              </button>
-              {open && (
-                <div className="custom-scrollbar mt-3 max-h-[480px] overflow-y-auto whitespace-pre-line border border-phosphor/15 bg-black/80 p-4 text-sm leading-relaxed text-ink/80">
-                  {job.description}
-                </div>
-              )}
-            </>
-          )}
+          {open && <BriefingButton onOpen={open} />}
         </div>
 
         <div className="flex w-full flex-col gap-2 sm:w-44">
           <ScoreMeter score={match.score} />
+          <button
+            type="button"
+            onClick={() => onRun(match.id)}
+            className="group/run mt-2 flex items-center justify-center gap-2.5 rounded-full border border-phosphor bg-phosphor/10 py-2.5 font-mono text-[11px] font-bold tracking-[0.3em] text-phosphor shadow-[0_0_22px_rgba(0,255,65,0.35)] transition-all hover:bg-phosphor hover:text-black hover:shadow-[0_0_32px_rgba(0,255,65,0.6)]"
+          >
+            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-phosphor group-hover/run:bg-black" />
+            <span className="glitch" data-text="HACK ▸">
+              HACK ▸
+            </span>
+          </button>
           <a
             href={job.apply_url}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => onAction(match.id, 'APPLY')}
-            className="mt-2 bg-phosphor py-2 text-center font-mono text-[11px] font-bold tracking-[0.2em] text-black shadow-[0_0_18px_rgba(0,255,65,0.3)] transition-colors hover:bg-[#33FF66]"
+            className="text-center font-mono text-[10px] tracking-[0.2em] text-dim transition-colors hover:text-phosphor"
           >
-            APPLY ↗
+            direct apply ↗
           </a>
           <button
             onClick={() => onAction(match.id, 'REMOVE_SAVE')}

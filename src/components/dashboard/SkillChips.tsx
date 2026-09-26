@@ -1,4 +1,44 @@
+import type { MouseEvent } from 'react';
 import { scoreColor } from './types';
+
+/** A click anywhere on a card opens the JD terminal, unless it landed on a control inside the card. */
+export const openOnClick = (open: (() => void) | undefined) =>
+  open
+    ? (e: MouseEvent) => {
+        if (!(e.target as HTMLElement).closest('a,button,input,select,textarea,label')) open();
+      }
+    : undefined;
+
+/** The job title: a button that opens the JD terminal where one is wired (plain text on the landing sample). */
+export function JobTitle({ title, onOpen, className }: { title: string; onOpen?: () => void; className: string }) {
+  return (
+    <h3 className={className}>
+      {onOpen ? (
+        <button
+          type="button"
+          onClick={onOpen}
+          className="text-left underline-offset-4 transition-colors hover:text-phosphor hover:underline focus-visible:text-phosphor"
+        >
+          {title}
+        </button>
+      ) : (
+        title
+      )}
+    </h3>
+  );
+}
+
+export function BriefingButton({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      className="mt-4 font-mono text-[10px] font-bold tracking-[0.25em] text-phosphor/80 transition-colors hover:text-phosphor"
+    >
+      [&gt;_] OPEN BRIEFING
+    </button>
+  );
+}
 
 const base = 'border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.15em]';
 

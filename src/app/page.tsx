@@ -11,6 +11,7 @@ import { SiteNav } from '@/components/site/SiteNav';
 import { SiteFooter } from '@/components/site/SiteFooter';
 import { CATALOG } from '@/lib/scraper/catalog';
 import { DiscoveryCard } from '@/components/dashboard/DiscoveryCard';
+import { JobTerminal, type JobDetail } from '@/components/dashboard/JobTerminal';
 import type { MatchedJob } from '@/components/dashboard/types';
 
 const HackerRadarHero = dynamic(() => import('@/components/hero/HackerRadarHero'), { ssr: false });
@@ -235,14 +236,15 @@ const SAMPLE: MatchedJob = {
   stage_changed_at: null,
   applied_at: null,
   notes: null,
+  resume_version_id: null,
+  last_event: null,
   job: {
     id: 'sample',
     title: 'Software Engineer, AI Platform',
-    description: null,
     location: 'Remote · India',
     work_type: 'remote',
     skills: [],
-    apply_url: '#',
+    apply_url: '/sign-up',
     department: 'Engineering',
     posted_at: null,
     is_active: true,
@@ -250,8 +252,50 @@ const SAMPLE: MatchedJob = {
     salary_min: null,
     salary_max: null,
     salary_currency: null,
-    company: { name: 'Linear', source: null, category: 'Growth' },
+    company: { name: 'Northwind AI', source: null, category: 'Growth' },
   },
+};
+
+// What the JD terminal shows for the sample (a made-up posting from a made-up company).
+const SAMPLE_DETAIL: JobDetail = {
+  job: {
+    id: 'sample',
+    title: SAMPLE.job.title,
+    company: 'Northwind AI',
+    via: null,
+    category: 'Growth',
+    fundingStage: 'Series B',
+    source: 'startupmap',
+    provider: 'ashby',
+    providerName: 'Ashby',
+    location: 'Remote · India',
+    workType: 'remote',
+    salary: { min: null, max: null, currency: null },
+    applyUrl: '/sign-up',
+    description: [
+      'About the role',
+      'Northwind AI builds the retrieval and agent platform behind thousands of support teams. You will own the services that turn raw documents into answers, fast and at scale.',
+      '',
+      "What you'll do",
+      '• Build RAG pipelines in Python and TypeScript that serve 40M queries a month',
+      '• Ship LLM features end to end: prompts, evals and a streaming UI in React',
+      '• Design APIs and data models on Postgres and Redis',
+      '• Run services on Kubernetes and keep p95 latency under 300ms',
+      '',
+      "What we're looking for",
+      '• 1-3 years building production software',
+      '• Strong Python or TypeScript, and something you shipped with an LLM',
+      '• Hands-on retrieval evaluation with a vector database',
+      '• Kubernetes in production is a plus',
+      '',
+      'What we offer',
+      '• Remote across India, core hours 11:00–16:00 IST',
+      '• ₹28L – ₹40L base plus equity',
+      '• Learning budget and a new laptop on day one',
+    ].join('\n'),
+  },
+  match: { score: SAMPLE.score, matching: SAMPLE.matching_skills, missing: SAMPLE.missing_skills, status: 'new' },
+  posting: { state: 'live', checkedAt: null, via: 'feed' },
 };
 
 const ANATOMY: [string, string][] = [
@@ -333,6 +377,7 @@ function Transmissions() {
 
 export default function LandingPage() {
   const { isSignedIn } = useAuth();
+  const [briefing, setBriefing] = useState(false);
   const { scrollYProgress } = useScroll();
 
   return (
@@ -531,6 +576,13 @@ export default function LandingPage() {
             <div inert className="select-none">
               <DiscoveryCard match={SAMPLE} onAction={() => {}} />
             </div>
+            <button
+              type="button"
+              onClick={() => setBriefing(true)}
+              className="mt-4 flex w-full items-center justify-center gap-3 border border-phosphor/40 bg-black/70 py-3 font-mono text-[11px] font-bold tracking-[0.3em] text-phosphor transition-colors hover:bg-phosphor/10"
+            >
+              <span className="text-phosphor/60">[&gt;_]</span> OPEN THE BRIEFING TERMINAL
+            </button>
           </motion.div>
         </section>
 
@@ -708,6 +760,7 @@ export default function LandingPage() {
       </div>
 
       <SiteFooter />
+      <JobTerminal match={briefing ? SAMPLE : null} demo={SAMPLE_DETAIL} onClose={() => setBriefing(false)} />
     </main>
   );
 }

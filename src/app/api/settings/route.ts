@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/client';
 import { resolveDreamCompanyIds } from '@/lib/dream-companies';
 import { normalizeSkill } from '@/lib/scraper/utils';
 import { loadSettingsProfile } from '@/lib/profile';
+import { isSchemaMissing } from '@/lib/supabase/errors';
 
 export const dynamic = 'force-dynamic';
 
@@ -36,6 +37,8 @@ interface SettingsPatch {
   skills?: unknown;
   vault_min_score?: unknown;
   auto_vault?: unknown;
+  auto_overclock?: unknown;
+  overclock_daily_cap?: unknown;
   dream_companies?: unknown;
 }
 
@@ -68,6 +71,9 @@ export async function PATCH(req: Request) {
   if (typeof body.vault_min_score === 'number')
     update.vault_min_score = Math.max(0, Math.min(100, Math.round(body.vault_min_score)));
   if (typeof body.auto_vault === 'boolean') update.auto_vault = body.auto_vault;
+  if (typeof body.auto_overclock === 'boolean') update.auto_overclock = body.auto_overclock;
+  if (typeof body.overclock_daily_cap === 'number')
+    update.overclock_daily_cap = Math.max(0, Math.min(20, Math.round(body.overclock_daily_cap)));
   const dream = strings(body.dream_companies);
 
   if (!Object.keys(update).length && !dream) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
@@ -81,6 +87,11 @@ export async function PATCH(req: Request) {
         if (!p?.resume_text) update.resume_embedding = null;
       }
       const { error } = await supabase.from('user_profiles').update(update).eq('id', userId);
+      if (isSchemaMissing(error))
+        return NextResponse.json(
+          { error: 'This setting needs migration 007. Run supabase/migrations/007_discovery_verify_autopilot.sql.' },
+          { status: 503 },
+        );
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     }
 

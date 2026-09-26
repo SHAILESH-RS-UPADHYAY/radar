@@ -11,6 +11,7 @@ export type AtsProvider =
   | 'recruitee'
   | 'personio'
   | 'breezy'
+  | 'teamtailor'
   | 'workday'
   | 'amazon';
 /** Sources that list many employers each; the real employer is stored on the job. */
@@ -107,6 +108,9 @@ export interface SettingsProfile {
   resume_skills: string[];
   vault_min_score: number;
   auto_vault: boolean;
+  /** Auto-OVERCLOCK (migration 007); null until that migration has run. */
+  auto_overclock: boolean | null;
+  overclock_daily_cap: number;
   last_matched_at: string | null;
 }
 

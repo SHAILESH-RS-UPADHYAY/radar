@@ -38,6 +38,27 @@ export function cityAliases(city: string): string[] {
   return key ? CITY_ALIASES[key] : [city.trim().toLowerCase()];
 }
 
+export type PlaceFit =
+  { kind: 'any' } | { kind: 'city'; city: string } | { kind: 'remote'; wanted: boolean } | { kind: 'elsewhere' };
+
+/**
+ * Where a job sits relative to the user's cities ('Remote' among them means remote roles are wanted).
+ * Shared by scoring and the dashboard's location filter so both read locations the same way.
+ */
+export function placeFit(cities: string[], location: string | null | undefined, workType?: string | null): PlaceFit {
+  const wanted = cities.map((c) => c.trim()).filter(Boolean);
+  if (!wanted.length) return { kind: 'any' };
+  const loc = (location || '').toLowerCase();
+  const city = wanted
+    .filter((c) => c.toLowerCase() !== 'remote')
+    .find((c) => cityAliases(c).some((alias) => loc.includes(alias)));
+  if (city) return { kind: 'city', city };
+  if (workType === 'remote' || loc.includes('remote')) {
+    return { kind: 'remote', wanted: wanted.some((c) => c.toLowerCase() === 'remote') };
+  }
+  return { kind: 'elsewhere' };
+}
+
 export function canonicalCity(city: string): string {
   const lower = city.trim().toLowerCase();
   return (

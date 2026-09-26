@@ -18,6 +18,7 @@ const TOC = [
   { id: 'scan-loop', label: 'SCAN_LOOP' },
   { id: 'vault', label: 'THE_VAULT' },
   { id: 'sources', label: 'SOURCES' },
+  { id: 'discovery', label: 'DISCOVERY' },
   { id: 'companies', label: 'COMPANY_INDEX' },
 ];
 
@@ -38,13 +39,15 @@ const perProvider = (p: Provider) => COMPANY_SEEDS.filter((c) => c.ats_provider 
 const boards = new Set<string>(BOARD_PROVIDERS);
 const ATS = (Object.keys(SOURCE_NAMES) as Exclude<Provider, 'custom'>[]).filter((p) => !boards.has(p));
 
-const LOOP_LOG = `[cron]   trigger=github-actions   budget=285s
-[scrape] 4 companies in parallel · least recently scraped first
-[upsert] jobs keyed by (company, external_id)
-[embed]  changed only · sha1(title, location, url, description)
-[close]  postings missing from this run → inactive · vectors deleted
-[match]  every user with a resume → match_scores
-[vault]  score ≥ your threshold → saved (auto)`;
+const LOOP_LOG = `[discover]  startupmap.one · robots.txt obeyed · sitemap every 48h · 1 request / 1.5s
+[discover]  hiring pages, your cities first → startup page → ATS board (verified)
+[scrape]    least recently scraped first · the ATS feed is the source of truth
+[embed]     changed only · sha1(title, location, url, description)
+[close]     postings missing from this run → inactive · vectors deleted
+[match]     every user with a resume → match_scores
+[verify]    board postings: apply link opened before anything enters the Vault
+[vault]     score ≥ your bar (80% by default) → saved (auto)
+[autopilot] Vault re-check · Gmail replies → C2 · OPS · auto-OVERCLOCK`;
 
 const STEPS: [string, string][] = [
   ['EMBED', 'Your resume and every job become 1024-dimension vectors (multilingual-e5-large on Pinecone).'],
@@ -137,7 +140,7 @@ export default function SystemPage() {
 
         <DocSection id="vault" index="04" kicker="THE_VAULT" title="The Vault">
           <p>
-            The Vault is your shortlist. Matches at or above your threshold (70% by default, adjustable in Preferences)
+            The Vault is your shortlist. Matches at or above your threshold (80% by default, adjustable in Preferences)
             are saved automatically after every scan, tagged <span className="text-phosphor">AUTO-MATCHED</span>. You
             can also save anything from Discovery yourself.
           </p>
@@ -156,6 +159,10 @@ export default function SystemPage() {
               </div>
             ))}
           </div>
+          <p>
+            Nothing enters the Vault unverified: company ATS feeds only list open roles, and a job-board posting has its
+            apply link opened first. Every Vault job is checked again each day and marked POSTING CLOSED when it goes.
+          </p>
           <p>Removing a job from the Vault dismisses it, and a dismissed job is never shown or auto-saved again.</p>
         </DocSection>
 
@@ -167,7 +174,11 @@ export default function SystemPage() {
           <DataTable
             label="COMPANY ATS FEEDS"
             head={['ADAPTER', 'COMPANIES', 'READS']}
-            rows={ATS.map((p) => [SOURCE_NAMES[p], String(perProvider(p)), 'Public job-board API of each company'])}
+            rows={ATS.map((p) => [
+              SOURCE_NAMES[p],
+              String(perProvider(p) || 'via discovery'),
+              'Public job-board API of each company',
+            ])}
           />
           <DataTable
             label="JOB BOARDS"
@@ -176,7 +187,34 @@ export default function SystemPage() {
           />
         </DocSection>
 
-        <DocSection id="companies" index="06" kicker="COMPANY_INDEX" title={`${CATALOG.companies} companies indexed`}>
+        <DocSection id="discovery" index="06" kicker="MODULE://D · DISCOVERY" title="Funded startups, found for you">
+          <p>
+            RADAR reads startup directories only where the site allows it, and asks each company&apos;s own careers feed
+            for the jobs.
+          </p>
+          <Points
+            items={[
+              [
+                'STARTUPMAP',
+                'Crawled every 48h as its robots.txt invites: sitemap, hiring pages (your cities first), then each startup page, whose job links name the ATS board. One request every 1.5s, an honest bot name, and a pause at the first "slow down".',
+              ],
+              [
+                'FUNDEDSTARTUPSDAILY',
+                'Its terms forbid scraping, so RADAR does not. Buy its CSV export (licensed for your own use) and drop it in Preferences → TARGETS.',
+              ],
+              [
+                'WORLDSTARTUPMAP',
+                'Its data sits behind an API that robots.txt closes and that is rate-limited against harvesting. Paste the websites of companies you like into TARGETS.',
+              ],
+              [
+                'CAREERS FEEDS',
+                'Every found company is matched to its Greenhouse, Lever, Ashby, Workable, Teamtailor (or other) board and scraped like any tracked company.',
+              ],
+            ]}
+          />
+        </DocSection>
+
+        <DocSection id="companies" index="07" kicker="COMPANY_INDEX" title={`${CATALOG.companies} companies indexed`}>
           <p>
             <span className="text-phosphor">{CATALOG.tracked}</span> are scraped every cycle; the rest are selectable as
             dream companies.

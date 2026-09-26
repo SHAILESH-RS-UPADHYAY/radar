@@ -17,10 +17,13 @@ export interface MatchedJob {
   stage_changed_at: string | null;
   applied_at: string | null;
   notes: string | null;
+  /** The tailored resume that went out with this application (migration 006). */
+  resume_version_id: string | null;
+  /** Newest thing RADAR learned about this application, e.g. a recruiter reply read from Gmail (migration 006). */
+  last_event: OpsEvent | null;
   job: {
     id: string;
     title: string;
-    description: string | null;
     location: string;
     work_type: string | null;
     skills: string[];
@@ -35,6 +38,26 @@ export interface MatchedJob {
     company: { name: string; source: string | null; category: string };
   };
 }
+
+export interface OpsEvent {
+  source: 'gmail' | 'radar' | 'user';
+  kind: string;
+  summary: string;
+  occurred_at: string;
+}
+
+/** One row of GET /api/overclock: a tailored resume, scores only. */
+export interface TailoredSummary {
+  id: string;
+  job_id: string;
+  base_score: number | null;
+  projected_score: number | null;
+  created_at: string;
+}
+
+/** Near-miss band OVERCLOCK works on: good enough to be worth it, not yet a strong match. */
+export const OVERCLOCK_MIN = 50;
+export const OVERCLOCK_MAX = 79;
 
 export type MatchAction = 'SAVE' | 'APPLY' | 'REMOVE_SAVE' | 'REMOVE_APPLY' | 'DISMISS';
 

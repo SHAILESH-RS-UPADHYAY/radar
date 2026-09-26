@@ -46,6 +46,13 @@ export async function embedText(text: string): Promise<number[]> {
   return Array.from(values);
 }
 
+/** A job's stored vector, or null if it was never embedded (or has been removed). */
+export async function fetchJobVector(id: string): Promise<number[] | null> {
+  const { records } = await getIndex().fetch({ ids: [id] });
+  const values = records[id]?.values;
+  return values?.length ? Array.from(values) : null;
+}
+
 /** Drop vectors of closed jobs so they stop taking top-K slots in searchSimilarJobs. */
 export async function deleteJobVectors(ids: string[]) {
   const index = getIndex();

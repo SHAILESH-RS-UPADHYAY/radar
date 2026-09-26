@@ -4,7 +4,7 @@
 // Composite: 60% vector similarity + 40% skill overlap, then role, seniority and location adjustments.
 
 import { normalizeSkill } from '@/lib/scraper/utils';
-import { cityAliases } from '@/lib/geo/city-companies';
+import { placeFit } from '@/lib/geo/city-companies';
 
 export interface MatchResult {
   score: number;
@@ -64,17 +64,17 @@ export function matchedRole(targetRoles: string[] | undefined, jobTitle: string 
 
 /** +5 in one of your cities, -10 remote you did not ask for, -25 elsewhere. */
 function locationFit(input: MatchInput): { delta: number; note: string } {
-  const cities = (input.userCities || []).map((c) => c.trim()).filter(Boolean);
-  if (!cities.length) return { delta: 0, note: '' };
-  const wantsRemote = cities.some((c) => c.toLowerCase() === 'remote');
-  const loc = (input.jobLocation || '').toLowerCase();
-  const hit = cities
-    .filter((c) => c.toLowerCase() !== 'remote')
-    .find((c) => cityAliases(c).some((a) => loc.includes(a)));
-  if (hit) return { delta: 5, note: 'In ' + hit };
-  const isRemote = input.jobWorkType === 'remote' || loc.includes('remote');
-  if (isRemote) return wantsRemote ? { delta: 3, note: 'Remote' } : { delta: -10, note: 'Remote (not in your cities)' };
-  return { delta: -25, note: 'Outside your cities' };
+  const fit = placeFit(input.userCities || [], input.jobLocation, input.jobWorkType);
+  switch (fit.kind) {
+    case 'any':
+      return { delta: 0, note: '' };
+    case 'city':
+      return { delta: 5, note: 'In ' + fit.city };
+    case 'remote':
+      return fit.wanted ? { delta: 3, note: 'Remote' } : { delta: -10, note: 'Remote (not in your cities)' };
+    case 'elsewhere':
+      return { delta: -25, note: 'Outside your cities' };
+  }
 }
 
 export function computeMatchScore(input: MatchInput): MatchResult {

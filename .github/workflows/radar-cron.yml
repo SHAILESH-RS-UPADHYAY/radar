@@ -1,5 +1,8 @@
 name: RADAR pipeline
-# Runs scrape → match → auto-vault every 6 hours (Vercel Hobby cron only allows once a day).
+# Every 6 hours (Vercel Hobby cron runs each route only once a day):
+#   discover  → StartupMap (48h cadence, resumes each run) + your imports → their ATS boards
+#   cron      → scrape every tracked feed → match → verified 80%+ into the Vault
+#   autopilot → re-check Vault postings, Gmail replies, auto-OVERCLOCK
 # Needs repo secrets: RADAR_URL (e.g. https://your-app.vercel.app) and CRON_SECRET.
 on:
   schedule:
@@ -9,9 +12,9 @@ on:
 jobs:
   run-pipeline:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 20
     steps:
-      - name: Trigger /api/cron
+      - name: Trigger discover → cron → autopilot
         env:
           RADAR_URL: ${{ secrets.RADAR_URL }}
           CRON_SECRET: ${{ secrets.CRON_SECRET }}
@@ -19,7 +22,11 @@ jobs:
           if [ -z "$RADAR_URL" ] || [ -z "$CRON_SECRET" ]; then
             echo "Set RADAR_URL and CRON_SECRET repo secrets to enable the schedule."; exit 0
           fi
-          status=$(curl -sS -o response.json -w '%{http_code}' --max-time 320 \
-            -H "Authorization: Bearer $CRON_SECRET" "$RADAR_URL/api/cron?trigger=github-actions")
-          head -c 4000 response.json; echo
-          test "$status" = "200"
+          failed=0
+          for route in api/cron/discover api/cron api/cron/autopilot; do
+            status=$(curl -sS -o response.json -w '%{http_code}' --max-time 320 \
+              -H "Authorization: Bearer $CRON_SECRET" "$RADAR_URL/$route?trigger=github-actions")
+            echo "== /$route → HTTP $status"; head -c 3000 response.json; echo
+            [ "$status" = "200" ] || failed=1
+          done
+          exit $failed

@@ -13,6 +13,7 @@ export const SOURCE_NAMES: Record<Exclude<Provider, 'custom'>, string> = {
   recruitee: 'Recruitee',
   personio: 'Personio',
   breezy: 'Breezy HR',
+  teamtailor: 'Teamtailor',
   workday: 'Workday',
   amazon: 'Amazon Jobs',
   hackernews: 'Hacker News',

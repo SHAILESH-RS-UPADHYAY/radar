@@ -5,22 +5,27 @@ import { auth } from '@clerk/nextjs/server';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServerClient } from '@/lib/supabase/client';
 import { isSchemaMissing } from '@/lib/supabase/errors';
+import type { OpsEvent } from '@/components/dashboard/types';
 
 export const dynamic = 'force-dynamic';
 
 const JOB = `
   jobs!inner (
-    id, title, description, location, work_type, skills, apply_url, department, employer, posted_at, is_active,
+    id, title, location, work_type, skills, apply_url, department, employer, posted_at, is_active,
     experience_required, salary_min, salary_max, salary_currency,
     companies!inner ( name, category, ats_provider )
   )`;
 const BASE =
   'id, score, reasoning, matching_skills, missing_skills, section, status, auto_saved, status_changed_at, first_seen_at,';
 const OPS = ' stage, stage_changed_at, applied_at, notes,';
+const VERSION = ' resume_version_id,';
+// Newest schema first: migration 006 (resume versions) builds on 005 (C2 · OPS). Each tier drops what a
+// database without that migration does not have yet, so the dashboard works at every step.
+const TIERS = [BASE + OPS + VERSION, BASE + OPS, BASE];
 
 /** Vault + applied: everything, even if the posting has since closed. Discovery: the best open jobs not yet acted on. */
-function load(supabase: SupabaseClient, userId: string, withOps: boolean) {
-  const select = BASE + (withOps ? OPS : '') + JOB;
+function load(supabase: SupabaseClient, userId: string, columns: string) {
+  const select = columns + JOB;
   return Promise.all([
     supabase
       .from('match_scores')
@@ -48,18 +53,19 @@ export async function GET() {
   // Query builders are lazy; .then() starts this one now so it runs alongside the match queries.
   const profile = supabase
     .from('user_profiles')
-    .select('vault_min_score, auto_vault, last_matched_at')
+    .select('vault_min_score, auto_vault, last_matched_at, location')
     .eq('id', userId)
     .maybeSingle()
     .then((r) => r);
 
-  // C2 · OPS columns arrive with migration 005; until then serve everything else and say so.
-  let opsReady = true;
-  let [tracked, discovery] = await load(supabase, userId, true);
-  if (isSchemaMissing(tracked.error) || isSchemaMissing(discovery.error)) {
-    opsReady = false;
-    [tracked, discovery] = await load(supabase, userId, false);
+  let tier = 0;
+  let [tracked, discovery] = await load(supabase, userId, TIERS[tier]);
+  while ((isSchemaMissing(tracked.error) || isSchemaMissing(discovery.error)) && tier < TIERS.length - 1) {
+    tier += 1;
+    [tracked, discovery] = await load(supabase, userId, TIERS[tier]);
   }
+  const opsReady = tier <= 1;
+  const versionsReady = tier === 0;
 
   const error = tracked.error || discovery.error;
   if (error) {
@@ -82,10 +88,11 @@ export async function GET() {
     stage_changed_at: m.stage_changed_at ?? null,
     applied_at: m.applied_at ?? (m.status === 'applied' ? m.status_changed_at : null),
     notes: m.notes ?? null,
+    resume_version_id: m.resume_version_id ?? null,
+    last_event: null as OpsEvent | null,
     job: {
       id: m.jobs.id,
       title: m.jobs.title,
-      description: m.jobs.description,
       location: m.jobs.location,
       work_type: m.jobs.work_type,
       skills: m.jobs.skills || [],
@@ -105,11 +112,40 @@ export async function GET() {
     },
   }));
 
+  // Latest recruiter reply / RADAR event per application. The table arrives with migration 006.
+  const applied = formatted.filter((m) => m.status === 'applied');
+  if (versionsReady && applied.length) {
+    const { data: events } = await supabase
+      .from('ops_events')
+      .select('match_id, source, kind, summary, occurred_at')
+      .eq('user_id', userId)
+      .in(
+        'match_id',
+        applied.map((m) => m.id),
+      )
+      .order('occurred_at', { ascending: false })
+      .limit(500);
+    const latest = new Map<string, OpsEvent>();
+    for (const { match_id, ...e } of events || []) if (!latest.has(match_id)) latest.set(match_id, e);
+    for (const m of applied) m.last_event = latest.get(m.id) ?? null;
+  }
+
+  // Last finished run of the automatic loop, so the dashboard can say when jobs were last refreshed.
+  const { data: lastRun } = await supabase
+    .from('pipeline_runs')
+    .select('finished_at')
+    .not('finished_at', 'is', null)
+    .order('finished_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
   const { data: settings } = await profile;
   return NextResponse.json({
+    pipelineRunAt: lastRun?.finished_at ?? null,
     matches: formatted,
     total: formatted.length,
     opsReady,
-    settings: settings || { vault_min_score: 70, auto_vault: true, last_matched_at: null },
+    versionsReady,
+    settings: settings || { vault_min_score: 80, auto_vault: true, last_matched_at: null, location: null },
   });
 }

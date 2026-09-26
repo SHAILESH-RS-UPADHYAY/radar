@@ -11,6 +11,8 @@ import { HudPanel, StatusLight } from '@/components/hud/Hud';
 import { Toast, type Notice } from '@/components/hud/Toast';
 import { resumeProblem } from '@/lib/validate';
 import { useEscapeTo } from '@/lib/use-escape';
+import { GmailLink } from '@/components/settings/GmailLink';
+import { TargetImport } from '@/components/settings/TargetImport';
 
 interface CityCompany {
   name: string;
@@ -223,9 +225,11 @@ const INDEX = [
   ['resume', 'RESUME'],
   ['experience', 'EXPERIENCE'],
   ['locations', 'LOCATIONS'],
-  ['auto-vault', 'AUTO_VAULT'],
+  ['auto-vault', 'AUTOPILOT'],
   ['companies', 'DREAM_COMPANIES'],
   ['identity', 'IDENTITY'],
+  ['gmail', 'GMAIL_LINK'],
+  ['targets', 'TARGETS'],
 ];
 
 export default function SettingsPage() {
@@ -729,8 +733,8 @@ export default function SettingsPage() {
               <Section
                 id="auto-vault"
                 n="06"
-                name="AUTO_VAULT"
-                status={profile.auto_vault ? 'ARMED' : 'OFF'}
+                name="AUTOPILOT"
+                status={profile.auto_vault ? (profile.auto_overclock ? 'ARMED · OVERCLOCK' : 'ARMED') : 'OFF'}
                 tone={profile.auto_vault ? 'ok' : 'idle'}
                 hint="After every scan, new matches at or above this score are saved to your Vault for you."
               >
@@ -776,6 +780,70 @@ export default function SettingsPage() {
                     onPointerUp={() => save({ vault_min_score: profile.vault_min_score }, 'Minimum score')}
                     onKeyUp={() => save({ vault_min_score: profile.vault_min_score }, 'Minimum score')}
                   />
+                </div>
+
+                <div className="mt-6 border-t border-phosphor/10 pt-5">
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={!!profile.auto_overclock}
+                    disabled={profile.auto_overclock === null}
+                    onClick={() =>
+                      update(
+                        { auto_overclock: !profile.auto_overclock },
+                        { auto_overclock: !profile.auto_overclock },
+                        'Auto-OVERCLOCK',
+                      )
+                    }
+                    className="flex w-full items-center justify-between gap-4 text-left disabled:cursor-not-allowed disabled:opacity-40"
+                  >
+                    <span>
+                      <span className="block text-sm text-ink">Auto-OVERCLOCK near misses</span>
+                      <span className="mt-1 block text-xs leading-relaxed text-dim">
+                        Every day Claude tailors your resume for the best 50–79% matches; any that project past your bar
+                        move into the Vault with the tailored CV attached. Each one is a paid API call.
+                      </span>
+                    </span>
+                    <span
+                      className={
+                        'relative h-6 w-11 shrink-0 border transition-colors ' +
+                        (profile.auto_overclock ? 'border-phosphor bg-phosphor/20' : 'border-phosphor/25')
+                      }
+                    >
+                      <span
+                        className={
+                          'absolute top-0.5 h-4 w-4 transition-all ' +
+                          (profile.auto_overclock
+                            ? 'left-[22px] bg-phosphor shadow-[0_0_8px_#00FF41]'
+                            : 'left-0.5 bg-dim')
+                        }
+                      />
+                    </span>
+                  </button>
+                  {profile.auto_overclock === null ? (
+                    <p className="mt-3 font-mono text-[10px] tracking-wider text-hud-amber">
+                      Run migration 007 to switch this on.
+                    </p>
+                  ) : (
+                    <div className={'mt-4 ' + (profile.auto_overclock ? '' : 'opacity-40')}>
+                      <div className="flex justify-between font-mono text-[11px] tracking-[0.2em] text-dim">
+                        <span>TAILORINGS PER DAY (MAX)</span>
+                        <span className="text-phosphor">{profile.overclock_daily_cap}</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={1}
+                        max={20}
+                        value={profile.overclock_daily_cap}
+                        disabled={!profile.auto_overclock}
+                        aria-label="Auto-OVERCLOCK tailorings per day"
+                        className="mt-2 w-full accent-[#00FF41]"
+                        onChange={(e) => setProfile({ ...profile, overclock_daily_cap: Number(e.target.value) })}
+                        onPointerUp={() => save({ overclock_daily_cap: profile.overclock_daily_cap }, 'Daily cap')}
+                        onKeyUp={() => save({ overclock_daily_cap: profile.overclock_daily_cap }, 'Daily cap')}
+                      />
+                    </div>
+                  )}
                 </div>
               </Section>
 
@@ -870,6 +938,9 @@ export default function SettingsPage() {
                   </label>
                 </div>
               </Section>
+
+              <GmailLink onNotice={setNotice} />
+              <TargetImport onNotice={setNotice} />
 
               <Link
                 href="/onboarding"
