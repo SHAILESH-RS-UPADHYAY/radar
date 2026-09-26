@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/client';
 import { resolveDreamCompanyIds } from '@/lib/dream-companies';
 import { normalizeSkill } from '@/lib/scraper/utils';
+import { loadSettingsProfile } from '@/lib/profile';
 
 export const dynamic = 'force-dynamic';
 
@@ -12,20 +13,15 @@ export async function GET() {
 
   try {
     const supabase = createServerClient();
-    const [{ data: profile, error }, { data: dream }] = await Promise.all([
-      supabase.from('user_profiles').select('*').eq('id', userId).maybeSingle(),
+    const [profile, { data: dream }] = await Promise.all([
+      loadSettingsProfile(supabase, userId),
       supabase.from('user_dream_companies').select('companies(name)').eq('user_id', userId),
     ]);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-
     const dreamCompanies = (dream || [])
       .map((d) => (Array.isArray(d.companies) ? d.companies[0] : d.companies) as { name: string } | null)
       .filter(Boolean)
       .map((c) => c!.name);
-
-    // The embedding is large and useless to the browser.
-    if (profile) delete (profile as Record<string, unknown>).resume_embedding;
-    return NextResponse.json({ profile: profile || null, dreamCompanies });
+    return NextResponse.json({ profile, dreamCompanies });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
@@ -33,6 +29,7 @@ export async function GET() {
 
 interface SettingsPatch {
   full_name?: unknown;
+  target_roles?: unknown;
   location?: unknown;
   is_fresher?: unknown;
   experience_years?: unknown;
@@ -61,6 +58,11 @@ export async function PATCH(req: Request) {
   if (typeof body.is_fresher === 'boolean') update.is_fresher = body.is_fresher;
   if (typeof body.experience_years === 'number')
     update.experience_years = Math.max(0, Math.min(50, Math.round(body.experience_years)));
+  const roles = strings(body.target_roles);
+  if (roles) {
+    const unique = [...new Map(roles.map((r) => [r.toLowerCase(), r.replace(/,/g, ' ').slice(0, 60)])).values()];
+    update.current_role = unique.slice(0, 8).join(', ') || null;
+  }
   const skills = strings(body.skills);
   if (skills) update.skills = [...new Set(skills.map(normalizeSkill))].slice(0, 100);
   if (typeof body.vault_min_score === 'number')

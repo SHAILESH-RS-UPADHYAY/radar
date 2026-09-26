@@ -6,6 +6,7 @@ export const dynamic = 'force-dynamic';
 
 const STATUSES = ['new', 'saved', 'applied', 'dismissed'] as const;
 type Status = (typeof STATUSES)[number];
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // PATCH { ids: string[], status } — move matches between Discovery / Vault / Applied / dismissed.
 export async function PATCH(req: NextRequest) {
@@ -14,7 +15,7 @@ export async function PATCH(req: NextRequest) {
 
   const body = (await req.json().catch(() => null)) as { ids?: unknown; status?: unknown } | null;
   const ids = Array.isArray(body?.ids)
-    ? body.ids.filter((id): id is string => typeof id === 'string').slice(0, 500)
+    ? body.ids.filter((id): id is string => typeof id === 'string' && UUID.test(id)).slice(0, 500)
     : [];
   const status = body?.status as Status;
   if (!ids.length || !STATUSES.includes(status)) {
