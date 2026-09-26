@@ -2,18 +2,16 @@
 <title id="06-overclock-t">OVERCLOCK: honest resume tailoring for near-misses</title>
 <style>
   text { font-family: 'JetBrains Mono','Cascadia Mono',Consolas,Menlo,'DejaVu Sans Mono',monospace; font-size: 15px; }
-  .spin { transform-box: fill-box; transform-origin: center; animation: spin 2.4s linear infinite; }
   .led { animation: led 1.6s steps(2, jump-none) infinite; }
   .roll { animation: roll 0.18s steps(2) infinite; }
   .glow { filter: drop-shadow(0 0 6px rgba(0,255,65,0.55)); }
   .glitch-r { animation: gr 3.2s steps(1) infinite; }
   .glitch-c { animation: gc 3.2s steps(1) infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes led { 50% { opacity: 0.25; } }
   @keyframes roll { 50% { transform: translateY(1px); } }
   @keyframes gr { 0%,88%,100% { transform: translate(0,0); } 90% { transform: translate(-4px,1px); } 94% { transform: translate(3px,-1px); } }
   @keyframes gc { 0%,88%,100% { transform: translate(0,0); } 91% { transform: translate(4px,-1px); } 95% { transform: translate(-3px,1px); } }
-  @media (prefers-reduced-motion: reduce) { .spin, .led, .roll, .glitch-r, .glitch-c { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .led, .roll, .glitch-r, .glitch-c { animation: none; } }
 </style>
 <defs>
   <clipPath id="06-overclock-win"><rect width="960" height="300" rx="10"/></clipPath>
@@ -26,6 +24,7 @@
   <clipPath id="06-overclock-c5"><rect x="0" y="174" width="0" height="27"><animate attributeName="width" values="108;642" begin="5.84s" dur="0.93s" fill="freeze"/></rect></clipPath>
   <clipPath id="06-overclock-c6"><rect x="0" y="199" width="0" height="27"><animate attributeName="width" values="108;678" begin="6.89s" dur="0.99s" fill="freeze"/></rect></clipPath>
   <clipPath id="06-overclock-c7"><rect x="0" y="224" width="0" height="27"><animate attributeName="width" values="44;551" begin="8.00s" dur="0.88s" fill="freeze"/></rect></clipPath>
+  <clipPath id="06-overclock-sw"><rect x="44" y="266" width="0" height="22"><animate attributeName="width" values="0;108;108" keyTimes="0;0.075;1" dur="6s" begin="0.4s" repeatCount="indefinite"/></rect></clipPath><clipPath id="06-overclock-sn"><rect x="44" y="266" width="108" height="22"><animate attributeName="x" values="44;152;152" keyTimes="0;0.075;1" dur="6s" begin="0.4s" repeatCount="indefinite"/></rect></clipPath>
 </defs>
 <g clip-path="url(#06-overclock-win)">
   <rect width="960" height="300" fill="#000"/>
@@ -53,7 +52,7 @@
   <rect x="108" y="203" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="6.89s"/><animate attributeName="x" from="108" to="668" begin="6.89s" dur="0.99s" fill="freeze"/><set attributeName="opacity" to="0" begin="7.88s"/></rect>
   <g clip-path="url(#06-overclock-c7)"><text x="22" y="243" fill="#8a8a8a">⎿</text><text x="44" y="243" fill="#f8f8f2" textLength="45" lengthAdjust="spacingAndGlyphs" xml:space="preserve">DONE </text><text x="89" y="243" fill="#8a8a8a" textLength="450" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(fabrikam-data-engineer.pdf ready · PDF on demand)</text></g>
   <rect x="44" y="228" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="8.00s"/><animate attributeName="x" from="44" to="541" begin="8.00s" dur="0.88s" fill="freeze"/><animate attributeName="opacity" values="1;0" dur="1s" begin="8.88s" repeatCount="indefinite" calcMode="discrete"/></rect>
-  <g><text x="28" y="282" fill="#e8825a" class="spin">✻</text><text x="44" y="282" fill="#fd971f" textLength="117" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Overclocking…</text><text x="170" y="282" fill="#8a8a8a" textLength="522" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(auto mode: your best 50–79 matches daily, under your cap)</text></g>
+  <g><circle cx="29" cy="277" r="7" fill="none" stroke="#f92672" stroke-opacity="0.5"/><g transform="translate(29 277)"><g><animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="1.4s" repeatCount="indefinite"/><path d="M0 0V-7A7 7 0 0 1 7 0Z" fill="#f92672" opacity="0.3"/><path d="M0 0H7" stroke="#f92672" stroke-width="1.5"/></g><circle r="1.3" fill="#f92672"/></g><g clip-path="url(#06-overclock-sw)" style="filter:drop-shadow(0 0 5px #f9267288)"><text x="44" y="282" fill="#f92672" textLength="108" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Overclocking</text></g><g clip-path="url(#06-overclock-sn)"><text x="44" y="282" fill="#f92672" opacity="0" textLength="108" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0.5;0;0" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>A!C}^^?B&gt;D!1</text><text x="44" y="282" fill="#f92672" opacity="0" textLength="108" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0;0.5;0" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>][B$+&lt;{&gt;F$}F</text><text x="44" y="282" fill="#f92672" opacity="0" textLength="108" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0;0;0.5" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>#C+&gt;}+$+D}=1</text></g><text x="152" y="282" fill="#f92672"><animate attributeName="opacity" values="1;0" dur="1s" repeatCount="indefinite" calcMode="discrete"/>_</text><text x="170" y="282" fill="#8a8a8a" textLength="522" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│ auto mode: your best 50–79 matches daily, under your cap</text></g>
   <rect width="960" height="300" fill="url(#06-overclock-scan)" class="roll"/>
 </g>
 <rect x="0.5" y="0.5" width="959" height="299" rx="10" fill="none" stroke="#303030"/>

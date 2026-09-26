@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
 import { Inter, JetBrains_Mono, Outfit } from 'next/font/google';
 import './globals.css';
-import SparkleCursor from '@/components/ui/SparkleCursor';
+import SignalCursor from '@/components/ui/SignalCursor';
 import { SITE_URL } from '@/lib/site';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -71,7 +71,7 @@ export default function RootLayout({
       <html lang="en">
         <body className={[inter.variable, outfit.variable, mono.variable, 'antialiased'].join(' ')}>
           {children}
-          <SparkleCursor />
+          <SignalCursor />
         </body>
       </html>
     </ClerkProvider>

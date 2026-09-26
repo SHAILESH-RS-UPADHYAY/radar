@@ -2,18 +2,16 @@
 <title id="02-ingest-t">INGEST: jobs through public ATS and job-board APIs</title>
 <style>
   text { font-family: 'JetBrains Mono','Cascadia Mono',Consolas,Menlo,'DejaVu Sans Mono',monospace; font-size: 15px; }
-  .spin { transform-box: fill-box; transform-origin: center; animation: spin 2.4s linear infinite; }
   .led { animation: led 1.6s steps(2, jump-none) infinite; }
   .roll { animation: roll 0.18s steps(2) infinite; }
   .glow { filter: drop-shadow(0 0 6px rgba(0,255,65,0.55)); }
   .glitch-r { animation: gr 3.2s steps(1) infinite; }
   .glitch-c { animation: gc 3.2s steps(1) infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes led { 50% { opacity: 0.25; } }
   @keyframes roll { 50% { transform: translateY(1px); } }
   @keyframes gr { 0%,88%,100% { transform: translate(0,0); } 90% { transform: translate(-4px,1px); } 94% { transform: translate(3px,-1px); } }
   @keyframes gc { 0%,88%,100% { transform: translate(0,0); } 91% { transform: translate(4px,-1px); } 95% { transform: translate(-3px,1px); } }
-  @media (prefers-reduced-motion: reduce) { .spin, .led, .roll, .glitch-r, .glitch-c { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .led, .roll, .glitch-r, .glitch-c { animation: none; } }
 </style>
 <defs>
   <clipPath id="02-ingest-win"><rect width="960" height="375" rx="10"/></clipPath>
@@ -29,6 +27,7 @@
   <clipPath id="02-ingest-c8"><rect x="0" y="249" width="0" height="27"><animate attributeName="width" values="108;687" begin="9.64s" dur="1.01s" fill="freeze"/></rect></clipPath>
   <clipPath id="02-ingest-c9"><rect x="0" y="274" width="0" height="27"><animate attributeName="width" values="108;615" begin="10.77s" dur="0.88s" fill="freeze"/></rect></clipPath>
   <clipPath id="02-ingest-c10"><rect x="0" y="299" width="0" height="27"><animate attributeName="width" values="44;551" begin="11.77s" dur="0.88s" fill="freeze"/></rect></clipPath>
+  <clipPath id="02-ingest-sw"><rect x="44" y="341" width="0" height="22"><animate attributeName="width" values="0;81;81" keyTimes="0;0.075;1" dur="6s" begin="0.4s" repeatCount="indefinite"/></rect></clipPath><clipPath id="02-ingest-sn"><rect x="44" y="341" width="81" height="22"><animate attributeName="x" values="44;125;125" keyTimes="0;0.075;1" dur="6s" begin="0.4s" repeatCount="indefinite"/></rect></clipPath>
 </defs>
 <g clip-path="url(#02-ingest-win)">
   <rect width="960" height="375" fill="#000"/>
@@ -61,7 +60,7 @@
   <rect x="108" y="278" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="10.77s"/><animate attributeName="x" from="108" to="605" begin="10.77s" dur="0.88s" fill="freeze"/><set attributeName="opacity" to="0" begin="11.65s"/></rect>
   <g clip-path="url(#02-ingest-c10)"><text x="22" y="318" fill="#8a8a8a">⎿</text><text x="44" y="318" fill="#f8f8f2" textLength="45" lengthAdjust="spacingAndGlyphs" xml:space="preserve">DONE </text><text x="89" y="318" fill="#8a8a8a" textLength="450" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(142s · 20 companies · slow ones retried next run)</text></g>
   <rect x="44" y="303" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="11.77s"/><animate attributeName="x" from="44" to="541" begin="11.77s" dur="0.88s" fill="freeze"/><animate attributeName="opacity" values="1;0" dur="1s" begin="12.65s" repeatCount="indefinite" calcMode="discrete"/></rect>
-  <g><text x="28" y="357" fill="#e8825a" class="spin">✻</text><text x="44" y="357" fill="#fd971f" textLength="90" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Ingesting…</text><text x="143" y="357" fill="#8a8a8a" textLength="513" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(least recently scraped first · resumes where it stopped)</text></g>
+  <g><circle cx="29" cy="352" r="7" fill="none" stroke="#ae81ff" stroke-opacity="0.5"/><g transform="translate(29 352)"><g><animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="1.4s" repeatCount="indefinite"/><path d="M0 0V-7A7 7 0 0 1 7 0Z" fill="#ae81ff" opacity="0.3"/><path d="M0 0H7" stroke="#ae81ff" stroke-width="1.5"/></g><circle r="1.3" fill="#ae81ff"/></g><g clip-path="url(#02-ingest-sw)" style="filter:drop-shadow(0 0 5px #ae81ff88)"><text x="44" y="357" fill="#ae81ff" textLength="81" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Ingesting</text></g><g clip-path="url(#02-ingest-sn)"><text x="44" y="357" fill="#ae81ff" opacity="0" textLength="81" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0.5;0;0" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>]}$E1%!]?</text><text x="44" y="357" fill="#ae81ff" opacity="0" textLength="81" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0;0.5;0" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>|1FB$~~&gt;D</text><text x="44" y="357" fill="#ae81ff" opacity="0" textLength="81" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0;0;0.5" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>1B^DC&lt;D]#</text></g><text x="125" y="357" fill="#ae81ff"><animate attributeName="opacity" values="1;0" dur="1s" repeatCount="indefinite" calcMode="discrete"/>_</text><text x="143" y="357" fill="#8a8a8a" textLength="513" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│ least recently scraped first · resumes where it stopped</text></g>
   <rect width="960" height="375" fill="url(#02-ingest-scan)" class="roll"/>
 </g>
 <rect x="0.5" y="0.5" width="959" height="374" rx="10" fill="none" stroke="#303030"/>

@@ -1,5 +1,6 @@
 // Renders the README's terminal panels: animated SVGs in the JD terminal's look (pure black, Monokai text,
-// deep red/green diff bands, bright word boxes, a typing caret, a spinning ✻ status line, scanlines).
+// deep red/green diff bands, bright word boxes, a typing caret, a radar-sweep status line whose word decrypts
+// itself, scanlines).
 // GitHub runs SVG animations (SMIL + CSS) inside README images; scripts never run.
 //   node docs/readme/render.mjs      → docs/readme/*.svg
 
@@ -31,6 +32,9 @@ const COLOR = {
   head: '#66d9ef',
   phos: '#00ff41',
 };
+// Status-line colours, one per panel in turn (the JD terminal cycles the same five per word).
+const HUES = ['#66d9ef', '#f92672', '#ae81ff', '#e6db74', '#a6e22e'];
+const NOISE = '01<>/|{}[]#$%&*+=?!^~ABCDEF';
 const BAND = { '+': '#003e00', '-': '#500000' };
 const BOX = { '+': '#127a12', '-': '#9c1616' };
 const NUMC = { '+': '#5fd35f', '-': '#ff6b6b' };
@@ -45,14 +49,58 @@ function runText(x, y, seg, extra = '') {
   const len = [...seg.text].length;
   if (!seg.text.trim()) return '';
   const weight = seg.tone === 'head' ? ' font-weight="700"' : '';
-  return `<text x="${x}" y="${y}" fill="${COLOR[seg.tone]}"${weight} textLength="${len * CW}" lengthAdjust="spacingAndGlyphs" xml:space="preserve"${extra}>${esc(seg.text)}</text>`;
+  return `<text x="${x}" y="${y}" fill="${seg.color || COLOR[seg.tone]}"${weight} textLength="${len * CW}" lengthAdjust="spacingAndGlyphs" xml:space="preserve"${extra}>${esc(seg.text)}</text>`;
 }
 
 /**
  * One terminal panel.
  * lines: { sec: [runs] } for "⎿" lines, or { mark: '+'|'-'|null, segs: [runs] } for numbered lines.
  */
-function panel({ name, title, prompt, status, statusTone = 'fn', lines, footer, logo = null, startLine = 1 }) {
+/** Glyph noise the length of `word`, seeded by it so a re-render gives the same file. */
+function noise(word, variant) {
+  let seed = [...word].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7 + variant * 101);
+  return [...word]
+    .map((c) => {
+      seed = (seed * 1103515245 + 12345) >>> 0;
+      return c === ' ' ? ' ' : NOISE[seed % NOISE.length];
+    })
+    .join('');
+}
+
+/**
+ * The status line: a radar sweep, then the word, which decrypts itself every few seconds (glyph noise
+ * settling left to right), a blinking "_" and the detail after a "│".
+ */
+function statusLine(name, [word, detail], y, hue) {
+  const x = SEC_TEXT_X;
+  const w = [...word].length * CW;
+  const cycle = 6;
+  const k = (0.45 / cycle).toFixed(3);
+  const loop = `dur="${cycle}s" begin="0.4s" repeatCount="indefinite"`;
+  const clips =
+    `<clipPath id="${name}-sw"><rect x="${x}" y="${y - 16}" width="0" height="22"><animate attributeName="width" values="0;${w};${w}" keyTimes="0;${k};1" ${loop}/></rect></clipPath>` +
+    `<clipPath id="${name}-sn"><rect x="${x}" y="${y - 16}" width="${w}" height="22"><animate attributeName="x" values="${x};${x + w};${x + w}" keyTimes="0;${k};1" ${loop}/></rect></clipPath>`;
+  const flicker = [0, 1, 2]
+    .map(
+      (j) =>
+        `<text x="${x}" y="${y}" fill="${hue}" opacity="0" textLength="${w}" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="${[0, 1, 2].map((q) => (q === j ? 0.5 : 0)).join(';')}" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>${esc(noise(word, j))}</text>`,
+    )
+    .join('');
+  const cx = SEC_X + 7;
+  const cy = y - 5;
+  const sweep =
+    `<circle cx="${cx}" cy="${cy}" r="7" fill="none" stroke="${hue}" stroke-opacity="0.5"/>` +
+    `<g transform="translate(${cx} ${cy})"><g><animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="1.4s" repeatCount="indefinite"/><path d="M0 0V-7A7 7 0 0 1 7 0Z" fill="${hue}" opacity="0.3"/><path d="M0 0H7" stroke="${hue}" stroke-width="1.5"/></g><circle r="1.3" fill="${hue}"/></g>`;
+  const svg =
+    sweep +
+    `<g clip-path="url(#${name}-sw)" style="filter:drop-shadow(0 0 5px ${hue}88)">${runText(x, y, { text: word, color: hue })}</g>` +
+    `<g clip-path="url(#${name}-sn)">${flicker}</g>` +
+    `<text x="${x + w}" y="${y}" fill="${hue}"><animate attributeName="opacity" values="1;0" dur="1s" repeatCount="indefinite" calcMode="discrete"/>_</text>` +
+    runText(x + w + 2 * CW, y, t('│ ' + detail, 'dim'));
+  return { clips, svg };
+}
+
+function panel({ name, title, prompt, status, statusTone = 'fn', lines, footer, hue, logo = null, startLine = 1 }) {
   const logoH = logo ? logo.length * 19 + 26 : 0;
   const H = TOP + 14 + logoH + lines.length * LH + 50;
   const out = [];
@@ -120,27 +168,27 @@ function panel({ name, title, prompt, status, statusTone = 'fn', lines, footer, 
       })()
     : '';
 
-  const fy = H - 18;
-  const footerSvg = footer
-    ? `<g><text x="${SEC_X + 6}" y="${fy}" fill="#e8825a" class="spin">✻</text>${runText(SEC_TEXT_X, fy, t(footer[0], 'req'))}${runText(SEC_TEXT_X + ([...footer[0]].length + 1) * CW, fy, t(footer[1], 'dim'))}</g>`
-    : '';
+  let footerSvg = '';
+  if (footer) {
+    const { clips, svg } = statusLine(name, footer, H - 18, hue);
+    defs.push(clips);
+    footerSvg = `<g>${svg}</g>`;
+  }
 
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" role="img" aria-labelledby="${name}-t">
 <title id="${name}-t">${esc(title)}</title>
 <style>
   text { font-family: ${FONT}; font-size: ${FS}px; }
-  .spin { transform-box: fill-box; transform-origin: center; animation: spin 2.4s linear infinite; }
   .led { animation: led 1.6s steps(2, jump-none) infinite; }
   .roll { animation: roll 0.18s steps(2) infinite; }
   .glow { filter: drop-shadow(0 0 6px rgba(0,255,65,0.55)); }
   .glitch-r { animation: gr 3.2s steps(1) infinite; }
   .glitch-c { animation: gc 3.2s steps(1) infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes led { 50% { opacity: 0.25; } }
   @keyframes roll { 50% { transform: translateY(1px); } }
   @keyframes gr { 0%,88%,100% { transform: translate(0,0); } 90% { transform: translate(-4px,1px); } 94% { transform: translate(3px,-1px); } }
   @keyframes gc { 0%,88%,100% { transform: translate(0,0); } 91% { transform: translate(4px,-1px); } 95% { transform: translate(-3px,1px); } }
-  @media (prefers-reduced-motion: reduce) { .spin, .led, .roll, .glitch-r, .glitch-c { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .led, .roll, .glitch-r, .glitch-c { animation: none; } }
 </style>
 <defs>
   <clipPath id="${name}-win"><rect width="${W}" height="${H}" rx="10"/></clipPath>
@@ -228,7 +276,7 @@ const PANELS = [
         segs: [t('[LIVE] ', 'fn'), t('mission   '), t('······ ', 'dim'), t('"never apply by hand"', 'str', true)],
       },
     ],
-    footer: ['Watching the market…', '(3 crons daily · every 6h via GitHub Actions)'],
+    footer: ['Watching the market', '3 crons daily · every 6h via GitHub Actions'],
   },
   {
     name: '01-discover',
@@ -295,7 +343,7 @@ const PANELS = [
       },
       { sec: [t('DONE '), t('(+3 companies tracked · next sync in 48h · pause on 429/403/503)', 'dim')] },
     ],
-    footer: ['Crawling politely…', '(StartupMap every 48h · your CSV imports on every run)'],
+    footer: ['Crawling politely', 'StartupMap every 48h · your CSV imports on every run'],
   },
   {
     name: '02-ingest',
@@ -351,7 +399,7 @@ const PANELS = [
       },
       { sec: [t('DONE '), t('(142s · 20 companies · slow ones retried next run)', 'dim')] },
     ],
-    footer: ['Ingesting…', '(least recently scraped first · resumes where it stopped)'],
+    footer: ['Ingesting', 'least recently scraped first · resumes where it stopped'],
   },
   {
     name: '03-supabase',
@@ -410,7 +458,7 @@ const PANELS = [
       { segs: [t('};')] },
       { sec: [t('Pinecone '), t('(one vector per open job, keyed by jobs.id)', 'dim')] },
     ],
-    footer: ['Syncing state…', '(migrations 001 → 007 · each safe to re-run)'],
+    footer: ['Syncing state', 'migrations 001 → 007 · each safe to re-run'],
   },
   {
     name: '04-match',
@@ -470,7 +518,7 @@ const PANELS = [
       },
       { sec: [t('DONE '), t('(396 scored · 2 ≥ 80 · 1 near-miss)', 'dim')] },
     ],
-    footer: ['Scoring…', '(bar 80 by default · 50–79 goes to OVERCLOCK)'],
+    footer: ['Scoring', 'bar 80 by default · 50–79 goes to OVERCLOCK'],
   },
   {
     name: '05-vault',
@@ -531,7 +579,7 @@ const PANELS = [
       },
       { sec: [t('DONE '), t('(+2 saved · −2 closed · the Vault is re-checked every 24h)', 'dim')] },
     ],
-    footer: ['Verifying…', '(unknown is never treated as closed)'],
+    footer: ['Verifying', 'unknown is never treated as closed'],
   },
   {
     name: '06-overclock',
@@ -579,7 +627,7 @@ const PANELS = [
       },
       { sec: [t('DONE '), t('(fabrikam-data-engineer.pdf ready · PDF on demand)', 'dim')] },
     ],
-    footer: ['Overclocking…', '(auto mode: your best 50–79 matches daily, under your cap)'],
+    footer: ['Overclocking', 'auto mode: your best 50–79 matches daily, under your cap'],
   },
   {
     name: '07-hack',
@@ -636,7 +684,7 @@ const PANELS = [
       },
       { sec: [t('NEXT '), t('(target 2 of 7 · HACK ALL walks the whole Vault)', 'dim')] },
     ],
-    footer: ['Hacking the queue…', '(prepared in seconds · submitted by you)'],
+    footer: ['Hacking the queue', 'prepared in seconds · submitted by you'],
   },
   {
     name: '08-track',
@@ -673,7 +721,7 @@ const PANELS = [
       },
       { sec: [t('DONE '), t('(3 stages moved · each message processed once)', 'dim')] },
     ],
-    footer: ['Reading replies…', '(daily autopilot · SYNC NOW any time)'],
+    footer: ['Reading replies', 'daily autopilot · SYNC NOW any time'],
   },
   {
     name: '09-schedule',
@@ -711,12 +759,12 @@ const PANELS = [
       },
       { sec: [t('/api/health '), t('→ pipeline.stale: false', 'fn')] },
     ],
-    footer: ['Looping…', '(time-boxed runs · every one resumes where the last stopped)'],
+    footer: ['Looping', 'time-boxed runs · every one resumes where the last stopped'],
   },
 ];
 
-for (const p of PANELS) {
+for (const [i, p] of PANELS.entries()) {
   const file = new URL(`./${p.name}.svg`, import.meta.url);
-  fs.writeFileSync(file, panel(p));
+  fs.writeFileSync(file, panel({ ...p, hue: HUES[i % HUES.length] }));
   console.log('wrote', p.name + '.svg');
 }

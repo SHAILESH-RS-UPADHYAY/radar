@@ -59,31 +59,56 @@ describe('jdLines', () => {
 
   it('bands lines red when they ask for something you lack (skills or years), green only when you have it all', () => {
     // 3+ years asked, you have 2: a gap even though you know TypeScript and Node.js.
+    // What you have keeps its (green) box on a red line.
     expect(lines[4].mark).toBe('-');
-    expect(marked(4)).toEqual(['3+ years']);
+    expect(marked(4)).toEqual(['3+ years', 'TypeScript', 'Node.js']);
     expect(lines[5].mark).toBe('-');
     expect(marked(5)).toEqual(['Kubernetes']);
     expect(lines[6].mark).toBe('-');
-    // "Go-to-market" is not the Go language.
-    expect(lines[7].mark).toBeNull();
-    expect(lines[1].mark).toBeNull();
+    expect(marked(6)).toEqual(['Python', 'Kubernetes']);
+    // "Go-to-market" is not the Go language: a plain bullet, so the blue band.
+    expect(lines[7].mark).toBe('~');
+    expect(lines[7].segs.some((s) => s.tone === 'gap')).toBe(false);
+    // A paragraph carrying a detail (tech here) gets the blue band too.
+    expect(lines[1].mark).toBe('~');
     const enough = jdLines('• 3+ years with TypeScript', ['typescript'], [], { years: 5 });
     expect(enough[0].mark).toBe('+');
     expect(enough[0].segs.filter((s) => s.hl).map((s) => s.text)).toEqual(['3+ years', 'TypeScript']);
   });
 
-  it('colours words like code', () => {
+  it('keeps plain paragraphs white, and a blank line inside a block of one colour banded', () => {
+    const plain = jdLines('We are a small team that loves shipping.', [], []);
+    expect(plain[0].mark).toBeNull();
+    expect(plain[0].segs.every((s) => s.tone === 'plain')).toBe(true);
+    const block = jdLines('• Use Python daily\n\n• Write Python tests', ['python'], []);
+    expect(block.map((l) => l.mark)).toEqual(['+', '+', '+']);
+  });
+
+  it('syntax-colours banded lines like code in a diff', () => {
     const tones = (i: number) => lines[i].segs.filter((s) => s.tone !== 'plain').map((s) => [s.text, s.tone]);
     expect(tones(5)).toEqual([
       ['• ', 'kw'],
       ['Experience', 'bold'],
+      ['running', 'verb'],
       ['Kubernetes', 'gap'],
+      ['in', 'conj'],
     ]);
-    expect(tones(1)).toEqual([['Postgres', 'tech']]);
+    expect(tones(1)).toEqual([
+      ['building', 'verb'],
+      ['on', 'conj'],
+      ['Postgres', 'tech'],
+    ]);
+    // "Salary:" is a key, like a property in code.
     expect(tones(8)).toEqual([
+      ['Salary', 'fn'],
       ['€70k – €90k', 'str'],
+      ['Apply', 'verb'],
+      ['at', 'conj'],
       ['https://acme.io/jobs', 'link'],
     ]);
+    // A capital mid-sentence is a name; the one opening the sentence is not.
+    const names = jdLines('• Travel to Berlin twice a year.', [], [])[0].segs;
+    expect(names.filter((s) => s.tone === 'name').map((s) => s.text)).toEqual(['Berlin']);
   });
 });
 

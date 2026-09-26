@@ -2,18 +2,16 @@
 <title id="01-discover-t">DISCOVER: StartupMap crawl to ATS boards</title>
 <style>
   text { font-family: 'JetBrains Mono','Cascadia Mono',Consolas,Menlo,'DejaVu Sans Mono',monospace; font-size: 15px; }
-  .spin { transform-box: fill-box; transform-origin: center; animation: spin 2.4s linear infinite; }
   .led { animation: led 1.6s steps(2, jump-none) infinite; }
   .roll { animation: roll 0.18s steps(2) infinite; }
   .glow { filter: drop-shadow(0 0 6px rgba(0,255,65,0.55)); }
   .glitch-r { animation: gr 3.2s steps(1) infinite; }
   .glitch-c { animation: gc 3.2s steps(1) infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes led { 50% { opacity: 0.25; } }
   @keyframes roll { 50% { transform: translateY(1px); } }
   @keyframes gr { 0%,88%,100% { transform: translate(0,0); } 90% { transform: translate(-4px,1px); } 94% { transform: translate(3px,-1px); } }
   @keyframes gc { 0%,88%,100% { transform: translate(0,0); } 91% { transform: translate(4px,-1px); } 95% { transform: translate(-3px,1px); } }
-  @media (prefers-reduced-motion: reduce) { .spin, .led, .roll, .glitch-r, .glitch-c { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .led, .roll, .glitch-r, .glitch-c { animation: none; } }
 </style>
 <defs>
   <clipPath id="01-discover-win"><rect width="960" height="350" rx="10"/></clipPath>
@@ -28,6 +26,7 @@
   <clipPath id="01-discover-c7"><rect x="0" y="224" width="0" height="27"><animate attributeName="width" values="108;642" begin="7.82s" dur="0.93s" fill="freeze"/></rect></clipPath>
   <clipPath id="01-discover-c8"><rect x="0" y="249" width="0" height="27"><animate attributeName="width" values="108;678" begin="8.87s" dur="0.99s" fill="freeze"/></rect></clipPath>
   <clipPath id="01-discover-c9"><rect x="0" y="274" width="0" height="27"><animate attributeName="width" values="44;677" begin="9.98s" dur="1.10s" fill="freeze"/></rect></clipPath>
+  <clipPath id="01-discover-sw"><rect x="44" y="316" width="0" height="22"><animate attributeName="width" values="0;153;153" keyTimes="0;0.075;1" dur="6s" begin="0.4s" repeatCount="indefinite"/></rect></clipPath><clipPath id="01-discover-sn"><rect x="44" y="316" width="153" height="22"><animate attributeName="x" values="44;197;197" keyTimes="0;0.075;1" dur="6s" begin="0.4s" repeatCount="indefinite"/></rect></clipPath>
 </defs>
 <g clip-path="url(#01-discover-win)">
   <rect width="960" height="350" fill="#000"/>
@@ -60,7 +59,7 @@
   <rect x="108" y="253" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="8.87s"/><animate attributeName="x" from="108" to="668" begin="8.87s" dur="0.99s" fill="freeze"/><set attributeName="opacity" to="0" begin="9.86s"/></rect>
   <g clip-path="url(#01-discover-c9)"><text x="22" y="293" fill="#8a8a8a">⎿</text><text x="44" y="293" fill="#f8f8f2" textLength="45" lengthAdjust="spacingAndGlyphs" xml:space="preserve">DONE </text><text x="89" y="293" fill="#8a8a8a" textLength="576" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(+3 companies tracked · next sync in 48h · pause on 429/403/503)</text></g>
   <rect x="44" y="278" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="9.98s"/><animate attributeName="x" from="44" to="667" begin="9.98s" dur="1.10s" fill="freeze"/><animate attributeName="opacity" values="1;0" dur="1s" begin="11.09s" repeatCount="indefinite" calcMode="discrete"/></rect>
-  <g><text x="28" y="332" fill="#e8825a" class="spin">✻</text><text x="44" y="332" fill="#fd971f" textLength="162" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Crawling politely…</text><text x="215" y="332" fill="#8a8a8a" textLength="486" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(StartupMap every 48h · your CSV imports on every run)</text></g>
+  <g><circle cx="29" cy="327" r="7" fill="none" stroke="#f92672" stroke-opacity="0.5"/><g transform="translate(29 327)"><g><animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="1.4s" repeatCount="indefinite"/><path d="M0 0V-7A7 7 0 0 1 7 0Z" fill="#f92672" opacity="0.3"/><path d="M0 0H7" stroke="#f92672" stroke-width="1.5"/></g><circle r="1.3" fill="#f92672"/></g><g clip-path="url(#01-discover-sw)" style="filter:drop-shadow(0 0 5px #f9267288)"><text x="44" y="332" fill="#f92672" textLength="153" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Crawling politely</text></g><g clip-path="url(#01-discover-sn)"><text x="44" y="332" fill="#f92672" opacity="0" textLength="153" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0.5;0;0" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>$^$#]*%| $^C&gt;=|*/</text><text x="44" y="332" fill="#f92672" opacity="0" textLength="153" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0;0.5;0" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>=&lt;B?$B|! E[F}[$&lt;/</text><text x="44" y="332" fill="#f92672" opacity="0" textLength="153" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0;0;0.5" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>&lt;][^||+0 E!0*%&gt;%$</text></g><text x="197" y="332" fill="#f92672"><animate attributeName="opacity" values="1;0" dur="1s" repeatCount="indefinite" calcMode="discrete"/>_</text><text x="215" y="332" fill="#8a8a8a" textLength="486" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│ StartupMap every 48h · your CSV imports on every run</text></g>
   <rect width="960" height="350" fill="url(#01-discover-scan)" class="roll"/>
 </g>
 <rect x="0.5" y="0.5" width="959" height="349" rx="10" fill="none" stroke="#303030"/>

@@ -24,14 +24,18 @@ export type Tone =
   | 'have'
   | 'gap'
   | 'tech'
-  | 'link';
+  | 'link'
+  | 'conj'
+  | 'verb'
+  | 'name';
 export interface Seg {
   text: string;
   tone: Tone;
   /** Brighter background inside a band: the words that earned the line its colour. */
   hl?: boolean;
 }
-export type Mark = '+' | '-' | null;
+/** '+' asks only for what you have, '-' asks for something you lack, '~' a posting detail that touches neither. */
+export type Mark = '+' | '-' | '~' | null;
 export interface TermLine {
   /** 'section' lines ("⎿ …") sit outside the numbered gutter. */
   kind: 'section' | 'code' | 'head' | 'bullet' | 'text' | 'blank';
@@ -174,6 +178,76 @@ export function highlight(
   return segs;
 }
 
+// On a banded line the prose is syntax-coloured like code in a diff: connectors are keywords (pink), verbs are
+// calls (green), names mid-sentence are literals (yellow), a "Key:" is a property (green); the rest stays white.
+// Unbanded lines stay white.
+const CONNECTORS = new Set(
+  'and or with without for to in into on of at by from via per across within through as than if when while where not no'.split(
+    ' ',
+  ),
+);
+const VERBS = new Set(
+  'build design develop own lead drive work collaborate ship maintain create implement deploy scale improve write test debug partner mentor define deliver manage support ensure help join grow learn use apply optimize optimise architect analyze analyse research operate monitor integrate automate contribute communicate review solve launch evolve shape turn make bring take run serve handle champion influence identify prototype experiment iterate measure translate coordinate execute plan prioritize prioritise document troubleshoot investigate evaluate validate craft enable empower expand streamline establish oversee hire train coach present report track respond resolve refactor migrate secure protect understand thrive enjoy travel simplify strengthen reduce increase accelerate adopt advocate align assess assist benchmark configure consult demonstrate detect diagnose engage enhance facilitate foster gather guide leverage modernize negotiate onboard organize participate perform pioneer produce promote provide publish recommend refine represent scope share spearhead standardize supervise sustain tackle teach transform unblock upgrade utilize led built wrote ran grew made took brought'.split(
+    ' ',
+  ),
+);
+
+// Bullets that open with one of these are requirements ("Experience with…", "Strong…"), banded like actions.
+const ASKS = new Set(
+  "experience experienced knowledge familiarity understanding ability proficiency proficient expertise background degree bachelor’s bachelor's master’s master's solid deep hands-on strong excellent proven".split(
+    ' ',
+  ),
+);
+
+function isVerb(w: string): boolean {
+  if (VERBS.has(w)) return true;
+  for (const [end, add] of [
+    ['s', ''],
+    ['es', ''],
+    ['d', ''],
+    ['ed', ''],
+    ['ing', ''],
+    ['ing', 'e'],
+  ] as const)
+    if (w.endsWith(end) && VERBS.has(w.slice(0, -end.length) + add)) return true;
+  const doubled = w.match(/^(.*?)([b-df-hj-np-tv-z])\2(?:ing|ed)$/); // shipping, planned
+  return !!doubled && VERBS.has(doubled[1] + doubled[2]);
+}
+
+/** Plain words → code-like classes; spaces and punctuation stay plain. `start`: the text opens a sentence. */
+function prose(text: string, start: boolean): Seg[] {
+  const segs: Seg[] = [];
+  const push = (t: string, tone: Tone) => {
+    const last = segs[segs.length - 1];
+    if (last?.tone === tone) last.text += t;
+    else segs.push({ text: t, tone });
+  };
+  let sentenceStart = start;
+  for (const m of text.matchAll(/[A-Za-z][A-Za-z'’-]*|[^A-Za-z]+/g)) {
+    const t = m[0];
+    if (!/^[A-Za-z]/.test(t)) {
+      push(t, 'plain');
+      if (/[.!?]/.test(t)) sentenceStart = true;
+      continue;
+    }
+    const w = t.toLowerCase();
+    push(
+      t,
+      text[m.index + t.length] === ':'
+        ? 'fn'
+        : CONNECTORS.has(w)
+          ? 'conj'
+          : isVerb(w)
+            ? 'verb'
+            : t.length > 1 && /^[A-Z]/.test(t) && !sentenceStart
+              ? 'name'
+              : 'plain',
+    );
+    sentenceStart = false;
+  }
+  return segs;
+}
+
 /** A short line that stands alone and ends without punctuation reads as a section title. */
 function isHeading(t: string, prevBlank: boolean, next: string | undefined): boolean {
   if (t.length > 70 || BULLET.test(t)) return false;
@@ -234,12 +308,37 @@ export function jdLines(
       const m = segs[0].text.match(/^([A-Za-z][\w'’-]*)([\s\S]*)$/);
       if (m) segs.splice(0, 1, { text: m[1], tone: 'bold' }, ...(m[2] ? [{ text: m[2], tone: 'plain' as Tone }] : []));
     }
-    // A gap anywhere makes the line red: what you still need is what matters most.
-    const mark: Mark = segs.some((s) => s.tone === 'gap') ? '-' : segs.some((s) => s.tone === 'have') ? '+' : null;
-    if (mark) for (const s of segs) if (s.tone === (mark === '-' ? 'gap' : 'have')) s.hl = true;
-    out.push({ kind: bullet ? 'bullet' : 'text', mark, segs: bullet ? [{ text: '• ', tone: 'kw' }, ...segs] : segs });
+    // A gap anywhere makes the line red: what you still need is what matters most. Every word you have
+    // keeps its green box, even on a red line. A line carrying a detail (tech, a number, pay, a link, a
+    // "must") or a bullet that is an action ("Build…") gets the blue band: about 70% of a real briefing
+    // ends up banded, while short perks and plain prose stay white.
+    const detail = segs.some(
+      (s) => s.tone === 'tech' || s.tone === 'num' || s.tone === 'str' || s.tone === 'req' || s.tone === 'link',
+    );
+    const first = bullet && segs[0]?.tone === 'bold' ? segs[0].text.toLowerCase() : '';
+    const action = !!first && (isVerb(first) || ASKS.has(first));
+    const mark: Mark = segs.some((s) => s.tone === 'gap')
+      ? '-'
+      : segs.some((s) => s.tone === 'have')
+        ? '+'
+        : detail || action
+          ? '~'
+          : null;
+    for (const s of segs) if (s.tone === 'gap' || s.tone === 'have') s.hl = true;
+    const coloured = mark
+      ? segs.flatMap((s, k) => (s.tone === 'plain' ? prose(s.text, k === 0 && !bullet) : [s]))
+      : segs;
+    out.push({
+      kind: bullet ? 'bullet' : 'text',
+      mark,
+      segs: bullet ? [{ text: '• ', tone: 'kw' }, ...coloured] : coloured,
+    });
   });
   while (out.length && out[out.length - 1].kind === 'blank') out.pop();
+  // A blank line inside a block of one colour keeps the band, so blocks read as solid, like a real diff.
+  out.forEach((l, i) => {
+    if (l.kind === 'blank' && out[i - 1]?.mark && out[i - 1].mark === out[i + 1]?.mark) l.mark = out[i - 1].mark;
+  });
   return out;
 }
 

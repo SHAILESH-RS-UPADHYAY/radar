@@ -408,6 +408,8 @@ export default function DashboardPage() {
 
   const available = shown.filter((m) => m.status === 'new');
   const saved = shown.filter((m) => m.status === 'saved').sort(byScore);
+  // HACK ALL walks only postings that are still open; closed ones stay in the Vault, flagged.
+  const hackable = saved.filter((m) => m.job.is_active);
   const applied = matches.filter((m) => m.status === 'applied').sort(byRecent);
   const archived = applied.filter((m) => CLOSED_STAGES.includes(m.stage || 'applied'));
   const activeOps = applied.filter((m) => !CLOSED_STAGES.includes(m.stage || 'applied'));
@@ -822,15 +824,15 @@ export default function DashboardPage() {
               </aside>
 
               <div className="min-w-0">
-                {saved.length > 1 && (
+                {hackable.length > 1 && (
                   <button
                     type="button"
-                    onClick={() => startHack(saved.map((m) => m.id))}
+                    onClick={() => startHack(hackable.map((m) => m.id))}
                     className="group/hack mb-5 flex w-full items-center justify-center gap-3 rounded-full border border-phosphor bg-phosphor/10 py-3.5 font-mono text-xs font-bold tracking-[0.35em] text-phosphor shadow-[0_0_28px_rgba(0,255,65,0.3)] transition-all hover:bg-phosphor hover:text-black sm:w-auto sm:px-10"
                   >
                     <span className="h-2 w-2 animate-pulse rounded-full bg-phosphor group-hover/hack:bg-black" />
-                    <span className="glitch" data-text={'HACK ALL · ' + saved.length}>
-                      HACK ALL · {saved.length}
+                    <span className="glitch" data-text={'HACK ALL · ' + hackable.length}>
+                      HACK ALL · {hackable.length}
                     </span>
                   </button>
                 )}

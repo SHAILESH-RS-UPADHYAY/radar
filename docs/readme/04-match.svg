@@ -2,18 +2,16 @@
 <title id="04-match-t">MATCH: how every job gets its score</title>
 <style>
   text { font-family: 'JetBrains Mono','Cascadia Mono',Consolas,Menlo,'DejaVu Sans Mono',monospace; font-size: 15px; }
-  .spin { transform-box: fill-box; transform-origin: center; animation: spin 2.4s linear infinite; }
   .led { animation: led 1.6s steps(2, jump-none) infinite; }
   .roll { animation: roll 0.18s steps(2) infinite; }
   .glow { filter: drop-shadow(0 0 6px rgba(0,255,65,0.55)); }
   .glitch-r { animation: gr 3.2s steps(1) infinite; }
   .glitch-c { animation: gc 3.2s steps(1) infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes led { 50% { opacity: 0.25; } }
   @keyframes roll { 50% { transform: translateY(1px); } }
   @keyframes gr { 0%,88%,100% { transform: translate(0,0); } 90% { transform: translate(-4px,1px); } 94% { transform: translate(3px,-1px); } }
   @keyframes gc { 0%,88%,100% { transform: translate(0,0); } 91% { transform: translate(4px,-1px); } 95% { transform: translate(-3px,1px); } }
-  @media (prefers-reduced-motion: reduce) { .spin, .led, .roll, .glitch-r, .glitch-c { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .led, .roll, .glitch-r, .glitch-c { animation: none; } }
 </style>
 <defs>
   <clipPath id="04-match-win"><rect width="960" height="325" rx="10"/></clipPath>
@@ -27,6 +25,7 @@
   <clipPath id="04-match-c6"><rect x="0" y="199" width="0" height="27"><animate attributeName="width" values="108;660" begin="6.29s" dur="0.96s" fill="freeze"/></rect></clipPath>
   <clipPath id="04-match-c7"><rect x="0" y="224" width="0" height="27"><animate attributeName="width" values="108;615" begin="7.37s" dur="0.88s" fill="freeze"/></rect></clipPath>
   <clipPath id="04-match-c8"><rect x="0" y="249" width="0" height="27"><animate attributeName="width" values="44;416" begin="8.37s" dur="0.64s" fill="freeze"/></rect></clipPath>
+  <clipPath id="04-match-sw"><rect x="44" y="291" width="0" height="22"><animate attributeName="width" values="0;63;63" keyTimes="0;0.075;1" dur="6s" begin="0.4s" repeatCount="indefinite"/></rect></clipPath><clipPath id="04-match-sn"><rect x="44" y="291" width="63" height="22"><animate attributeName="x" values="44;107;107" keyTimes="0;0.075;1" dur="6s" begin="0.4s" repeatCount="indefinite"/></rect></clipPath>
 </defs>
 <g clip-path="url(#04-match-win)">
   <rect width="960" height="325" fill="#000"/>
@@ -55,7 +54,7 @@
   <rect x="108" y="228" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="7.37s"/><animate attributeName="x" from="108" to="605" begin="7.37s" dur="0.88s" fill="freeze"/><set attributeName="opacity" to="0" begin="8.25s"/></rect>
   <g clip-path="url(#04-match-c8)"><text x="22" y="268" fill="#8a8a8a">⎿</text><text x="44" y="268" fill="#f8f8f2" textLength="45" lengthAdjust="spacingAndGlyphs" xml:space="preserve">DONE </text><text x="89" y="268" fill="#8a8a8a" textLength="315" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(396 scored · 2 ≥ 80 · 1 near-miss)</text></g>
   <rect x="44" y="253" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="8.37s"/><animate attributeName="x" from="44" to="406" begin="8.37s" dur="0.64s" fill="freeze"/><animate attributeName="opacity" values="1;0" dur="1s" begin="9.01s" repeatCount="indefinite" calcMode="discrete"/></rect>
-  <g><text x="28" y="307" fill="#e8825a" class="spin">✻</text><text x="44" y="307" fill="#fd971f" textLength="72" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Scoring…</text><text x="125" y="307" fill="#8a8a8a" textLength="405" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(bar 80 by default · 50–79 goes to OVERCLOCK)</text></g>
+  <g><circle cx="29" cy="302" r="7" fill="none" stroke="#a6e22e" stroke-opacity="0.5"/><g transform="translate(29 302)"><g><animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="1.4s" repeatCount="indefinite"/><path d="M0 0V-7A7 7 0 0 1 7 0Z" fill="#a6e22e" opacity="0.3"/><path d="M0 0H7" stroke="#a6e22e" stroke-width="1.5"/></g><circle r="1.3" fill="#a6e22e"/></g><g clip-path="url(#04-match-sw)" style="filter:drop-shadow(0 0 5px #a6e22e88)"><text x="44" y="307" fill="#a6e22e" textLength="63" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Scoring</text></g><g clip-path="url(#04-match-sn)"><text x="44" y="307" fill="#a6e22e" opacity="0" textLength="63" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0.5;0;0" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>!!&gt;&gt;}?*</text><text x="44" y="307" fill="#a6e22e" opacity="0" textLength="63" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0;0.5;0" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>BCF&gt;D}&amp;</text><text x="44" y="307" fill="#a6e22e" opacity="0" textLength="63" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0;0;0.5" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>BC&amp;%=&lt;~</text></g><text x="107" y="307" fill="#a6e22e"><animate attributeName="opacity" values="1;0" dur="1s" repeatCount="indefinite" calcMode="discrete"/>_</text><text x="125" y="307" fill="#8a8a8a" textLength="405" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│ bar 80 by default · 50–79 goes to OVERCLOCK</text></g>
   <rect width="960" height="325" fill="url(#04-match-scan)" class="roll"/>
 </g>
 <rect x="0.5" y="0.5" width="959" height="324" rx="10" fill="none" stroke="#303030"/>

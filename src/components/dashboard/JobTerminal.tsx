@@ -4,6 +4,7 @@ import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useStat
 import { useReducedMotion } from 'framer-motion';
 import { Modal } from '@/components/hud/Modal';
 import { headerLines, jdLines, sectionLine, type JobFacts, type TermLine, type Tone } from '@/lib/jd';
+import { drawWords } from '@/lib/status-words';
 import { useApi } from '@/lib/use-api';
 import { timeAgo, type MatchAction, type MatchedJob } from './types';
 
@@ -45,16 +46,33 @@ const TONE: Record<Tone, string> = {
   req: 'text-[#fd971f]',
   comment: 'text-[#8a8a8a]',
   head: 'font-bold text-[#66d9ef]',
-  have: 'font-bold text-[#a6e22e]',
-  gap: 'font-bold text-[#ff6b9a] underline decoration-dotted underline-offset-4',
+  // Your skills: white on their green box; your gaps: yellow on their red box.
+  have: 'font-bold text-white',
+  gap: 'font-bold text-[#ffe66d] underline decoration-dotted underline-offset-4',
   tech: 'text-[#66d9ef]',
   link: 'text-[#66d9ef] underline underline-offset-4',
+  // Only on banded lines: prose syntax-coloured like code in a diff.
+  conj: 'text-[#f92672]',
+  verb: 'text-[#a6e22e]',
+  name: 'text-[#e6db74]',
 };
-const BAND = { '+': 'bg-[#003e00]', '-': 'bg-[#500000]' } as const;
-const NUMBER = { '+': 'text-[#5fd35f]', '-': 'text-[#ff6b6b]' } as const;
+// Keyword pink turns lighter on a red band, to stay readable there.
+const ON_RED: Partial<Record<Tone, string>> = { conj: 'text-[#ff8fb1]' };
+// '~' is a posting detail that touches neither: a deep blue band, so most of the briefing is banded.
+const BAND = { '+': 'bg-[#003e00]', '-': 'bg-[#500000]', '~': 'bg-[#0c2340]' } as const;
+const NUMBER = { '+': 'text-[#5fd35f]', '-': 'text-[#ff6b6b]', '~': 'text-[#6cb6ff]' } as const;
 // The words that earned a line its colour get a brighter box, like changed characters in a diff.
-const HL = { '+': 'rounded-[2px] bg-[#127a12]', '-': 'rounded-[2px] bg-[#9c1616]' } as const;
-const VERBS = ['Decrypting', 'Parsing', 'Cross-matching', 'Verifying', 'Scoring', 'Compiling'];
+const HL = {
+  '+': 'rounded-[2px] bg-[#127a12]',
+  '-': 'rounded-[2px] bg-[#9c1616]',
+  '~': 'rounded-[2px] bg-[#1d4d80]',
+} as const;
+// Status line while a briefing types: each word decrypts itself in its own colour, next to a radar sweep.
+const HUES = ['#66d9ef', '#f92672', '#ae81ff', '#e6db74', '#a6e22e'];
+const WORD_MS = 1700;
+const DECRYPT_MS = 420;
+const NOISE_MS = 45;
+const NOISE = '01<>/\\|{}[]#$%&*+=?!^~ABCDEF';
 
 // Typing pace: a fast typist, uneven like a person, pausing at line ends — slow enough to read along.
 const BASE_CPS = 140;
@@ -101,6 +119,68 @@ const Caret = ({ blink }: { blink: boolean }) => (
   />
 );
 
+/** A tiny radar scope: the beam turns while RADAR works. */
+const Sweep = ({ color }: { color: string }) => (
+  <span
+    className="relative inline-block size-[0.95em] shrink-0 overflow-hidden rounded-full border"
+    style={{ borderColor: color + '80' }}
+  >
+    <span
+      className="absolute inset-0 animate-spin rounded-full [animation-duration:1.4s] motion-reduce:animate-none"
+      style={{ background: `conic-gradient(transparent 65%, ${color})` }}
+    />
+    <span
+      className="absolute left-1/2 top-1/2 size-[2px] -translate-x-1/2 -translate-y-1/2 rounded-full"
+      style={{ background: color }}
+    />
+  </span>
+);
+
+/** Random glyphs settle into the word, left to right, then the RADAR glitch flickers over it now and then. */
+function Decrypt({ word, color, reduce }: { word: string; color: string; reduce: boolean }) {
+  const solid = useRef<HTMLSpanElement>(null);
+  const noise = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    const s = solid.current;
+    const n = noise.current;
+    if (!s || !n) return;
+    if (reduce) {
+      s.textContent = word;
+      n.textContent = '';
+      return;
+    }
+    let raf = 0;
+    let t0 = 0;
+    let rolled = -Infinity;
+    let glyphs: string[] = [];
+    const frame = (t: number) => {
+      if (!t0) t0 = t;
+      const settled = Math.min(word.length, Math.floor(((t - t0) / DECRYPT_MS) * word.length));
+      if (t - rolled > NOISE_MS) {
+        rolled = t;
+        glyphs = [...word].map((c) => (c === ' ' ? ' ' : NOISE[Math.floor(Math.random() * NOISE.length)]));
+      }
+      s.textContent = word.slice(0, settled);
+      n.textContent = glyphs.slice(settled).join('');
+      if (settled < word.length) raf = requestAnimationFrame(frame);
+    };
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [word, reduce]);
+
+  // React never renders text into these spans, so the effect can rewrite them every frame.
+  return (
+    <span className="shrink-0" style={{ color, textShadow: `0 0 10px ${color}66` }}>
+      <span className="glitch" data-text={word}>
+        <span ref={solid} />
+        <span ref={noise} className="opacity-50" />
+      </span>
+      <span className="caret-blink">_</span>
+    </span>
+  );
+}
+
 /** One row: "⎿" section lines outside the gutter; numbered lines with a +/- band like a diff. */
 const Row = memo(function Row({
   line,
@@ -121,8 +201,12 @@ const Row = memo(function Row({
     const text = line.segs[i].text.slice(0, left);
     left -= text.length;
     const seg = line.segs[i];
+    const box = seg.tone === 'have' ? '+' : seg.tone === 'gap' ? '-' : line.mark;
     parts.push(
-      <span key={i} className={TONE[seg.tone] + (seg.hl && line.mark ? ' ' + HL[line.mark] : '')}>
+      <span
+        key={i}
+        className={((line.mark === '-' && ON_RED[seg.tone]) || TONE[seg.tone]) + (seg.hl && box ? ' ' + HL[box] : '')}
+      >
         {text}
       </span>,
     );
@@ -265,6 +349,15 @@ function TerminalView({
   }, [lines]);
   const done = lines.length > 0 && (skipped || !!reduce || elapsed >= total);
 
+  // Fresh status words for every briefing, a new one every WORD_MS until the typing is done.
+  const [words] = useState(() => drawWords(16));
+  const [wordIdx, setWordIdx] = useState(0);
+  useEffect(() => {
+    if (done) return;
+    const id = setInterval(() => setWordIdx((i) => Math.min(i + 1, words.length - 1)), WORD_MS);
+    return () => clearInterval(id);
+  }, [done, words.length]);
+
   // The typewriter clock. Rows read it to know how much of each line to show.
   useEffect(() => {
     if (!lines.length || skipped || reduce) return;
@@ -378,7 +471,8 @@ function TerminalView({
   }, [done, lines.length, apply, vault, hack, copy, jump]);
 
   const posting = detail?.posting.state;
-  const verb = VERBS[Math.floor(elapsed / 1600) % VERBS.length];
+  const hue = HUES[wordIdx % HUES.length];
+  const cps = elapsed > 300 ? Math.round(typed / (elapsed / 1000)) : 0;
   const hint = 'rounded-sm px-2 py-1 transition-colors hover:bg-[#1f1f1f] focus-visible:bg-[#1f1f1f]';
   const key = 'mr-1.5 text-[#8a8a8a]';
 
@@ -470,12 +564,21 @@ function TerminalView({
 
       <div className="shrink-0 px-3 pb-2 pt-1 sm:px-4">
         {!done ? (
-          <p className="text-[#e8825a]">
-            ✻ {detail ? verb : 'Connecting'}…{' '}
-            <span className="text-[#8a8a8a]">
-              ({(elapsed / 1000).toFixed(1)}s · ↓ {(typed / 1000).toFixed(1)}k chars · any key to skip)
-            </span>
-          </p>
+          !error && (
+            <p aria-hidden="true" className="flex items-center gap-2 overflow-hidden whitespace-nowrap">
+              <Sweep color={hue} />
+              <Decrypt word={words[wordIdx]} color={hue} reduce={!!reduce} />
+              <span className="tabular-nums text-[#8a8a8a]">
+                T+{(elapsed / 1000).toFixed(1)}s<span className="text-[#4a4a4a]"> │ </span>
+                {(typed / 1000).toFixed(1)}k chars
+                <span className="hidden sm:inline">
+                  <span className="text-[#4a4a4a]"> │ </span>
+                  {cps} c/s
+                </span>
+              </span>
+              <span className="ml-auto hidden text-[#6e6e6e] sm:inline">[any key] skip</span>
+            </p>
+          )
         ) : (
           <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
             <button type="button" onClick={apply} className={hint}>

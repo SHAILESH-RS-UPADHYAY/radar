@@ -2,18 +2,16 @@
 <title id="03-supabase-t">DATA: what lives in Supabase</title>
 <style>
   text { font-family: 'JetBrains Mono','Cascadia Mono',Consolas,Menlo,'DejaVu Sans Mono',monospace; font-size: 15px; }
-  .spin { transform-box: fill-box; transform-origin: center; animation: spin 2.4s linear infinite; }
   .led { animation: led 1.6s steps(2, jump-none) infinite; }
   .roll { animation: roll 0.18s steps(2) infinite; }
   .glow { filter: drop-shadow(0 0 6px rgba(0,255,65,0.55)); }
   .glitch-r { animation: gr 3.2s steps(1) infinite; }
   .glitch-c { animation: gc 3.2s steps(1) infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes led { 50% { opacity: 0.25; } }
   @keyframes roll { 50% { transform: translateY(1px); } }
   @keyframes gr { 0%,88%,100% { transform: translate(0,0); } 90% { transform: translate(-4px,1px); } 94% { transform: translate(3px,-1px); } }
   @keyframes gc { 0%,88%,100% { transform: translate(0,0); } 91% { transform: translate(4px,-1px); } 95% { transform: translate(-3px,1px); } }
-  @media (prefers-reduced-motion: reduce) { .spin, .led, .roll, .glitch-r, .glitch-c { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .led, .roll, .glitch-r, .glitch-c { animation: none; } }
 </style>
 <defs>
   <clipPath id="03-supabase-win"><rect width="960" height="400" rx="10"/></clipPath>
@@ -30,6 +28,7 @@
   <clipPath id="03-supabase-c9"><rect x="0" y="274" width="0" height="27"><animate attributeName="width" values="108;651" begin="9.76s" dur="0.94s" fill="freeze"/></rect></clipPath>
   <clipPath id="03-supabase-c10"><rect x="0" y="299" width="0" height="27"><animate attributeName="width" values="108;138" begin="10.82s" dur="0.18s" fill="freeze"/></rect></clipPath>
   <clipPath id="03-supabase-c11"><rect x="0" y="324" width="0" height="27"><animate attributeName="width" values="44;524" begin="11.12s" dur="0.83s" fill="freeze"/></rect></clipPath>
+  <clipPath id="03-supabase-sw"><rect x="44" y="366" width="0" height="22"><animate attributeName="width" values="0;117;117" keyTimes="0;0.075;1" dur="6s" begin="0.4s" repeatCount="indefinite"/></rect></clipPath><clipPath id="03-supabase-sn"><rect x="44" y="366" width="117" height="22"><animate attributeName="x" values="44;161;161" keyTimes="0;0.075;1" dur="6s" begin="0.4s" repeatCount="indefinite"/></rect></clipPath>
 </defs>
 <g clip-path="url(#03-supabase-win)">
   <rect width="960" height="400" fill="#000"/>
@@ -62,7 +61,7 @@
   <rect x="108" y="303" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="10.82s"/><animate attributeName="x" from="108" to="128" begin="10.82s" dur="0.18s" fill="freeze"/><set attributeName="opacity" to="0" begin="11.00s"/></rect>
   <g clip-path="url(#03-supabase-c11)"><text x="22" y="343" fill="#8a8a8a">⎿</text><text x="44" y="343" fill="#f8f8f2" textLength="81" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Pinecone </text><text x="125" y="343" fill="#8a8a8a" textLength="387" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(one vector per open job, keyed by jobs.id)</text></g>
   <rect x="44" y="328" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="11.12s"/><animate attributeName="x" from="44" to="514" begin="11.12s" dur="0.83s" fill="freeze"/><animate attributeName="opacity" values="1;0" dur="1s" begin="11.95s" repeatCount="indefinite" calcMode="discrete"/></rect>
-  <g><text x="28" y="382" fill="#e8825a" class="spin">✻</text><text x="44" y="382" fill="#fd971f" textLength="126" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Syncing state…</text><text x="179" y="382" fill="#8a8a8a" textLength="396" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(migrations 001 → 007 · each safe to re-run)</text></g>
+  <g><circle cx="29" cy="377" r="7" fill="none" stroke="#e6db74" stroke-opacity="0.5"/><g transform="translate(29 377)"><g><animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="1.4s" repeatCount="indefinite"/><path d="M0 0V-7A7 7 0 0 1 7 0Z" fill="#e6db74" opacity="0.3"/><path d="M0 0H7" stroke="#e6db74" stroke-width="1.5"/></g><circle r="1.3" fill="#e6db74"/></g><g clip-path="url(#03-supabase-sw)" style="filter:drop-shadow(0 0 5px #e6db7488)"><text x="44" y="382" fill="#e6db74" textLength="117" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Syncing state</text></g><g clip-path="url(#03-supabase-sn)"><text x="44" y="382" fill="#e6db74" opacity="0" textLength="117" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0.5;0;0" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>!B1{]!&lt; %#1=0</text><text x="44" y="382" fill="#e6db74" opacity="0" textLength="117" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0;0.5;0" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>=*{0^E? 0}?[{</text><text x="44" y="382" fill="#e6db74" opacity="0" textLength="117" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0;0;0.5" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>&amp;!~AA!^ //}C1</text></g><text x="161" y="382" fill="#e6db74"><animate attributeName="opacity" values="1;0" dur="1s" repeatCount="indefinite" calcMode="discrete"/>_</text><text x="179" y="382" fill="#8a8a8a" textLength="396" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│ migrations 001 → 007 · each safe to re-run</text></g>
   <rect width="960" height="400" fill="url(#03-supabase-scan)" class="roll"/>
 </g>
 <rect x="0.5" y="0.5" width="959" height="399" rx="10" fill="none" stroke="#303030"/>

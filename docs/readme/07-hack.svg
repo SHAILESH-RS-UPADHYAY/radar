@@ -2,18 +2,16 @@
 <title id="07-hack-t">HACK: the assisted apply run</title>
 <style>
   text { font-family: 'JetBrains Mono','Cascadia Mono',Consolas,Menlo,'DejaVu Sans Mono',monospace; font-size: 15px; }
-  .spin { transform-box: fill-box; transform-origin: center; animation: spin 2.4s linear infinite; }
   .led { animation: led 1.6s steps(2, jump-none) infinite; }
   .roll { animation: roll 0.18s steps(2) infinite; }
   .glow { filter: drop-shadow(0 0 6px rgba(0,255,65,0.55)); }
   .glitch-r { animation: gr 3.2s steps(1) infinite; }
   .glitch-c { animation: gc 3.2s steps(1) infinite; }
-  @keyframes spin { to { transform: rotate(360deg); } }
   @keyframes led { 50% { opacity: 0.25; } }
   @keyframes roll { 50% { transform: translateY(1px); } }
   @keyframes gr { 0%,88%,100% { transform: translate(0,0); } 90% { transform: translate(-4px,1px); } 94% { transform: translate(3px,-1px); } }
   @keyframes gc { 0%,88%,100% { transform: translate(0,0); } 91% { transform: translate(4px,-1px); } 95% { transform: translate(-3px,1px); } }
-  @media (prefers-reduced-motion: reduce) { .spin, .led, .roll, .glitch-r, .glitch-c { animation: none; } }
+  @media (prefers-reduced-motion: reduce) { .led, .roll, .glitch-r, .glitch-c { animation: none; } }
 </style>
 <defs>
   <clipPath id="07-hack-win"><rect width="960" height="275" rx="10"/></clipPath>
@@ -25,6 +23,7 @@
   <clipPath id="07-hack-c4"><rect x="0" y="149" width="0" height="27"><animate attributeName="width" values="108;732" begin="4.90s" dur="1.09s" fill="freeze"/></rect></clipPath>
   <clipPath id="07-hack-c5"><rect x="0" y="174" width="0" height="27"><animate attributeName="width" values="108;642" begin="6.11s" dur="0.93s" fill="freeze"/></rect></clipPath>
   <clipPath id="07-hack-c6"><rect x="0" y="199" width="0" height="27"><animate attributeName="width" values="44;533" begin="7.16s" dur="0.85s" fill="freeze"/></rect></clipPath>
+  <clipPath id="07-hack-sw"><rect x="44" y="241" width="0" height="22"><animate attributeName="width" values="0;153;153" keyTimes="0;0.075;1" dur="6s" begin="0.4s" repeatCount="indefinite"/></rect></clipPath><clipPath id="07-hack-sn"><rect x="44" y="241" width="153" height="22"><animate attributeName="x" values="44;197;197" keyTimes="0;0.075;1" dur="6s" begin="0.4s" repeatCount="indefinite"/></rect></clipPath>
 </defs>
 <g clip-path="url(#07-hack-win)">
   <rect width="960" height="275" fill="#000"/>
@@ -47,7 +46,7 @@
   <rect x="108" y="178" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="6.11s"/><animate attributeName="x" from="108" to="632" begin="6.11s" dur="0.93s" fill="freeze"/><set attributeName="opacity" to="0" begin="7.04s"/></rect>
   <g clip-path="url(#07-hack-c6)"><text x="22" y="218" fill="#8a8a8a">⎿</text><text x="44" y="218" fill="#f8f8f2" textLength="45" lengthAdjust="spacingAndGlyphs" xml:space="preserve">NEXT </text><text x="89" y="218" fill="#8a8a8a" textLength="432" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(target 2 of 7 · HACK ALL walks the whole Vault)</text></g>
   <rect x="44" y="203" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="7.16s"/><animate attributeName="x" from="44" to="523" begin="7.16s" dur="0.85s" fill="freeze"/><animate attributeName="opacity" values="1;0" dur="1s" begin="8.01s" repeatCount="indefinite" calcMode="discrete"/></rect>
-  <g><text x="28" y="257" fill="#e8825a" class="spin">✻</text><text x="44" y="257" fill="#fd971f" textLength="162" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Hacking the queue…</text><text x="215" y="257" fill="#8a8a8a" textLength="360" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(prepared in seconds · submitted by you)</text></g>
+  <g><circle cx="29" cy="252" r="7" fill="none" stroke="#ae81ff" stroke-opacity="0.5"/><g transform="translate(29 252)"><g><animateTransform attributeName="transform" type="rotate" from="0" to="360" dur="1.4s" repeatCount="indefinite"/><path d="M0 0V-7A7 7 0 0 1 7 0Z" fill="#ae81ff" opacity="0.3"/><path d="M0 0H7" stroke="#ae81ff" stroke-width="1.5"/></g><circle r="1.3" fill="#ae81ff"/></g><g clip-path="url(#07-hack-sw)" style="filter:drop-shadow(0 0 5px #ae81ff88)"><text x="44" y="257" fill="#ae81ff" textLength="153" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Hacking the queue</text></g><g clip-path="url(#07-hack-sn)"><text x="44" y="257" fill="#ae81ff" opacity="0" textLength="153" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0.5;0;0" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>^}!]+![ &lt;$F ~+!&lt;E</text><text x="44" y="257" fill="#ae81ff" opacity="0" textLength="153" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0;0.5;0" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>&gt;DF1&amp;F= #&gt;{ FEB?*</text><text x="44" y="257" fill="#ae81ff" opacity="0" textLength="153" lengthAdjust="spacingAndGlyphs" xml:space="preserve"><animate attributeName="opacity" values="0;0;0.5" dur="0.18s" repeatCount="indefinite" calcMode="discrete"/>*$]#]C[ +&gt;B %&gt;*&lt;E</text></g><text x="197" y="257" fill="#ae81ff"><animate attributeName="opacity" values="1;0" dur="1s" repeatCount="indefinite" calcMode="discrete"/>_</text><text x="215" y="257" fill="#8a8a8a" textLength="360" lengthAdjust="spacingAndGlyphs" xml:space="preserve">│ prepared in seconds · submitted by you</text></g>
   <rect width="960" height="275" fill="url(#07-hack-scan)" class="roll"/>
 </g>
 <rect x="0.5" y="0.5" width="959" height="274" rx="10" fill="none" stroke="#303030"/>
