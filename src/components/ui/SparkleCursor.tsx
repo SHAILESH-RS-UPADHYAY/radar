@@ -18,8 +18,8 @@ class Particle {
     this.speedX = Math.random() * 2 - 1;
     this.speedY = Math.random() * 2 - 1;
 
-    // Aesthetic colors (Gold/Blue mix)
-    const colors = ['#C4A882', '#5599DD', '#A67B5B', '#FFFFFF'];
+    // HUD palette: mostly phosphor, a little cyan and white
+    const colors = ['#00FF41', '#00FF41', '#B6FFC6', '#22D3EE', '#FFFFFF'];
     this.color = colors[Math.floor(Math.random() * colors.length)];
     this.maxLife = Math.random() * 40 + 20;
     this.life = this.maxLife;
@@ -52,6 +52,9 @@ export default function SparkleCursor() {
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    // A trail only makes sense for a mouse, and not for people who asked for less motion.
+    if (!window.matchMedia('(pointer: fine)').matches) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
