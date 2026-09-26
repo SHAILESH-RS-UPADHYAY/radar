@@ -1,15 +1,22 @@
+import { createHash } from 'node:crypto';
 import { Pinecone } from '@pinecone-database/pinecone';
-import { env } from '@/lib/env';
+import { env, readEnv } from '@/lib/env';
 
 function getPinecone() {
   return new Pinecone({ apiKey: env.pineconeApiKey() });
 }
 
-/** A rejected key is a deployment problem, not the user's: name the variable to fix. */
+/** Length and a one-way fingerprint of the key this server holds, to compare with the key that works. */
+function keyPrint(): string {
+  const key = readEnv('PINECONE_API_KEY') || '';
+  return `${key.length} chars · fp ${createHash('sha256').update(key).digest('hex').slice(0, 8)}`;
+}
+
+/** A rejected key is a deployment problem, not the user's: name the variable to fix, and which key is loaded. */
 export function explainVectorError(err: unknown): string | null {
   const e = err as { name?: string; message?: string } | null;
   if (e?.name === 'PineconeAuthorizationError' || /api key you provided was rejected/i.test(e?.message || ''))
-    return "Job search is offline: Pinecone rejected the server's PINECONE_API_KEY. Set the exact key (no quotes) in Vercel → Settings → Environment Variables, then redeploy.";
+    return `Job search is offline: Pinecone rejected the server's PINECONE_API_KEY (${keyPrint()}). Set the exact key (no quotes) in Vercel → Settings → Environment Variables → Production, then redeploy.`;
   return null;
 }
 

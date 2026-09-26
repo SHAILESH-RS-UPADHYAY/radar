@@ -142,7 +142,7 @@ export default function ProtocolPage() {
               ],
               [
                 'RE-CHECKED',
-                'Every job-board posting in your Vault is opened again each day and marked POSTING CLOSED when it goes.',
+                'Every job-board posting in your Vault is opened again each day; one that has closed leaves the Vault on the next scan.',
               ],
               ['BUDGET', 'About 285 seconds per run; big employers are capped at 150 roles each.'],
             ]}

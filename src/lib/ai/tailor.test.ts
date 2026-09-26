@@ -125,7 +125,7 @@ describe('AI providers (Anthropic · Gemini · Grok)', () => {
     expect(aiProviders()).toEqual(['grok', 'gemini']);
     vi.stubEnv('AI_PROVIDER', '');
     expect(aiProviders()).toEqual(['gemini', 'grok']);
-    expect(aiEngine()).toMatchObject({ provider: 'gemini', model: 'gemini-3.6-flash' });
+    expect(aiEngine()).toMatchObject({ provider: 'gemini', model: 'gemini-3.1-pro-preview' });
   });
 
   it('reads fenced or bare JSON and rejects replies that miss the schema', () => {
@@ -144,8 +144,16 @@ describe('AI providers (Anthropic · Gemini · Grok)', () => {
     );
     vi.stubGlobal('fetch', fetchMock);
     const first = await tailorResume('resume', profile, job);
-    expect(first.model).toBe('gemini:gemini-3.6-flash');
-    expect(String(fetchMock.mock.calls[0][0])).toContain('/models/gemini-3.6-flash:generateContent');
+    expect(first.model).toBe('gemini:gemini-3.1-pro-preview');
+    expect(String(fetchMock.mock.calls[0][0])).toContain('/models/gemini-3.1-pro-preview:generateContent');
+
+    // The top model is a preview: when it is gone, the newest stable Flash writes instead.
+    fetchMock.mockImplementation(async (url: RequestInfo | URL) =>
+      String(url).includes('gemini-3.1-pro-preview')
+        ? reply(404, { error: { message: 'model not found' } })
+        : reply(200, gemini(JSON.stringify(output))),
+    );
+    expect((await tailorResume('resume', profile, job)).model).toBe('gemini:gemini-3.8-flash');
 
     fetchMock.mockImplementation(async (url: RequestInfo | URL) =>
       String(url).includes('googleapis')

@@ -26,7 +26,7 @@ const NAME: Record<AiProvider, string> = { anthropic: 'Anthropic', gemini: 'Gemi
 /** Defaults checked against each provider's model list (2026-09-26); override with ANTHROPIC_MODEL / GEMINI_MODEL / XAI_MODEL. */
 const MODEL: Record<AiProvider, () => string> = {
   anthropic: () => readEnv('ANTHROPIC_MODEL') || 'claude-opus-5',
-  gemini: () => readEnv('GEMINI_MODEL') || 'gemini-3.6-flash',
+  gemini: () => readEnv('GEMINI_MODEL') || 'gemini-3.1-pro-preview',
   grok: () => readEnv('XAI_MODEL') || 'grok-4.7',
 };
 const TIMEOUT_MS = 170_000;
@@ -151,7 +151,33 @@ async function post(provider: AiProvider, url: string, headers: Record<string, s
   return data;
 }
 
-const CALL: Record<AiProvider, (user: string) => Promise<TailorOutput>> = {
+// Gemini's top model is a preview: when it is retired, rate limited or cut short, the newest stable Flash writes.
+const GEMINI_FALLBACK = 'gemini-3.8-flash';
+
+async function callGemini(model: string, user: string): Promise<TailorOutput> {
+  const data = (await post(
+    'gemini',
+    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+    { 'x-goog-api-key': readEnv('GEMINI_API_KEY')! },
+    {
+      systemInstruction: { parts: [{ text: SYSTEM + JSON_RULE }] },
+      contents: [{ role: 'user', parts: [{ text: user }] }],
+      // Thinking tokens count toward the output limit, so leave the reasoning room on top of the resume.
+      generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 32768 },
+    },
+  )) as {
+    promptFeedback?: { blockReason?: string };
+    candidates?: { finishReason?: string; content?: { parts?: { text?: string }[] } }[];
+  };
+  const candidate = data.candidates?.[0];
+  if (data.promptFeedback?.blockReason || candidate?.finishReason === 'SAFETY')
+    throw new TailorError('The AI declined to tailor this resume.', 422);
+  if (candidate?.finishReason === 'MAX_TOKENS') throw new TailorError('The tailored resume came back incomplete.', 502);
+  return parseTailored((candidate?.content?.parts || []).map((p) => p.text || '').join(''));
+}
+
+// Each provider returns the tailoring and the model that actually wrote it.
+const CALL: Record<AiProvider, (user: string) => Promise<{ output: TailorOutput; model: string }>> = {
   async anthropic(user) {
     let response;
     try {
@@ -176,29 +202,22 @@ const CALL: Record<AiProvider, (user: string) => Promise<TailorOutput>> = {
     if (response.stop_reason === 'refusal') throw new TailorError('The AI declined to tailor this resume.', 422);
     if (response.stop_reason === 'max_tokens') throw new TailorError('The tailored resume came back incomplete.', 502);
     if (!response.parsed_output) throw new TailorError('The AI returned an unreadable resume. Try again.', 502);
-    return response.parsed_output;
+    return { output: response.parsed_output, model: response.model || MODEL.anthropic() };
   },
 
   async gemini(user) {
-    const data = (await post(
-      'gemini',
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL.gemini())}:generateContent`,
-      { 'x-goog-api-key': readEnv('GEMINI_API_KEY')! },
-      {
-        systemInstruction: { parts: [{ text: SYSTEM + JSON_RULE }] },
-        contents: [{ role: 'user', parts: [{ text: user }] }],
-        generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 16000 },
-      },
-    )) as {
-      promptFeedback?: { blockReason?: string };
-      candidates?: { finishReason?: string; content?: { parts?: { text?: string }[] } }[];
-    };
-    const candidate = data.candidates?.[0];
-    if (data.promptFeedback?.blockReason || candidate?.finishReason === 'SAFETY')
-      throw new TailorError('The AI declined to tailor this resume.', 422);
-    if (candidate?.finishReason === 'MAX_TOKENS')
-      throw new TailorError('The tailored resume came back incomplete.', 502);
-    return parseTailored((candidate?.content?.parts || []).map((p) => p.text || '').join(''));
+    let last: TailorError | null = null;
+    for (const model of [...new Set([MODEL.gemini(), GEMINI_FALLBACK])]) {
+      try {
+        return { output: await callGemini(model, user), model };
+      } catch (err) {
+        // A refusal or a rejected key is the same on every model; anything else gets the next one.
+        if (!(err instanceof TailorError) || err.status === 422 || err.status === 503) throw err;
+        last = err;
+        console.warn('[OVERCLOCK] gemini', model, 'failed:', err.message);
+      }
+    }
+    throw last!;
   },
 
   async grok(user) {
@@ -219,14 +238,14 @@ const CALL: Record<AiProvider, (user: string) => Promise<TailorOutput>> = {
     if (choice?.finish_reason === 'content_filter')
       throw new TailorError('The AI declined to tailor this resume.', 422);
     if (choice?.finish_reason === 'length') throw new TailorError('The tailored resume came back incomplete.', 502);
-    return parseTailored(choice?.message?.content || '');
+    return { output: parseTailored(choice?.message?.content || ''), model: MODEL.grok() };
   },
 };
 
 /**
  * Ask the configured AI for a tailored resume. Tries AI_PROVIDER first, then any other configured provider when
  * one is down, rate limited or rejects its key. Throws TailorError with an HTTP status for the route to return.
- * `model` ("gemini:gemini-3.6-flash") is stored with the result.
+ * `model` ("gemini:gemini-3.1-pro-preview") is stored with the result.
  */
 export async function tailorResume(
   resumeText: string,
@@ -259,7 +278,8 @@ export async function tailorResume(
   let last: TailorError | null = null;
   for (const provider of providers) {
     try {
-      return { output: await CALL[provider](user), model: provider + ':' + MODEL[provider]() };
+      const { output, model } = await CALL[provider](user);
+      return { output, model: provider + ':' + model };
     } catch (err) {
       last = err instanceof TailorError ? err : new TailorError('AI error: ' + (err as Error).message, 502);
       // A refusal is about the content; another provider will not see it differently.

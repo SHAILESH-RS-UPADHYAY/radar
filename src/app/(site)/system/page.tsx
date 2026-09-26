@@ -161,7 +161,8 @@ export default function SystemPage() {
           </div>
           <p>
             Nothing enters the Vault unverified: company ATS feeds only list open roles, and a job-board posting has its
-            apply link opened first. Every Vault job is checked again each day and marked POSTING CLOSED when it goes.
+            apply link opened first. Every Vault job is checked again each day, and a closed one leaves the Vault on the
+            next scan.
           </p>
           <p>Removing a job from the Vault dismisses it, and a dismissed job is never shown or auto-saved again.</p>
         </DocSection>

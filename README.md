@@ -109,7 +109,7 @@ score  = round(clamp(score, 0, 100))              # ≥ 80 → Vault · 50–79 
 
 ATS feeds only list open roles. A job-board posting has its apply link opened first: a 404, a bounce to the home page
 or "no longer accepting applications" keeps it out. A page that cannot be read is never treated as closed. Every Vault
-job is checked again each day and marked **POSTING CLOSED** when it goes. → `src/lib/pipeline/verify.ts`
+job is checked again each day and **leaves the Vault** once it closes. → `src/lib/pipeline/verify.ts`
 
 ---
 
@@ -124,7 +124,7 @@ automatic fallback:
 ```bash
 AI_PROVIDER=gemini            # anthropic | gemini | grok — who writes first
 ANTHROPIC_API_KEY=…           # optional ANTHROPIC_MODEL (default claude-opus-5)
-GEMINI_API_KEY=…              # optional GEMINI_MODEL    (default gemini-3.6-flash)
+GEMINI_API_KEY=…              # optional GEMINI_MODEL    (default gemini-3.1-pro-preview, then 3.8-flash)
 XAI_API_KEY=…                 # optional XAI_MODEL       (default grok-4.7)
 ```
 

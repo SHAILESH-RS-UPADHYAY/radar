@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/client';
 import { matchUser, MatchError } from '@/lib/pipeline/match';
+import { retireClosedMatches } from '@/lib/pipeline/verify';
 import { explainVectorError } from '@/lib/ai/embeddings';
 
 export const maxDuration = 60;
@@ -29,10 +30,15 @@ export async function POST() {
         { status: 429, headers: { 'retry-after': String(wait) } },
       );
     }
+    // Closed postings leave your lists first, so the scan shows only live jobs.
+    const retired = await retireClosedMatches(supabase, userId);
     const summary = await matchUser(supabase, userId);
     return NextResponse.json({
-      message: summary.message || 'Computed ' + summary.total + ' matches, ' + summary.vaulted + ' new in your Vault',
+      message:
+        (summary.message || 'Computed ' + summary.total + ' matches, ' + summary.vaulted + ' new in your Vault') +
+        (retired ? ` · ${retired} closed postings cleared` : ''),
       ...summary,
+      retired,
     });
   } catch (err) {
     const config = explainVectorError(err);

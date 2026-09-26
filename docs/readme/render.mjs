@@ -592,8 +592,8 @@ const PANELS = [
       {
         segs: [
           col('engine', 11, 'decl'),
-          t('gemini:gemini-3.6-flash', 'str'),
-          t('   fallback → grok, anthropic', 'dim'),
+          t('gemini:gemini-3.1-pro-preview', 'str'),
+          t('   fallback → 3.8-flash, grok, anthropic', 'dim'),
         ],
       },
       { segs: [col('rules', 11, 'decl'), t('only facts already in your resume · nothing invented', 'plain')] },

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/client';
 import { runScrape } from '@/lib/pipeline/scrape';
 import { matchAllUsers } from '@/lib/pipeline/match';
+import { retireClosedMatches } from '@/lib/pipeline/verify';
 import { isCronAuthorized } from '@/lib/pipeline/cron-auth';
 
 export const maxDuration = 300;
@@ -25,6 +26,8 @@ async function handle(req: NextRequest) {
     // Scraping stops starting companies at ~155s; with the 60s per-company limit it ends by ~215s, which
     // always leaves matching (and the Vault) its share of the 300s function.
     const scrape = await runScrape(supabase, { budgetMs: 180_000 });
+    // Postings the scrape found taken down leave every Discovery list and Vault before matching.
+    const retired = await retireClosedMatches(supabase);
     const matches = await matchAllUsers(supabase, deadline);
     const vaulted = matches.reduce((s, m) => s + m.vaulted, 0);
 
@@ -36,6 +39,7 @@ async function handle(req: NextRequest) {
       users_matched: matches.length,
       vaulted,
       notes: {
+        retired,
         skippedForTime: scrape.skippedForTime,
         failures: scrape.results
           .filter((r) => r.status === 'failed')

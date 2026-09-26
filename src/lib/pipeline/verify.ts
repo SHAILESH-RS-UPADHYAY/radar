@@ -76,6 +76,28 @@ export async function recordChecks(supabase: SupabaseClient, live: string[], clo
   }
 }
 
+/**
+ * Matches still in Discovery or the Vault whose posting has closed leave both lists (status 'dismissed'), so
+ * they stay clean; applied ones stay in C2 · OPS. Runs on every scan: the loop, the autopilot and SCAN NOW.
+ */
+export async function retireClosedMatches(supabase: SupabaseClient, userId?: string): Promise<number> {
+  let query = supabase
+    .from('match_scores')
+    .select('id, jobs!inner(is_active)')
+    .in('status', ['new', 'saved'])
+    .eq('jobs.is_active', false);
+  if (userId) query = query.eq('user_id', userId);
+  const { data, error } = await query.limit(2000);
+  if (error) console.warn('[VERIFY] closed-match cleanup skipped:', error.message);
+  const ids = (data || []).map((r) => r.id as string);
+  for (let i = 0; i < ids.length; i += 100)
+    await supabase
+      .from('match_scores')
+      .update({ status: 'dismissed' })
+      .in('id', ids.slice(i, i + 100));
+  return ids.length;
+}
+
 /** Board jobs among `ids` that nobody confirmed live in the last 24h. */
 async function unverified(supabase: SupabaseClient, jobs: JobRef[]): Promise<JobRef[]> {
   const board = jobs.filter((j) => needsLinkCheck(providerOf(j)));
