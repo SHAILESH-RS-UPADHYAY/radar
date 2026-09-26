@@ -1,4 +1,6 @@
-const base = 'text-[10px] px-2 py-1 rounded-sm uppercase tracking-widest font-bold';
+import { scoreColor } from './types';
+
+const base = 'border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.15em]';
 
 export function SkillChips({
   matching,
@@ -11,26 +13,38 @@ export function SkillChips({
   maxMatching?: number;
   maxMissing?: number;
 }) {
+  if (!matching.length && !missing.length) return null;
   return (
-    <div className="flex flex-wrap gap-2 mb-3">
+    <div className="mt-4 flex flex-wrap gap-1.5">
       {matching.slice(0, maxMatching).map((s) => (
-        <span
-          key={'m-' + s}
-          className={base}
-          style={{ background: '#A67B5B10', color: '#A67B5B', border: '1px solid #A67B5B30' }}
-        >
-          {s}
+        <span key={'m-' + s} className={base + ' border-phosphor/35 bg-phosphor/[0.07] text-phosphor'}>
+          + {s}
         </span>
       ))}
       {missing.slice(0, maxMissing).map((s) => (
-        <span
-          key={'x-' + s}
-          className={base}
-          style={{ background: '#FF444410', color: '#FF6666', border: '1px solid #FF444430' }}
-        >
-          {s}
+        <span key={'x-' + s} className={base + ' border-hud-red/30 bg-hud-red/[0.06] text-hud-red/90'}>
+          - {s}
         </span>
       ))}
+    </div>
+  );
+}
+
+/** Big match percentage with a glowing bar, coloured by strength. */
+export function ScoreMeter({ score }: { score: number }) {
+  const color = scoreColor(score);
+  return (
+    <div className="font-mono">
+      <div className="flex items-baseline justify-between gap-3">
+        <span className="text-[10px] tracking-[0.3em] text-dim">MATCH</span>
+        <span className="text-3xl font-extrabold leading-none" style={{ color, textShadow: `0 0 16px ${color}55` }}>
+          {score}
+          <span className="text-base">%</span>
+        </span>
+      </div>
+      <div className="mt-2 h-1 bg-phosphor/10">
+        <div className="h-full" style={{ width: score + '%', background: color, boxShadow: `0 0 8px ${color}` }} />
+      </div>
     </div>
   );
 }

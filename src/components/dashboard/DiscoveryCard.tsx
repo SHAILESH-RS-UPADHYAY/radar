@@ -1,8 +1,9 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { SkillChips } from './SkillChips';
-import { formatSalary, scoreColor, timeAgo, type MatchAction, type MatchedJob } from './types';
+import { Brackets } from '@/components/hud/Hud';
+import { ScoreMeter, SkillChips } from './SkillChips';
+import { formatSalary, timeAgo, type MatchAction, type MatchedJob } from './types';
 
 export function DiscoveryCard({
   match,
@@ -12,78 +13,70 @@ export function DiscoveryCard({
   onAction: (id: string, action: MatchAction) => void;
 }) {
   const { job } = match;
-  const meta = [
-    job.location,
-    job.department,
-    formatSalary(job),
-    timeAgo(job.posted_at),
-    job.company.source ? 'via ' + job.company.source : null,
-  ];
+  const meta = [job.location, job.department, formatSalary(job), timeAgo(job.posted_at)].filter(Boolean);
 
   return (
-    <motion.div
+    <motion.article
       layout
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.9, x: -100 }}
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, x: -80 }}
       transition={{ duration: 0.2 }}
-      className="p-6 rounded-xl"
-      style={{ background: '#111', border: '1px solid #222' }}
+      className="group relative border border-phosphor/15 bg-black/70 p-5 transition-colors hover:border-phosphor/45 sm:p-6"
     >
-      <div className="flex flex-col sm:flex-row items-start justify-between gap-4">
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-3 mb-3">
-            <span
-              className="text-xs font-bold uppercase tracking-wider px-2 py-1 rounded"
-              style={{ background: '#1A1A1A', color: '#A67B5B' }}
-            >
-              {job.company.name}
+      <Brackets className="border-phosphor opacity-0 transition-opacity group-hover:opacity-100" />
+      <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="mb-3 flex flex-wrap items-center gap-2 font-mono text-[10px] tracking-[0.2em]">
+            <span className="border border-phosphor/40 bg-phosphor/10 px-2 py-1 font-bold text-phosphor">
+              {job.company.name.toUpperCase()}
             </span>
             {job.work_type && (
               <span
-                className="text-xs px-2 py-1 rounded"
-                style={{
-                  background: job.work_type === 'remote' ? '#10B98115' : '#1A1A1A',
-                  color: job.work_type === 'remote' ? '#10B981' : '#666',
-                }}
+                className={
+                  'border px-2 py-1 ' +
+                  (job.work_type === 'remote' ? 'border-hud-cyan/40 text-hud-cyan' : 'border-phosphor/15 text-dim')
+                }
               >
                 {job.work_type.toUpperCase()}
               </span>
             )}
+            {job.company.source && <span className="text-dim">via {job.company.source}</span>}
           </div>
-          <h3 className="text-white font-bold text-xl mb-1">{job.title}</h3>
-          <p className="text-sm mb-4 text-[#666]">{meta.filter(Boolean).join(' · ')}</p>
+          <h3 className="text-lg font-bold leading-snug text-white sm:text-xl">{job.title}</h3>
+          <p className="mt-1.5 font-mono text-[11px] text-dim">{meta.join(' · ')}</p>
           <SkillChips matching={match.matching_skills} missing={match.missing_skills} />
-          <p className="text-sm leading-relaxed text-[#888]">{match.reasoning}</p>
+          <p className="mt-4 text-sm leading-relaxed text-dim">
+            <span className="text-phosphor">&gt; </span>
+            {match.reasoning}
+          </p>
         </div>
 
-        <div className="sm:ml-8 flex flex-col items-end gap-3 w-full sm:w-auto sm:min-w-[120px]">
-          <div className="text-3xl font-black font-mono mb-2" style={{ color: scoreColor(match.score) }}>
-            {match.score}%
-          </div>
-          <button
-            onClick={() => onAction(match.id, 'SAVE')}
-            className="w-full py-2 rounded text-xs font-bold uppercase tracking-wider text-white hover:bg-[#A67B5B] border border-[#333] bg-[#1A1A1A] transition-all"
-          >
-            TO VAULT
-          </button>
+        <div className="flex w-full flex-col gap-2 sm:w-44">
+          <ScoreMeter score={match.score} />
           <a
             href={job.apply_url}
             target="_blank"
             rel="noopener noreferrer"
             onClick={() => onAction(match.id, 'APPLY')}
-            className="w-full text-center py-2 rounded text-xs font-bold uppercase tracking-wider text-black bg-white hover:bg-gray-200 transition-all"
+            className="mt-2 bg-phosphor py-2 text-center font-mono text-[11px] font-bold tracking-[0.2em] text-black transition-colors hover:bg-[#33FF66]"
           >
-            APPLY NOW
+            APPLY ↗
           </a>
           <button
+            onClick={() => onAction(match.id, 'SAVE')}
+            className="border border-phosphor/40 py-2 font-mono text-[11px] font-bold tracking-[0.2em] text-phosphor transition-colors hover:bg-phosphor/10"
+          >
+            + TO VAULT
+          </button>
+          <button
             onClick={() => onAction(match.id, 'DISMISS')}
-            className="w-full py-1 text-[10px] font-bold uppercase tracking-wider text-[#555] hover:text-[#FF6666] transition-colors"
+            className="py-1 font-mono text-[10px] tracking-[0.2em] text-dim transition-colors hover:text-hud-red"
           >
             NOT FOR ME
           </button>
         </div>
       </div>
-    </motion.div>
+    </motion.article>
   );
 }
