@@ -57,7 +57,7 @@ ALTER TABLE jobs ADD COLUMN IF NOT EXISTS verified_at TIMESTAMPTZ;
 --    Any other value you picked is kept. The Settings slider changes it any time.
 ALTER TABLE user_profiles ALTER COLUMN vault_min_score SET DEFAULT 80;
 UPDATE user_profiles SET vault_min_score = 80 WHERE vault_min_score = 70;
--- Auto-OVERCLOCK: tailor the best 50–79 matches each day (paid Claude calls, so off until you turn it on).
+-- Auto-OVERCLOCK: tailor the best 50–79 matches each day (paid AI calls, so off until you turn it on).
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS auto_overclock BOOLEAN NOT NULL DEFAULT false;
 ALTER TABLE user_profiles ADD COLUMN IF NOT EXISTS overclock_daily_cap INT NOT NULL DEFAULT 5
   CHECK (overclock_daily_cap BETWEEN 0 AND 20);

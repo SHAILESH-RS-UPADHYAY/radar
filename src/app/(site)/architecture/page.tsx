@@ -41,11 +41,14 @@ function Flow({ label }: { label: string }) {
 }
 
 const PIPELINE: [string, string][] = [
-  ['01 SCRAPE', `${CATALOG.sources} adapters, 4 companies at a time`],
-  ['02 EMBED', 'new or changed jobs → Pinecone'],
-  ['03 CLOSE', 'missing postings → inactive, vectors deleted'],
-  ['04 MATCH', 'every user with a resume → match_scores'],
-  ['05 VAULT', 'score ≥ threshold → saved'],
+  ['01 DISCOVER', 'StartupMap every 48h + your imports → ATS boards'],
+  ['02 SCRAPE', `${CATALOG.sources} adapters, least recently scraped first`],
+  ['03 EMBED', 'new or changed jobs → Pinecone'],
+  ['04 CLOSE', 'missing postings → inactive, vectors deleted'],
+  ['05 MATCH', 'every user with a resume → match_scores'],
+  ['06 VERIFY', 'board postings opened before the Vault'],
+  ['07 VAULT', 'score ≥ your bar (80 by default) → saved'],
+  ['08 AUTOPILOT', 'Vault re-check · Gmail replies · auto-OVERCLOCK'],
 ];
 
 export default function ArchitecturePage() {
@@ -65,12 +68,12 @@ export default function ArchitecturePage() {
 
       <DocLayout toc={TOC}>
         <DocSection id="topology" index="01" kicker="TOPOLOGY" title="How the pieces connect">
-          <HudPanel label="WRITE PATH · /api/cron" status="SCHEDULED" bodyClassName="p-4 sm:p-6">
+          <HudPanel label="WRITE PATH · /api/cron/*" status="SCHEDULED" bodyClassName="p-4 sm:p-6">
             <div className="grid items-center gap-3 lg:grid-cols-[1fr_auto_1.35fr_auto_1fr] lg:gap-4">
               <div className="space-y-3">
                 <p className="font-mono text-[10px] tracking-[0.3em] text-dim">TRIGGERS</p>
                 <Node title="GITHUB ACTIONS" sub="every 6h · 15 */6 * * *" />
-                <Node title="VERCEL CRON" sub="daily · 30 2 * * *" />
+                <Node title="VERCEL CRON" sub="daily · discover 01:30 · pipeline 02:30 · autopilot 03:30" />
               </div>
               <Flow label="BEARER" />
               <div>
@@ -90,7 +93,11 @@ export default function ArchitecturePage() {
               <Flow label="SERVICE ROLE" />
               <div className="space-y-3">
                 <p className="font-mono text-[10px] tracking-[0.3em] text-dim">STATE</p>
-                <Node title="SUPABASE POSTGRES" sub="companies · jobs · match_scores · logs" tone="text-hud-cyan" />
+                <Node
+                  title="SUPABASE POSTGRES"
+                  sub="companies · jobs · match_scores · discovery queue · ops events"
+                  tone="text-hud-cyan"
+                />
                 <Node title="PINECONE" sub="e5-large inference · 1024-d cosine index" tone="text-hud-cyan" />
               </div>
             </div>
@@ -115,7 +122,7 @@ export default function ArchitecturePage() {
               <Flow label="CLERK JWT" />
               <Node
                 title="API ROUTES"
-                sub="/api/dashboard · /api/vault · /api/settings · /api/match · /api/onboarding"
+                sub="/api/dashboard · /api/jobs/:id · /api/vault · /api/match · /api/overclock · /api/gmail · /api/settings"
               />
               <Flow label="SERVER ONLY" />
               <Node
@@ -143,6 +150,14 @@ export default function ArchitecturePage() {
               ],
               ['until 285s', 'Match: users least recently matched first, stopping 15s before the deadline.'],
               ['end', 'pipeline_runs is updated with counts and any per-company failures.'],
+              [
+                'before',
+                '/api/cron/discover reads StartupMap (robots.txt obeyed, 1 request / 1.5s) and your imports, and adds each company whose ATS board it can verify.',
+              ],
+              [
+                'after',
+                '/api/cron/autopilot re-checks Vault postings, reads linked Gmail inboxes and runs auto-OVERCLOCK within its daily cap.',
+              ],
             ]}
           />
         </DocSection>
@@ -163,6 +178,15 @@ export default function ArchitecturePage() {
               ['match_scores', 'Score, reasons and Vault status per user and job', '(user_id, job_id)'],
               ['scrape_logs', 'One row per company per run', 'id'],
               ['pipeline_runs', 'One row per pipeline run, with counts and failures', 'id'],
+              [
+                'discovered_companies',
+                'Startups from StartupMap or your imports, waiting for their ATS feed',
+                '(source, source_ref)',
+              ],
+              ['source_state', 'Per-directory crawl state: last sync, resume cursor, pause', 'source'],
+              ['tailored_resumes', 'OVERCLOCK: one tailored resume per user and job', '(user_id, job_id)'],
+              ['gmail_links', 'Read-only Gmail link, refresh token encrypted', 'user_id'],
+              ['ops_events', 'What RADAR learned about each application, and from where', '(user_id, external_id)'],
             ]}
           />
           <p>
@@ -182,7 +206,9 @@ export default function ArchitecturePage() {
               ['VERCEL', 'Hosting, functions and the daily cron'],
               ['GITHUB ACTIONS', '6-hourly pipeline trigger and CI'],
               ['TAILWIND 4 · MOTION', 'HUD design tokens and animation'],
-              ['VITEST', 'Unit tests for scoring, parsing and adapters'],
+              ['ANTHROPIC · GEMINI · GROK', 'OVERCLOCK resume tailoring; AI_PROVIDER picks, the others fall back'],
+              ['GMAIL API', 'Read-only recruiter replies for C2 · OPS'],
+              ['VITEST', 'Unit tests for scoring, parsing, discovery and adapters'],
             ].map(([name, what]) => (
               <Node key={name} title={name} sub={what} />
             ))}
@@ -212,7 +238,15 @@ export default function ArchitecturePage() {
             items={[
               ['SECRETS', 'The Supabase service-role key never leaves the server; the browser has no database access.'],
               ['SESSIONS', 'Every API call carries a fresh Clerk token, retried once with a new one if it expires.'],
-              ['CRON', 'The pipeline endpoint requires a Bearer CRON_SECRET in production.'],
+              ['CRON', 'Every /api/cron/* endpoint requires a Bearer CRON_SECRET in production.'],
+              [
+                'CRAWLING',
+                'Directories are read only where robots.txt allows, with an honest bot name and a pause at the first "slow down". No evasion, ever.',
+              ],
+              [
+                'GMAIL',
+                'Read-only scope, CSRF-checked OAuth, refresh token sealed with AES-256-GCM, revoked on disconnect.',
+              ],
               [
                 'INPUT',
                 'Validated at the edge: ids must be UUIDs, resumes must be PDFs under 5 MB, list fields are capped.',

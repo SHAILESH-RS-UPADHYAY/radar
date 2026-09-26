@@ -8,6 +8,7 @@ import { isUuid } from '@/lib/validate';
 import { politeFetcher } from '@/lib/discovery/polite';
 import { checkPosting, needsLinkCheck, recordChecks, type PostingState } from '@/lib/pipeline/verify';
 import { sourceName } from '@/lib/scraper/catalog';
+import { formatDescription } from '@/lib/jd';
 
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!isUuid(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const supabase = createServerClient();
-  const [jobResult, { data: match }] = await Promise.all([
+  const [jobResult, { data: match }, { data: me }] = await Promise.all([
     (async () => {
       let result = await supabase.from('jobs').select(TIERS[0]).eq('id', id).maybeSingle();
       if (isSchemaMissing(result.error))
@@ -50,6 +51,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .eq('user_id', userId)
       .eq('job_id', id)
       .maybeSingle(),
+    supabase.from('user_profiles').select('experience_years, is_fresher').eq('id', userId).maybeSingle(),
   ] as const);
   if (jobResult.error) return NextResponse.json({ error: jobResult.error.message }, { status: 500 });
   const job = jobResult.data as any;
@@ -98,7 +100,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       salary: { min: job.salary_min, max: job.salary_max, currency: job.salary_currency },
       postedAt: job.posted_at,
       applyUrl: job.apply_url,
-      description: job.description || '',
+      // Older scrapes stored escaped HTML or one flattened line; this restores paragraphs and sections.
+      description: formatDescription(job.description || ''),
     },
     match: match
       ? {
@@ -110,5 +113,6 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         }
       : null,
     posting,
+    you: { experienceYears: me ? (me.is_fresher ? 0 : (me.experience_years ?? null)) : null },
   });
 }

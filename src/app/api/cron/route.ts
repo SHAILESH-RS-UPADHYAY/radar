@@ -22,8 +22,9 @@ async function handle(req: NextRequest) {
   const { data: run } = await supabase.from('pipeline_runs').insert({ trigger }).select('id').single();
 
   try {
-    // Scraping gets ~75% of the time; matching is fast by comparison.
-    const scrape = await runScrape(supabase, { budgetMs: 215_000 });
+    // Scraping stops starting companies at ~155s; with the 60s per-company limit it ends by ~215s, which
+    // always leaves matching (and the Vault) its share of the 300s function.
+    const scrape = await runScrape(supabase, { budgetMs: 180_000 });
     const matches = await matchAllUsers(supabase, deadline);
     const vaulted = matches.reduce((s, m) => s + m.vaulted, 0);
 

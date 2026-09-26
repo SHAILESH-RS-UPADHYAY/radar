@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="275" viewBox="0 0 960 275" role="img" aria-labelledby="07-hack-t">
+<title id="07-hack-t">HACK: the assisted apply run</title>
+<style>
+  text { font-family: 'JetBrains Mono','Cascadia Mono',Consolas,Menlo,'DejaVu Sans Mono',monospace; font-size: 15px; }
+  .spin { transform-box: fill-box; transform-origin: center; animation: spin 2.4s linear infinite; }
+  .led { animation: led 1.6s steps(2, jump-none) infinite; }
+  .roll { animation: roll 0.18s steps(2) infinite; }
+  .glow { filter: drop-shadow(0 0 6px rgba(0,255,65,0.55)); }
+  .glitch-r { animation: gr 3.2s steps(1) infinite; }
+  .glitch-c { animation: gc 3.2s steps(1) infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes led { 50% { opacity: 0.25; } }
+  @keyframes roll { 50% { transform: translateY(1px); } }
+  @keyframes gr { 0%,88%,100% { transform: translate(0,0); } 90% { transform: translate(-4px,1px); } 94% { transform: translate(3px,-1px); } }
+  @keyframes gc { 0%,88%,100% { transform: translate(0,0); } 91% { transform: translate(4px,-1px); } 95% { transform: translate(-3px,1px); } }
+  @media (prefers-reduced-motion: reduce) { .spin, .led, .roll, .glitch-r, .glitch-c { animation: none; } }
+</style>
+<defs>
+  <clipPath id="07-hack-win"><rect width="960" height="275" rx="10"/></clipPath>
+  <pattern id="07-hack-scan" width="6" height="3" patternUnits="userSpaceOnUse"><rect width="6" height="1" fill="#ffffff" opacity="0.035"/></pattern>
+  <clipPath id="07-hack-c0"><rect x="0" y="49" width="0" height="27"><animate attributeName="width" values="44;551" begin="0.35s" dur="0.88s" fill="freeze"/></rect></clipPath>
+  <clipPath id="07-hack-c1"><rect x="0" y="74" width="0" height="27"><animate attributeName="width" values="108;714" begin="1.55s" dur="1.06s" fill="freeze"/></rect></clipPath>
+  <clipPath id="07-hack-c2"><rect x="0" y="99" width="0" height="27"><animate attributeName="width" values="108;660" begin="2.73s" dur="0.96s" fill="freeze"/></rect></clipPath>
+  <clipPath id="07-hack-c3"><rect x="0" y="124" width="0" height="27"><animate attributeName="width" values="108;669" begin="3.81s" dur="0.98s" fill="freeze"/></rect></clipPath>
+  <clipPath id="07-hack-c4"><rect x="0" y="149" width="0" height="27"><animate attributeName="width" values="108;732" begin="4.90s" dur="1.09s" fill="freeze"/></rect></clipPath>
+  <clipPath id="07-hack-c5"><rect x="0" y="174" width="0" height="27"><animate attributeName="width" values="108;642" begin="6.11s" dur="0.93s" fill="freeze"/></rect></clipPath>
+  <clipPath id="07-hack-c6"><rect x="0" y="199" width="0" height="27"><animate attributeName="width" values="44;533" begin="7.16s" dur="0.85s" fill="freeze"/></rect></clipPath>
+</defs>
+<g clip-path="url(#07-hack-win)">
+  <rect width="960" height="275" fill="#000"/>
+  <rect width="960" height="36" fill="#2b2b2b"/>
+  <text x="16" y="23" fill="#8a8a8a" textLength="234" lengthAdjust="spacingAndGlyphs" xml:space="preserve">&gt; radar hack --queue vault</text>
+  <text x="938" y="23" text-anchor="end" fill="#f92672" font-size="13"><tspan class="led">●</tspan> HACK</text>
+  
+  <g clip-path="url(#07-hack-c0)"><text x="22" y="68" fill="#8a8a8a">⎿</text><text x="44" y="68" fill="#f8f8f2" textLength="180" lengthAdjust="spacingAndGlyphs" xml:space="preserve">HACK://NORTHWIND AI </text><text x="224" y="68" fill="#8a8a8a" textLength="315" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(AI Engineer · 92% · target 1 of 7)</text></g>
+  <rect x="44" y="53" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="0.35s"/><animate attributeName="x" from="44" to="541" begin="0.35s" dur="0.88s" fill="freeze"/><set attributeName="opacity" to="0" begin="1.23s"/></rect>
+  <g clip-path="url(#07-hack-c1)"><text x="76" y="93" text-anchor="end" fill="#6e6e6e">1</text><text x="108" y="93" fill="#ae81ff" textLength="54" lengthAdjust="spacingAndGlyphs" xml:space="preserve">[1/4] </text><text x="162" y="93" fill="#66d9ef" textLength="81" lengthAdjust="spacingAndGlyphs" xml:space="preserve">RESUME   </text><text x="243" y="93" fill="#f8f8f2" textLength="18" lengthAdjust="spacingAndGlyphs" xml:space="preserve">▸ </text><text x="261" y="93" fill="#f8f8f2" textLength="180" lengthAdjust="spacingAndGlyphs" xml:space="preserve">tailored CV attached</text><text x="441" y="93" fill="#e6db74" textLength="261" lengthAdjust="spacingAndGlyphs" xml:space="preserve">  northwind-ai-engineer.pdf ⬇</text></g>
+  <rect x="108" y="78" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="1.55s"/><animate attributeName="x" from="108" to="704" begin="1.55s" dur="1.06s" fill="freeze"/><set attributeName="opacity" to="0" begin="2.61s"/></rect>
+  <g clip-path="url(#07-hack-c2)"><text x="76" y="118" text-anchor="end" fill="#6e6e6e">2</text><text x="108" y="118" fill="#ae81ff" textLength="54" lengthAdjust="spacingAndGlyphs" xml:space="preserve">[2/4] </text><text x="162" y="118" fill="#66d9ef" textLength="81" lengthAdjust="spacingAndGlyphs" xml:space="preserve">ANSWERS  </text><text x="243" y="118" fill="#f8f8f2" textLength="18" lengthAdjust="spacingAndGlyphs" xml:space="preserve">▸ </text><text x="261" y="118" fill="#f8f8f2" textLength="297" lengthAdjust="spacingAndGlyphs" xml:space="preserve">name · email · links · cover note</text><text x="558" y="118" fill="#a6e22e" textLength="90" lengthAdjust="spacingAndGlyphs" xml:space="preserve">  ⧉ copied</text></g>
+  <rect x="108" y="103" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="2.73s"/><animate attributeName="x" from="108" to="650" begin="2.73s" dur="0.96s" fill="freeze"/><set attributeName="opacity" to="0" begin="3.69s"/></rect>
+  <g clip-path="url(#07-hack-c3)"><text x="76" y="143" text-anchor="end" fill="#6e6e6e">3</text><text x="108" y="143" fill="#ae81ff" textLength="54" lengthAdjust="spacingAndGlyphs" xml:space="preserve">[3/4] </text><text x="162" y="143" fill="#66d9ef" textLength="81" lengthAdjust="spacingAndGlyphs" xml:space="preserve">LAUNCH   </text><text x="243" y="143" fill="#f8f8f2" textLength="18" lengthAdjust="spacingAndGlyphs" xml:space="preserve">▸ </text><text x="261" y="143" fill="#f8f8f2" textLength="198" lengthAdjust="spacingAndGlyphs" xml:space="preserve">real apply link opened</text><text x="459" y="143" fill="#e6db74" textLength="198" lengthAdjust="spacingAndGlyphs" xml:space="preserve">  jobs.ashbyhq.com/… ↗</text></g>
+  <rect x="108" y="128" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="3.81s"/><animate attributeName="x" from="108" to="659" begin="3.81s" dur="0.98s" fill="freeze"/><set attributeName="opacity" to="0" begin="4.78s"/></rect>
+  <g clip-path="url(#07-hack-c4)"><text x="76" y="168" text-anchor="end" fill="#6e6e6e">4</text><text x="108" y="168" fill="#ae81ff" textLength="54" lengthAdjust="spacingAndGlyphs" xml:space="preserve">[4/4] </text><text x="162" y="168" fill="#66d9ef" textLength="81" lengthAdjust="spacingAndGlyphs" xml:space="preserve">CONFIRM  </text><text x="243" y="168" fill="#f8f8f2" textLength="18" lengthAdjust="spacingAndGlyphs" xml:space="preserve">▸ </text><text x="261" y="168" fill="#fd971f" textLength="459" lengthAdjust="spacingAndGlyphs" xml:space="preserve">you press submit — the one step RADAR leaves to you</text></g>
+  <rect x="108" y="153" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="4.90s"/><animate attributeName="x" from="108" to="722" begin="4.90s" dur="1.09s" fill="freeze"/><set attributeName="opacity" to="0" begin="5.99s"/></rect>
+  <rect x="30" y="175" width="914" height="25" fill="#003e00" opacity="0"><set attributeName="opacity" to="1" begin="6.11s"/></rect>
+  <g clip-path="url(#07-hack-c5)"><text x="76" y="193" text-anchor="end" fill="#5fd35f">5</text><text x="88" y="193" fill="#5fd35f">+</text><text x="108" y="193" fill="#f8f8f2" textLength="63" lengthAdjust="spacingAndGlyphs" xml:space="preserve">status </text><rect x="170" y="177" width="65" height="21" rx="2" fill="#127a12"/><text x="171" y="193" fill="#a6e22e" textLength="63" lengthAdjust="spacingAndGlyphs" xml:space="preserve">applied</text><text x="234" y="193" fill="#f8f8f2" textLength="81" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> · stage </text><rect x="314" y="177" width="65" height="21" rx="2" fill="#127a12"/><text x="315" y="193" fill="#a6e22e" textLength="63" lengthAdjust="spacingAndGlyphs" xml:space="preserve">APPLIED</text><text x="378" y="193" fill="#8a8a8a" textLength="252" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> · CV version stored with it</text></g>
+  <rect x="108" y="178" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="6.11s"/><animate attributeName="x" from="108" to="632" begin="6.11s" dur="0.93s" fill="freeze"/><set attributeName="opacity" to="0" begin="7.04s"/></rect>
+  <g clip-path="url(#07-hack-c6)"><text x="22" y="218" fill="#8a8a8a">⎿</text><text x="44" y="218" fill="#f8f8f2" textLength="45" lengthAdjust="spacingAndGlyphs" xml:space="preserve">NEXT </text><text x="89" y="218" fill="#8a8a8a" textLength="432" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(target 2 of 7 · HACK ALL walks the whole Vault)</text></g>
+  <rect x="44" y="203" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="7.16s"/><animate attributeName="x" from="44" to="523" begin="7.16s" dur="0.85s" fill="freeze"/><animate attributeName="opacity" values="1;0" dur="1s" begin="8.01s" repeatCount="indefinite" calcMode="discrete"/></rect>
+  <g><text x="28" y="257" fill="#e8825a" class="spin">✻</text><text x="44" y="257" fill="#fd971f" textLength="162" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Hacking the queue…</text><text x="215" y="257" fill="#8a8a8a" textLength="360" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(prepared in seconds · submitted by you)</text></g>
+  <rect width="960" height="275" fill="url(#07-hack-scan)" class="roll"/>
+</g>
+<rect x="0.5" y="0.5" width="959" height="274" rx="10" fill="none" stroke="#303030"/>
+</svg>

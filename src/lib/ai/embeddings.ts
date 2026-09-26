@@ -5,6 +5,14 @@ function getPinecone() {
   return new Pinecone({ apiKey: env.pineconeApiKey() });
 }
 
+/** A rejected key is a deployment problem, not the user's: name the variable to fix. */
+export function explainVectorError(err: unknown): string | null {
+  const e = err as { name?: string; message?: string } | null;
+  if (e?.name === 'PineconeAuthorizationError' || /api key you provided was rejected/i.test(e?.message || ''))
+    return "Job search is offline: Pinecone rejected the server's PINECONE_API_KEY. Set the exact key (no quotes) in Vercel → Settings → Environment Variables, then redeploy.";
+  return null;
+}
+
 export function getIndex() {
   return getPinecone().index(env.pineconeIndex());
 }

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/client';
 import { matchUser, MatchError } from '@/lib/pipeline/match';
+import { explainVectorError } from '@/lib/ai/embeddings';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -34,8 +35,9 @@ export async function POST() {
       ...summary,
     });
   } catch (err) {
-    const status = err instanceof MatchError ? err.status : 500;
-    const message = err instanceof Error ? err.message : String(err);
+    const config = explainVectorError(err);
+    const status = config ? 503 : err instanceof MatchError ? err.status : 500;
+    const message = config || (err instanceof Error ? err.message : String(err));
     console.error('[MATCH]', message);
     return NextResponse.json({ error: message }, { status });
   }

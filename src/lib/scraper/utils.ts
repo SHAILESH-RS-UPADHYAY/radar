@@ -104,19 +104,27 @@ export function decodeEntities(text: string): string {
   });
 }
 
-/** HTML (possibly entity-escaped, as Greenhouse returns it) → readable plain text. */
+/**
+ * HTML (possibly entity-escaped, as Greenhouse returns it) → readable text that keeps its shape:
+ * headings and paragraphs are blocks separated by a blank line, list items are "• " lines.
+ */
 export function htmlToText(html: string | null | undefined): string {
   if (!html) return '';
   // Greenhouse double-encodes: "&lt;p&gt;" → "<p>" first, then strip tags, then decode what is left.
   const unescaped = /&lt;\/?[a-z]/i.test(html) ? decodeEntities(html) : html;
   return decodeEntities(
     unescaped
-      .replace(/<(br|\/p|\/li|\/h\d|\/div)[^>]*>/gi, '\n')
-      .replace(/<li[^>]*>/gi, '• ')
-      .replace(/<[^>]*>/g, ' '),
+      .replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/gi, '')
+      .replace(/<br\s*\/?>/gi, '\n')
+      .replace(/<li[^>]*>/gi, '\n• ')
+      .replace(/<\/?(p|div|section|article|h[1-6]|ul|ol|table|tr|blockquote)\b[^>]*>/gi, '\n\n')
+      // Inline tags (<strong>, <a>, <span>…) end without a space: "<b>Go</b>lang" is one word.
+      .replace(/<[^>]+>/g, ''),
   )
+    .replace(/ /g, ' ')
     .replace(/[ \t\f\v]+/g, ' ')
-    .replace(/\s*\n\s*/g, '\n')
+    .replace(/ *\n */g, '\n')
+    .replace(/^•\s*$/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }

@@ -11,8 +11,19 @@
 
 ## Pipeline
 
+Three routes, each time-boxed and resumable, all behind `Bearer CRON_SECRET`. Vercel Cron calls them daily
+(01:30, 02:30, 03:30 UTC); GitHub Actions calls all three every 6 hours.
+
 ```
-/api/cron  (Vercel Cron daily, GitHub Actions every 6h, Bearer CRON_SECRET)
+/api/cron/discover                  src/lib/discovery/run.ts
+│  StartupMap every 48h: robots.txt → sitemap → /jobs/<city>/engineering (your cities first, cursor)
+│  queue (discovered_companies): startup page → job links → ATS board (gh_jid / Teamtailor verified)
+│  your imports (Preferences → TARGETS): homepage → careers page → ATS board
+└─ new companies → companies table   (then scraped like any other)
+```
+
+```
+/api/cron  (scrape → match → verified auto-vault)
 │
 ├─ runScrape()                      src/lib/pipeline/scrape.ts
 │    ensureCompaniesSeeded()        sync companies table with src/lib/scraper/companies.ts
@@ -27,7 +38,16 @@
        Pinecone top-K by resume vector  (+ every open job at a dream company)
        computeMatchScore()          src/lib/ai/matcher.ts
        upsert match_scores          status is preserved
-       score ≥ vault_min_score and status = 'new'  →  status = 'saved', auto_saved = true
+       score ≥ vault_min_score and status = 'new'
+         → gateForVault(): job-board postings get their apply link opened; closed ones are deactivated
+         → status = 'saved', auto_saved = true
+```
+
+```
+/api/cron/autopilot                 daily after the pipeline
+├─ reverifyVault()                  src/lib/pipeline/verify.ts   board postings in a Vault, re-checked every 24h
+├─ syncAllGmail()                   src/lib/gmail.ts             recruiter replies → ops_events → C2 · OPS stage
+└─ autoOverclockAll()               src/lib/overclock.ts         opt-in, daily cap, 50–79% matches → tailored CV
 ```
 
 A run that hits the time limit stops cleanly; the next run starts with the companies that were skipped.

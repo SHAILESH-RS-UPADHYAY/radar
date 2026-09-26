@@ -59,7 +59,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <ClerkProvider appearance={clerkAppearance}>
+    // Our own pages and landing spots, set in code so a deployment without the NEXT_PUBLIC_CLERK_*_URL env vars
+    // never falls back to Clerk's hosted Account Portal (the white *.accounts.dev pages).
+    <ClerkProvider
+      appearance={clerkAppearance}
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      signInFallbackRedirectUrl="/dashboard"
+      signUpFallbackRedirectUrl="/onboarding"
+    >
       <html lang="en">
         <body className={[inter.variable, outfit.variable, mono.variable, 'antialiased'].join(' ')}>
           {children}

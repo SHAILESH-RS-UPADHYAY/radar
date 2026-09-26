@@ -113,6 +113,7 @@ export default function DashboardPage() {
   const [opsReady, setOpsReady] = useState(true);
   const [tailoredByJob, setTailoredByJob] = useState<Record<string, TailoredSummary>>({});
   const [overclockReady, setOverclockReady] = useState(true);
+  const [engine, setEngine] = useState<{ name: string; model: string } | null | undefined>(undefined);
   const [tailoring, setTailoring] = useState<string[]>([]);
   const [preview, setPreview] = useState<string | null>(null);
   const [hack, setHack] = useState<{ ids: string[]; i: number } | null>(null);
@@ -259,6 +260,7 @@ export default function DashboardPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'HTTP ' + res.status);
       setOverclockReady(data.ready !== false);
+      setEngine(data.engine ?? null);
       setTailoredByJob(Object.fromEntries((data.items as TailoredSummary[]).map((t) => [t.job_id, t])));
     } catch (err) {
       console.warn('[OVERCLOCK] list failed:', err);
@@ -871,9 +873,22 @@ export default function DashboardPage() {
               className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)] xl:gap-8"
             >
               <aside className="space-y-5 lg:sticky lg:top-24">
-                <HudPanel label="OVERCLOCK://PROTOCOL" status="HONEST MODE" tone="warn" bodyClassName="space-y-3 p-5">
+                <HudPanel
+                  label="OVERCLOCK://PROTOCOL"
+                  status={
+                    engine === null ? 'NO AI KEY' : engine ? 'ENGINE · ' + engine.name.toUpperCase() : 'HONEST MODE'
+                  }
+                  tone={engine === null ? 'alert' : 'warn'}
+                  bodyClassName="space-y-3 p-5"
+                >
+                  {engine === null && (
+                    <p className="font-mono text-xs leading-relaxed text-hud-red">
+                      Set ANTHROPIC_API_KEY, GEMINI_API_KEY or XAI_API_KEY on the server to switch OVERCLOCK on.
+                    </p>
+                  )}
+                  {engine && <p className="font-mono text-[10px] tracking-[0.2em] text-dim">MODEL · {engine.model}</p>}
                   <p className="text-sm leading-relaxed text-dim">
-                    Claude rewrites your resume for one job using only what is already in it: it reorders, sharpens, and
+                    The AI rewrites your resume for one job using only what is already in it: it reorders, sharpens, and
                     mirrors the posting’s wording where that is true.
                   </p>
                   <p className="text-sm leading-relaxed text-dim">

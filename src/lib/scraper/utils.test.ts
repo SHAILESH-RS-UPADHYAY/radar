@@ -11,10 +11,17 @@ import {
 } from './utils';
 
 describe('htmlToText', () => {
-  it('decodes Greenhouse double-escaped HTML', () => {
+  it('decodes Greenhouse double-escaped HTML and keeps paragraphs apart from lists', () => {
     expect(htmlToText('&lt;p&gt;Build &amp;amp; ship&lt;/p&gt;&lt;ul&gt;&lt;li&gt;APIs&lt;/li&gt;&lt;/ul&gt;')).toBe(
-      'Build & ship\n• APIs',
+      'Build & ship\n\n• APIs',
     );
+  });
+  it('keeps the shape of a real posting: headings, paragraphs, bullets', () => {
+    expect(
+      htmlToText(
+        '<h2><strong>About the role</strong></h2><p>You will <b>own</b> the API.<br>Remote OK.</p><h3>Requirements</h3><ul><li>3+ years</li><li>Go</li></ul>',
+      ),
+    ).toBe('About the role\n\nYou will own the API.\nRemote OK.\n\nRequirements\n\n• 3+ years\n• Go');
   });
   it('handles plain HTML and empty input', () => {
     expect(htmlToText('<b>Hi</b>&nbsp;there')).toBe('Hi there');

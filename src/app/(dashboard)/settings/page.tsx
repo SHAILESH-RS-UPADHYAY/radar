@@ -800,7 +800,7 @@ export default function SettingsPage() {
                     <span>
                       <span className="block text-sm text-ink">Auto-OVERCLOCK near misses</span>
                       <span className="mt-1 block text-xs leading-relaxed text-dim">
-                        Every day Claude tailors your resume for the best 50–79% matches; any that project past your bar
+                        Every day the AI tailors your resume for the best 50–79% matches; any that project past your bar
                         move into the Vault with the tailored CV attached. Each one is a paid API call.
                       </span>
                     </span>

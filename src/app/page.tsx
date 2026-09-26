@@ -296,6 +296,7 @@ const SAMPLE_DETAIL: JobDetail = {
   },
   match: { score: SAMPLE.score, matching: SAMPLE.matching_skills, missing: SAMPLE.missing_skills, status: 'new' },
   posting: { state: 'live', checkedAt: null, via: 'feed' },
+  you: { experienceYears: 2 },
 };
 
 const ANATOMY: [string, string][] = [

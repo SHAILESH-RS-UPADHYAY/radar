@@ -41,9 +41,17 @@ interface CompanyRow {
 }
 
 const CONCURRENCY = Number(process.env.RADAR_SCRAPE_CONCURRENCY || 4);
+const UPSERT_CHUNK = 50;
+/** One slow company (a hung API, a huge board) must never hold the whole run. */
+const COMPANY_TIMEOUT_MS = Number(process.env.RADAR_COMPANY_TIMEOUT_MS || 60_000);
+
+// Whitespace is normalised, so a formatting-only change (e.g. keeping paragraph breaks) does not re-embed a job.
+const squash = (s: string | null) => (s || '').replace(/\s+/g, ' ').trim();
 
 function hashJob(j: ScrapedJob): string {
-  return createHash('sha1').update([j.title, j.location, j.apply_url, j.description].join('\u0001')).digest('hex');
+  return createHash('sha1')
+    .update([j.title, j.location, j.apply_url, squash(j.description)].join('\u0001'))
+    .digest('hex');
 }
 
 async function existingHashes(supabase: SupabaseClient, companyId: string): Promise<Map<string, string | null>> {
@@ -64,7 +72,7 @@ async function existingHashes(supabase: SupabaseClient, companyId: string): Prom
 async function scrapeOne(
   supabase: SupabaseClient,
   company: CompanyRow,
-  embedBudget: { left: number },
+  embedBudget: { left: number; until: number },
 ): Promise<CompanyScrapeResult> {
   const start = Date.now();
   const runStartedAt = new Date(start).toISOString();
@@ -111,8 +119,8 @@ async function scrapeOne(
       });
 
       const idByExternal = new Map<string, string>();
-      for (let i = 0; i < rows.length; i += 200) {
-        const chunk = rows.slice(i, i + 200).map((r) => r.row);
+      for (let i = 0; i < rows.length; i += UPSERT_CHUNK) {
+        const chunk = rows.slice(i, i + UPSERT_CHUNK).map((r) => r.row);
         const { data, error } = await supabase
           .from('jobs')
           .upsert(chunk, { onConflict: 'company_id,external_id' })
@@ -121,9 +129,14 @@ async function scrapeOne(
         for (const d of data || []) idByExternal.set(d.external_id, d.id);
       }
 
-      const needsEmbedding = rows
-        .filter((r) => !r.unchanged && idByExternal.has(r.job.external_id))
-        .slice(0, Math.max(0, embedBudget.left));
+      // Past the scrape budget, jobs are saved but not embedded: they keep an empty hash and embed next run,
+      // so a big backlog can never push the run past the function limit and starve matching.
+      const needsEmbedding =
+        Date.now() > embedBudget.until
+          ? []
+          : rows
+              .filter((r) => !r.unchanged && idByExternal.has(r.job.external_id))
+              .slice(0, Math.max(0, embedBudget.left));
       embedBudget.left -= needsEmbedding.length;
 
       if (needsEmbedding.length) {
@@ -138,8 +151,8 @@ async function scrapeOne(
           })),
         );
         embedded = needsEmbedding.length;
-        for (let i = 0; i < needsEmbedding.length; i += 200) {
-          const chunk = needsEmbedding.slice(i, i + 200).map((r) => ({ ...r.row, content_hash: r.hash }));
+        for (let i = 0; i < needsEmbedding.length; i += UPSERT_CHUNK) {
+          const chunk = needsEmbedding.slice(i, i + UPSERT_CHUNK).map((r) => ({ ...r.row, content_hash: r.hash }));
           const { error } = await supabase.from('jobs').upsert(chunk, { onConflict: 'company_id,external_id' });
           if (error) console.error('[SCRAPE]', company.name, 'hash update failed:', error.message);
         }
@@ -188,6 +201,44 @@ async function scrapeOne(
   }
 }
 
+/** scrapeOne with a time limit: past it the company is logged as failed, moved to the back of the queue, and the run moves on. */
+async function scrapeWithin(
+  supabase: SupabaseClient,
+  company: CompanyRow,
+  embedBudget: { left: number; until: number },
+): Promise<CompanyScrapeResult> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const timedOut = new Promise<CompanyScrapeResult>((resolve) => {
+    timer = setTimeout(async () => {
+      const error = 'timed out after ' + COMPANY_TIMEOUT_MS / 1000 + 's';
+      console.error('[SCRAPE]', company.name, error);
+      await supabase.from('scrape_logs').insert({
+        company_id: company.id,
+        status: 'failed',
+        jobs_found: 0,
+        error_message: error,
+        duration_ms: COMPANY_TIMEOUT_MS,
+      });
+      await supabase.from('companies').update({ last_scraped_at: new Date().toISOString() }).eq('id', company.id);
+      resolve({
+        company: company.name,
+        provider: company.ats_provider,
+        jobs: 0,
+        embedded: 0,
+        deactivated: 0,
+        durationMs: COMPANY_TIMEOUT_MS,
+        status: 'failed',
+        error,
+      });
+    }, COMPANY_TIMEOUT_MS);
+  });
+  try {
+    return await Promise.race([scrapeOne(supabase, company, embedBudget), timedOut]);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function runScrape(
   supabase: SupabaseClient,
   opts: { budgetMs?: number; companyIds?: string[] } = {},
@@ -207,7 +258,7 @@ export async function runScrape(
   const { data: companies, error } = await query;
   if (error || !companies) throw new Error('Failed to load companies: ' + (error?.message || 'no data'));
 
-  const embedBudget = { left: Number(process.env.RADAR_MAX_EMBEDS_PER_RUN || 2000) };
+  const embedBudget = { left: Number(process.env.RADAR_MAX_EMBEDS_PER_RUN || 2000), until: deadline - 25_000 };
   const results = await mapLimit(companies as CompanyRow[], CONCURRENCY, async (company) => {
     // Leave ~25s for the in-flight companies to finish before the function limit.
     if (Date.now() > deadline - 25_000) {
@@ -221,7 +272,7 @@ export async function runScrape(
         status: 'skipped' as const,
       };
     }
-    return scrapeOne(supabase, company, embedBudget);
+    return scrapeWithin(supabase, company, embedBudget);
   });
 
   return {

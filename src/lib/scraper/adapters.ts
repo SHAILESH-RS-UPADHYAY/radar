@@ -71,7 +71,12 @@ export async function scrapeLever(slug: string): Promise<ScrapedJob[]> {
   const data = await fetchJson<any[]>(host + '/v0/postings/' + site + '?mode=json');
   return (data || []).map((job: any) => {
     const lists = (job.lists || []).map((l: any) => l.text + '\n' + htmlToText(l.content)).join('\n\n');
-    const description = [job.descriptionPlain || htmlToText(job.description), lists, job.additionalPlain || '']
+    // The HTML versions keep paragraphs and bullets; the plain ones are the fallback.
+    const description = [
+      htmlToText(job.description) || job.descriptionPlain,
+      lists,
+      htmlToText(job.additional) || job.additionalPlain || '',
+    ]
       .filter(Boolean)
       .join('\n\n');
     const location = job.categories?.allLocations?.join(' / ') || job.categories?.location || '';
@@ -116,7 +121,7 @@ export async function scrapeAshby(board: string): Promise<ScrapedJob[]> {
       return finalizeJob({
         external_id: job.id,
         title: job.title || '',
-        description: job.descriptionPlain || htmlToText(job.descriptionHtml),
+        description: htmlToText(job.descriptionHtml) || job.descriptionPlain || '',
         location,
         apply_url: job.jobUrl || job.applyUrl || '',
         department: job.department || job.team || null,

@@ -48,7 +48,7 @@ export default function ProtocolPage() {
         meta={[
           ['SPEC', 'RFC-0001'],
           ['SCALE', '0-100'],
-          ['VAULT BAR', '70%'],
+          ['VAULT BAR', '80%'],
           ['SKILLS', String(skills)],
         ]}
       />
@@ -108,7 +108,15 @@ export default function ProtocolPage() {
           <Points
             items={[
               ['RULE', 'After a scan, every match still NEW with a score at or above your threshold becomes SAVED.'],
-              ['THRESHOLD', '70 by default; anything from 40 to 95 in Preferences. Auto-vault can be switched off.'],
+              ['THRESHOLD', '80 by default; anything from 40 to 95 in Preferences. Auto-vault can be switched off.'],
+              [
+                'VERIFIED',
+                'A job-board posting has its apply link opened first; a closed one never enters the Vault. Company ATS feeds only list open roles.',
+              ],
+              [
+                'OVERCLOCK',
+                'Optional: the AI tailors your resume for 50-79% matches (a daily cap you set); a projection at or above your bar moves the job into the Vault with that CV attached.',
+              ],
               [
                 'RESPECT',
                 'Only NEW matches are promoted. Rescoring updates the score and the reasons, never a status you set.',
@@ -120,14 +128,21 @@ export default function ProtocolPage() {
         <DocSection id="freshness" index="05" kicker="FRESHNESS" title="Keeping the feed honest">
           <Points
             items={[
-              ['CADENCE', 'Every 6 hours through GitHub Actions, plus daily at 02:30 UTC through Vercel Cron.'],
+              [
+                'CADENCE',
+                'Every 6 hours through GitHub Actions (discover → scrape and match → autopilot), plus daily through Vercel Cron at 01:30, 02:30 and 03:30 UTC. Startup directories are re-read every 48h.',
+              ],
               [
                 'CHANGE DETECTION',
-                'A sha1 hash of title, location, apply link and description. Unchanged jobs are not re-embedded.',
+                'A sha1 hash of title, location, apply link and description (whitespace ignored). Unchanged jobs are not re-embedded.',
               ],
               [
                 'TAKEDOWNS',
                 'A posting missing from a successful scrape of its company is closed and its vector deleted, so dead jobs cannot crowd your results.',
+              ],
+              [
+                'RE-CHECKED',
+                'Every job-board posting in your Vault is opened again each day and marked POSTING CLOSED when it goes.',
               ],
               ['BUDGET', 'About 285 seconds per run; big employers are capped at 150 roles each.'],
             ]}
@@ -145,6 +160,10 @@ export default function ProtocolPage() {
               [
                 'CONTROL',
                 'Edit skills, roles, cities, companies or your resume in Preferences; the next scan uses them.',
+              ],
+              [
+                'GMAIL',
+                'Optional and read-only. RADAR reads the subject, sender and preview of recruiter replies, stores only the verdict, keeps the token encrypted (AES-256-GCM) and revokes it when you disconnect.',
               ],
             ]}
           />

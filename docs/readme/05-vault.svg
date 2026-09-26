@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="275" viewBox="0 0 960 275" role="img" aria-labelledby="05-vault-t">
+<title id="05-vault-t">VAULT: nothing enters unverified</title>
+<style>
+  text { font-family: 'JetBrains Mono','Cascadia Mono',Consolas,Menlo,'DejaVu Sans Mono',monospace; font-size: 15px; }
+  .spin { transform-box: fill-box; transform-origin: center; animation: spin 2.4s linear infinite; }
+  .led { animation: led 1.6s steps(2, jump-none) infinite; }
+  .roll { animation: roll 0.18s steps(2) infinite; }
+  .glow { filter: drop-shadow(0 0 6px rgba(0,255,65,0.55)); }
+  .glitch-r { animation: gr 3.2s steps(1) infinite; }
+  .glitch-c { animation: gc 3.2s steps(1) infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes led { 50% { opacity: 0.25; } }
+  @keyframes roll { 50% { transform: translateY(1px); } }
+  @keyframes gr { 0%,88%,100% { transform: translate(0,0); } 90% { transform: translate(-4px,1px); } 94% { transform: translate(3px,-1px); } }
+  @keyframes gc { 0%,88%,100% { transform: translate(0,0); } 91% { transform: translate(4px,-1px); } 95% { transform: translate(-3px,1px); } }
+  @media (prefers-reduced-motion: reduce) { .spin, .led, .roll, .glitch-r, .glitch-c { animation: none; } }
+</style>
+<defs>
+  <clipPath id="05-vault-win"><rect width="960" height="275" rx="10"/></clipPath>
+  <pattern id="05-vault-scan" width="6" height="3" patternUnits="userSpaceOnUse"><rect width="6" height="1" fill="#ffffff" opacity="0.035"/></pattern>
+  <clipPath id="05-vault-c0"><rect x="0" y="49" width="0" height="27"><animate attributeName="width" values="44;713" begin="0.35s" dur="1.17s" fill="freeze"/></rect></clipPath>
+  <clipPath id="05-vault-c1"><rect x="0" y="74" width="0" height="27"><animate attributeName="width" values="108;741" begin="1.84s" dur="1.10s" fill="freeze"/></rect></clipPath>
+  <clipPath id="05-vault-c2"><rect x="0" y="99" width="0" height="27"><animate attributeName="width" values="108;741" begin="3.06s" dur="1.10s" fill="freeze"/></rect></clipPath>
+  <clipPath id="05-vault-c3"><rect x="0" y="124" width="0" height="27"><animate attributeName="width" values="108;741" begin="4.29s" dur="1.10s" fill="freeze"/></rect></clipPath>
+  <clipPath id="05-vault-c4"><rect x="0" y="149" width="0" height="27"><animate attributeName="width" values="108;741" begin="5.51s" dur="1.10s" fill="freeze"/></rect></clipPath>
+  <clipPath id="05-vault-c5"><rect x="0" y="174" width="0" height="27"><animate attributeName="width" values="108;867" begin="6.73s" dur="1.33s" fill="freeze"/></rect></clipPath>
+  <clipPath id="05-vault-c6"><rect x="0" y="199" width="0" height="27"><animate attributeName="width" values="44;623" begin="8.18s" dur="1.01s" fill="freeze"/></rect></clipPath>
+</defs>
+<g clip-path="url(#05-vault-win)">
+  <rect width="960" height="275" fill="#000"/>
+  <rect width="960" height="36" fill="#2b2b2b"/>
+  <text x="16" y="23" fill="#8a8a8a" textLength="261" lengthAdjust="spacingAndGlyphs" xml:space="preserve">&gt; radar vault --verify --auto</text>
+  <text x="938" y="23" text-anchor="end" fill="#e6db74" font-size="13"><tspan class="led">●</tspan> VERIFY</text>
+  
+  <g clip-path="url(#05-vault-c0)"><text x="22" y="68" fill="#8a8a8a">⎿</text><text x="44" y="68" fill="#f8f8f2" textLength="180" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Opening apply links </text><text x="224" y="68" fill="#8a8a8a" textLength="477" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(board jobs · ATS feeds already list only open roles)</text></g>
+  <rect x="44" y="53" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="0.35s"/><animate attributeName="x" from="44" to="703" begin="0.35s" dur="1.17s" fill="freeze"/><set attributeName="opacity" to="0" begin="1.52s"/></rect>
+  <rect x="30" y="75" width="914" height="25" fill="#003e00" opacity="0"><set attributeName="opacity" to="1" begin="1.84s"/></rect>
+  <g clip-path="url(#05-vault-c1)"><text x="76" y="93" text-anchor="end" fill="#5fd35f">1</text><text x="88" y="93" fill="#5fd35f">+</text><text x="108" y="93" fill="#f92672" textLength="45" lengthAdjust="spacingAndGlyphs" xml:space="preserve">GET  </text><text x="153" y="93" fill="#e6db74" textLength="252" lengthAdjust="spacingAndGlyphs" xml:space="preserve">remotive.com/…/ai-engineer  </text><text x="405" y="93" fill="#8a8a8a" textLength="216" lengthAdjust="spacingAndGlyphs" xml:space="preserve">200 "Apply now"         </text><rect x="620" y="77" width="38" height="21" rx="2" fill="#127a12"/><text x="621" y="93" fill="#a6e22e" textLength="36" lengthAdjust="spacingAndGlyphs" xml:space="preserve">LIVE</text><text x="657" y="93" fill="#f8f8f2" textLength="72" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> → saved</text></g>
+  <rect x="108" y="78" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="1.84s"/><animate attributeName="x" from="108" to="731" begin="1.84s" dur="1.10s" fill="freeze"/><set attributeName="opacity" to="0" begin="2.94s"/></rect>
+  <rect x="30" y="100" width="914" height="25" fill="#500000" opacity="0"><set attributeName="opacity" to="1" begin="3.06s"/></rect>
+  <g clip-path="url(#05-vault-c2)"><text x="76" y="118" text-anchor="end" fill="#ff6b6b">2</text><text x="88" y="118" fill="#ff6b6b">−</text><text x="108" y="118" fill="#f92672" textLength="45" lengthAdjust="spacingAndGlyphs" xml:space="preserve">GET  </text><text x="153" y="118" fill="#e6db74" textLength="252" lengthAdjust="spacingAndGlyphs" xml:space="preserve">remoteok.com/…/backend-dev  </text><text x="405" y="118" fill="#8a8a8a" textLength="216" lengthAdjust="spacingAndGlyphs" xml:space="preserve">redirected to /         </text><rect x="620" y="102" width="56" height="21" rx="2" fill="#9c1616"/><text x="621" y="118" fill="#ff6b6b" textLength="54" lengthAdjust="spacingAndGlyphs" xml:space="preserve">CLOSED</text><text x="675" y="118" fill="#f8f8f2" textLength="54" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> → out</text></g>
+  <rect x="108" y="103" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="3.06s"/><animate attributeName="x" from="108" to="731" begin="3.06s" dur="1.10s" fill="freeze"/><set attributeName="opacity" to="0" begin="4.17s"/></rect>
+  <rect x="30" y="125" width="914" height="25" fill="#500000" opacity="0"><set attributeName="opacity" to="1" begin="4.29s"/></rect>
+  <g clip-path="url(#05-vault-c3)"><text x="76" y="143" text-anchor="end" fill="#ff6b6b">3</text><text x="88" y="143" fill="#ff6b6b">−</text><text x="108" y="143" fill="#f92672" textLength="45" lengthAdjust="spacingAndGlyphs" xml:space="preserve">GET  </text><text x="153" y="143" fill="#e6db74" textLength="252" lengthAdjust="spacingAndGlyphs" xml:space="preserve">jobicy.com/…/ml-engineer    </text><text x="405" y="143" fill="#8a8a8a" textLength="216" lengthAdjust="spacingAndGlyphs" xml:space="preserve">"no longer accepting"   </text><rect x="620" y="127" width="56" height="21" rx="2" fill="#9c1616"/><text x="621" y="143" fill="#ff6b6b" textLength="54" lengthAdjust="spacingAndGlyphs" xml:space="preserve">CLOSED</text><text x="675" y="143" fill="#f8f8f2" textLength="54" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> → out</text></g>
+  <rect x="108" y="128" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="4.29s"/><animate attributeName="x" from="108" to="731" begin="4.29s" dur="1.10s" fill="freeze"/><set attributeName="opacity" to="0" begin="5.39s"/></rect>
+  <rect x="30" y="150" width="914" height="25" fill="#003e00" opacity="0"><set attributeName="opacity" to="1" begin="5.51s"/></rect>
+  <g clip-path="url(#05-vault-c4)"><text x="76" y="168" text-anchor="end" fill="#5fd35f">4</text><text x="88" y="168" fill="#5fd35f">+</text><text x="108" y="168" fill="#f92672" textLength="45" lengthAdjust="spacingAndGlyphs" xml:space="preserve">FEED </text><text x="153" y="168" fill="#e6db74" textLength="252" lengthAdjust="spacingAndGlyphs" xml:space="preserve">ashby:northwind             </text><text x="405" y="168" fill="#8a8a8a" textLength="216" lengthAdjust="spacingAndGlyphs" xml:space="preserve">listed at last scrape   </text><rect x="620" y="152" width="38" height="21" rx="2" fill="#127a12"/><text x="621" y="168" fill="#a6e22e" textLength="36" lengthAdjust="spacingAndGlyphs" xml:space="preserve">LIVE</text><text x="657" y="168" fill="#f8f8f2" textLength="72" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> → saved</text></g>
+  <rect x="108" y="153" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="5.51s"/><animate attributeName="x" from="108" to="731" begin="5.51s" dur="1.10s" fill="freeze"/><set attributeName="opacity" to="0" begin="6.61s"/></rect>
+  <g clip-path="url(#05-vault-c5)"><text x="76" y="193" text-anchor="end" fill="#6e6e6e">5</text><text x="108" y="193" fill="#f92672" textLength="45" lengthAdjust="spacingAndGlyphs" xml:space="preserve">GET  </text><text x="153" y="193" fill="#e6db74" textLength="252" lengthAdjust="spacingAndGlyphs" xml:space="preserve">careers.example.io/…        </text><text x="405" y="193" fill="#8a8a8a" textLength="216" lengthAdjust="spacingAndGlyphs" xml:space="preserve">403 (blocked)           </text><text x="621" y="193" fill="#fd971f" textLength="63" lengthAdjust="spacingAndGlyphs" xml:space="preserve">UNKNOWN</text><text x="684" y="193" fill="#8a8a8a" textLength="171" lengthAdjust="spacingAndGlyphs" xml:space="preserve"> → kept, not closed</text></g>
+  <rect x="108" y="178" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="6.73s"/><animate attributeName="x" from="108" to="857" begin="6.73s" dur="1.33s" fill="freeze"/><set attributeName="opacity" to="0" begin="8.06s"/></rect>
+  <g clip-path="url(#05-vault-c6)"><text x="22" y="218" fill="#8a8a8a">⎿</text><text x="44" y="218" fill="#f8f8f2" textLength="45" lengthAdjust="spacingAndGlyphs" xml:space="preserve">DONE </text><text x="89" y="218" fill="#8a8a8a" textLength="522" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(+2 saved · −2 closed · the Vault is re-checked every 24h)</text></g>
+  <rect x="44" y="203" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="8.18s"/><animate attributeName="x" from="44" to="613" begin="8.18s" dur="1.01s" fill="freeze"/><animate attributeName="opacity" values="1;0" dur="1s" begin="9.19s" repeatCount="indefinite" calcMode="discrete"/></rect>
+  <g><text x="28" y="257" fill="#e8825a" class="spin">✻</text><text x="44" y="257" fill="#fd971f" textLength="90" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Verifying…</text><text x="143" y="257" fill="#8a8a8a" textLength="324" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(unknown is never treated as closed)</text></g>
+  <rect width="960" height="275" fill="url(#05-vault-scan)" class="roll"/>
+</g>
+<rect x="0.5" y="0.5" width="959" height="274" rx="10" fill="none" stroke="#303030"/>
+</svg>

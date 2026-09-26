@@ -1,18 +1,49 @@
 // ============================
 // RADAR — OVERCLOCK: honest resume tailoring
 // ============================
-// Claude rewrites the user's resume for one job using only facts already in it, lists what the job
+// The model rewrites the user's resume for one job using only facts already in it, lists what the job
 // wants that the resume cannot back up, and RADAR measures the result with the same scorer as a scan.
+// Any of three providers can do the writing — Anthropic, Google Gemini or xAI Grok — chosen with
+// AI_PROVIDER; every other provider with a key set is a fallback when the first is down or rate limited.
 
 import Anthropic from '@anthropic-ai/sdk';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod';
 import { embedText, fetchJobVector } from '@/lib/ai/embeddings';
 import { computeMatchScore } from '@/lib/ai/matcher';
+import { readEnv } from '@/lib/env';
 import { matchInput, profileSkills, type ScoringJob, type ScoringProfile } from '@/lib/pipeline/match';
 import { extractSkills } from '@/lib/scraper/utils';
 
-export const TAILOR_MODEL = 'claude-opus-5';
+export type AiProvider = 'anthropic' | 'gemini' | 'grok';
+const PROVIDERS: AiProvider[] = ['anthropic', 'gemini', 'grok'];
+const KEY: Record<AiProvider, string> = {
+  anthropic: 'ANTHROPIC_API_KEY',
+  gemini: 'GEMINI_API_KEY',
+  grok: 'XAI_API_KEY',
+};
+const NAME: Record<AiProvider, string> = { anthropic: 'Anthropic', gemini: 'Gemini', grok: 'Grok' };
+/** Defaults checked against each provider's model list (2026-09-26); override with ANTHROPIC_MODEL / GEMINI_MODEL / XAI_MODEL. */
+const MODEL: Record<AiProvider, () => string> = {
+  anthropic: () => readEnv('ANTHROPIC_MODEL') || 'claude-opus-5',
+  gemini: () => readEnv('GEMINI_MODEL') || 'gemini-3.6-flash',
+  grok: () => readEnv('XAI_MODEL') || 'grok-4.7',
+};
+const TIMEOUT_MS = 170_000;
+
+/** Providers to try, in order: AI_PROVIDER first, then every other one whose key is set. */
+export function aiProviders(): AiProvider[] {
+  const preferred = readEnv('AI_PROVIDER')?.toLowerCase() as AiProvider | undefined;
+  const order =
+    preferred && PROVIDERS.includes(preferred) ? [preferred, ...PROVIDERS.filter((p) => p !== preferred)] : PROVIDERS;
+  return order.filter((p) => readEnv(KEY[p]));
+}
+
+/** The provider and model that will write the next tailoring, for the UI; null when no key is set. */
+export function aiEngine(): { provider: AiProvider; name: string; model: string } | null {
+  const p = aiProviders()[0];
+  return p ? { provider: p, name: NAME[p], model: MODEL[p]() } : null;
+}
 
 const Resume = z.object({
   name: z.string(),
@@ -55,6 +86,11 @@ Rules:
 - cover_note: two or three sentences the candidate can paste into a "why this role" field, grounded only in the resume.
 - Plain text only: no markdown, no emojis. Use an empty string or empty list when the resume has nothing for a field.`;
 
+// Providers without schema-enforced output get the schema in the instructions; zod checks the reply either way.
+const JSON_RULE =
+  '\n\nReply with a single JSON object and nothing else (no prose, no code fences). It must match this JSON Schema:\n' +
+  JSON.stringify(z.toJSONSchema(TailorOutput));
+
 export class TailorError extends Error {
   constructor(
     message: string,
@@ -69,8 +105,140 @@ export interface TailorJob extends ScoringJob {
   company: string;
 }
 
-/** Ask Claude for a tailored resume. Throws TailorError with an HTTP status for the route to return. */
-export async function tailorResume(resumeText: string, profile: ScoringProfile, job: TailorJob): Promise<TailorOutput> {
+/** A model's JSON reply → the checked tailoring, or a 502 the caller can retry on another provider. */
+export function parseTailored(text: string): TailorOutput {
+  const body = text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, '')
+    .replace(/\s*```$/, '');
+  let json: unknown;
+  try {
+    json = JSON.parse(body);
+  } catch {
+    throw new TailorError('The AI returned an unreadable resume. Try again.', 502);
+  }
+  const parsed = TailorOutput.safeParse(json);
+  if (!parsed.success) throw new TailorError('The AI returned an incomplete resume. Try again.', 502);
+  return parsed.data;
+}
+
+/** HTTP status from a provider's REST API → a TailorError that says what to fix. */
+function httpError(provider: AiProvider, status: number, detail: string): TailorError {
+  const who = NAME[provider];
+  if (status === 401 || status === 403 || (status === 400 && /api[ _-]?key/i.test(detail)))
+    return new TailorError(`${who} rejected ${KEY[provider]}. Check the key on the server.`, 503);
+  if (status === 429) return new TailorError(`${who} is rate limited. Try again shortly.`, 429);
+  return new TailorError(`${who} error (${status})${detail ? ': ' + detail.slice(0, 200) : ''}`, 502);
+}
+
+async function post(provider: AiProvider, url: string, headers: Record<string, string>, body: unknown) {
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', ...headers },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
+    });
+  } catch {
+    throw new TailorError(`Could not reach ${NAME[provider]}. Try again.`, 502);
+  }
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) {
+    const error = data.error as { message?: string } | string | undefined;
+    throw httpError(provider, res.status, typeof error === 'string' ? error : error?.message || '');
+  }
+  return data;
+}
+
+const CALL: Record<AiProvider, (user: string) => Promise<TailorOutput>> = {
+  async anthropic(user) {
+    let response;
+    try {
+      const client = new Anthropic({ apiKey: readEnv('ANTHROPIC_API_KEY')! });
+      response = await client.beta.messages.parse({
+        model: MODEL.anthropic(),
+        max_tokens: 16000,
+        // If a safety classifier declines, the API retries on its recommended fallback model instead of failing.
+        betas: ['server-side-fallback-2026-07-01'],
+        fallbacks: 'default',
+        system: SYSTEM,
+        messages: [{ role: 'user', content: user }],
+        output_config: { format: betaZodOutputFormat(TailorOutput) },
+      });
+    } catch (err) {
+      if (err instanceof Anthropic.APIError && typeof err.status === 'number')
+        throw httpError('anthropic', err.status, err.message);
+      if (err instanceof Anthropic.APIConnectionError)
+        throw new TailorError('Could not reach Anthropic. Try again.', 502);
+      throw err;
+    }
+    if (response.stop_reason === 'refusal') throw new TailorError('The AI declined to tailor this resume.', 422);
+    if (response.stop_reason === 'max_tokens') throw new TailorError('The tailored resume came back incomplete.', 502);
+    if (!response.parsed_output) throw new TailorError('The AI returned an unreadable resume. Try again.', 502);
+    return response.parsed_output;
+  },
+
+  async gemini(user) {
+    const data = (await post(
+      'gemini',
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(MODEL.gemini())}:generateContent`,
+      { 'x-goog-api-key': readEnv('GEMINI_API_KEY')! },
+      {
+        systemInstruction: { parts: [{ text: SYSTEM + JSON_RULE }] },
+        contents: [{ role: 'user', parts: [{ text: user }] }],
+        generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 16000 },
+      },
+    )) as {
+      promptFeedback?: { blockReason?: string };
+      candidates?: { finishReason?: string; content?: { parts?: { text?: string }[] } }[];
+    };
+    const candidate = data.candidates?.[0];
+    if (data.promptFeedback?.blockReason || candidate?.finishReason === 'SAFETY')
+      throw new TailorError('The AI declined to tailor this resume.', 422);
+    if (candidate?.finishReason === 'MAX_TOKENS')
+      throw new TailorError('The tailored resume came back incomplete.', 502);
+    return parseTailored((candidate?.content?.parts || []).map((p) => p.text || '').join(''));
+  },
+
+  async grok(user) {
+    const data = (await post(
+      'grok',
+      'https://api.x.ai/v1/chat/completions',
+      { authorization: 'Bearer ' + readEnv('XAI_API_KEY') },
+      {
+        model: MODEL.grok(),
+        messages: [
+          { role: 'system', content: SYSTEM + JSON_RULE },
+          { role: 'user', content: user },
+        ],
+        response_format: { type: 'json_object' },
+      },
+    )) as { choices?: { finish_reason?: string; message?: { content?: string } }[] };
+    const choice = data.choices?.[0];
+    if (choice?.finish_reason === 'content_filter')
+      throw new TailorError('The AI declined to tailor this resume.', 422);
+    if (choice?.finish_reason === 'length') throw new TailorError('The tailored resume came back incomplete.', 502);
+    return parseTailored(choice?.message?.content || '');
+  },
+};
+
+/**
+ * Ask the configured AI for a tailored resume. Tries AI_PROVIDER first, then any other configured provider when
+ * one is down, rate limited or rejects its key. Throws TailorError with an HTTP status for the route to return.
+ * `model` ("gemini:gemini-3.6-flash") is stored with the result.
+ */
+export async function tailorResume(
+  resumeText: string,
+  profile: ScoringProfile,
+  job: TailorJob,
+): Promise<{ output: TailorOutput; model: string }> {
+  const providers = aiProviders();
+  if (!providers.length)
+    throw new TailorError(
+      'AI tailoring is not configured. Set ANTHROPIC_API_KEY, GEMINI_API_KEY or XAI_API_KEY on the server.',
+      503,
+    );
   const posting = [
     'JOB: ' + job.title + ' at ' + job.company,
     job.location ? 'LOCATION: ' + job.location : '',
@@ -86,44 +254,20 @@ export async function tailorResume(resumeText: string, profile: ScoringProfile, 
   ]
     .filter(Boolean)
     .join('\n');
+  const user = `<posting>\n${posting}\n</posting>\n\n<profile>\n${candidate}\n</profile>\n\n<resume>\n${resumeText}\n</resume>`;
 
-  let response;
-  try {
-    const client = new Anthropic();
-    response = await client.beta.messages.parse({
-      model: TAILOR_MODEL,
-      max_tokens: 16000,
-      // If a safety classifier declines, the API retries on its recommended fallback model instead of failing.
-      betas: ['server-side-fallback-2026-07-01'],
-      fallbacks: 'default',
-      system: SYSTEM,
-      messages: [
-        {
-          role: 'user',
-          content: `<posting>\n${posting}\n</posting>\n\n<profile>\n${candidate}\n</profile>\n\n<resume>\n${resumeText}\n</resume>`,
-        },
-      ],
-      output_config: { format: betaZodOutputFormat(TailorOutput) },
-    });
-  } catch (err) {
-    if (err instanceof Anthropic.AuthenticationError || err instanceof Anthropic.PermissionDeniedError) {
-      throw new TailorError('Claude API key is missing or invalid. Set ANTHROPIC_API_KEY on the server.', 503);
+  let last: TailorError | null = null;
+  for (const provider of providers) {
+    try {
+      return { output: await CALL[provider](user), model: provider + ':' + MODEL[provider]() };
+    } catch (err) {
+      last = err instanceof TailorError ? err : new TailorError('AI error: ' + (err as Error).message, 502);
+      // A refusal is about the content; another provider will not see it differently.
+      if (last.status === 422) throw last;
+      console.warn('[OVERCLOCK]', provider, 'failed:', last.message, providers.length > 1 ? '→ next provider' : '');
     }
-    if (err instanceof Anthropic.RateLimitError)
-      throw new TailorError('Claude is rate limited. Try again shortly.', 429);
-    if (err instanceof Anthropic.APIConnectionError) throw new TailorError('Could not reach Claude. Try again.', 502);
-    if (err instanceof Anthropic.APIError) throw new TailorError('Claude error: ' + err.message, 502);
-    // The SDK throws a plain Error at construction when no credentials are configured at all.
-    if (err instanceof Error && /api.?key|auth/i.test(err.message)) {
-      throw new TailorError('Claude is not configured. Set ANTHROPIC_API_KEY on the server.', 503);
-    }
-    throw err;
   }
-
-  if (response.stop_reason === 'refusal') throw new TailorError('Claude declined to tailor this resume.', 422);
-  if (response.stop_reason === 'max_tokens') throw new TailorError('The tailored resume came back incomplete.', 502);
-  if (!response.parsed_output) throw new TailorError('Claude returned an unreadable resume. Try again.', 502);
-  return response.parsed_output;
+  throw last!;
 }
 
 /** Plain-text rendering, used for scoring and as the body of the PDF. */

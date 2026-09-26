@@ -6,14 +6,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isSchemaMissing } from '@/lib/supabase/errors';
-import {
-  projectScore,
-  resumeToText,
-  tailorResume,
-  TailorError,
-  TAILOR_MODEL,
-  type TailorOutput,
-} from '@/lib/ai/tailor';
+import { projectScore, resumeToText, tailorResume, TailorError, type TailorOutput } from '@/lib/ai/tailor';
 import { OVERCLOCK_MAX, OVERCLOCK_MIN } from '@/components/dashboard/types';
 
 export const TAILORED_COLUMNS = 'id, job_id, content, base_score, projected_score, model, created_at';
@@ -121,7 +114,10 @@ export async function overclockMatch(
     .eq('company_id', job.company_id)
     .maybeSingle();
 
-  const output = await tailorResume(profile.resume_text, profile, { ...job, company: job.employer || company.name });
+  const { output, model } = await tailorResume(profile.resume_text, profile, {
+    ...job,
+    company: job.employer || company.name,
+  });
   // A failed projection must not throw away a tailoring that has already been paid for.
   const projected = await projectScore({
     currentScore: match.score,
@@ -147,7 +143,7 @@ export async function overclockMatch(
         gaps: output.gaps,
         base_score: match.score,
         projected_score: projected,
-        model: TAILOR_MODEL,
+        model,
         created_at: new Date().toISOString(),
       },
       { onConflict: 'user_id,job_id' },
@@ -172,7 +168,7 @@ export async function overclockMatch(
   return { view: toView(saved), movedToVault };
 }
 
-// One tailoring (Claude + projection) can take well over a minute; never start one that cannot finish.
+// One tailoring (AI call + projection) can take well over a minute; never start one that cannot finish.
 const TAILOR_BUDGET_MS = 110_000;
 
 /**

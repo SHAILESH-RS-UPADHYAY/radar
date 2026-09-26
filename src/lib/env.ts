@@ -24,9 +24,19 @@ export class MissingEnvError extends Error {
   }
 }
 
+/** Trimmed, and without the quotes a dashboard paste sometimes keeps ("pcsk_…" in quotes is not a valid key). */
+const clean = (value: string) =>
+  value
+    .trim()
+    .replace(/^(['"])(.*)\1$/, '$2')
+    .trim();
+
+/** An optional server variable, cleaned the same way; null when unset. */
+export const readEnv = (name: string): string | null => clean(process.env[name] || '') || null;
+
 function required(name: string, value: string | undefined): string {
   if (!value?.trim()) throw new MissingEnvError([name]);
-  return value.trim();
+  return clean(value);
 }
 
 // NEXT_PUBLIC_* must be referenced literally so Next can inline them into client bundles.
@@ -35,8 +45,8 @@ export const env = {
   supabaseAnonKey: () => required('NEXT_PUBLIC_SUPABASE_ANON_KEY', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
   supabaseServiceKey: () => required('SUPABASE_SERVICE_ROLE_KEY', process.env.SUPABASE_SERVICE_ROLE_KEY),
   pineconeApiKey: () => required('PINECONE_API_KEY', process.env.PINECONE_API_KEY),
-  pineconeIndex: () => process.env.PINECONE_INDEX_NAME?.trim() || 'radar-jobs',
-  cronSecret: () => process.env.CRON_SECRET?.trim() || null,
+  pineconeIndex: () => clean(process.env.PINECONE_INDEX_NAME || '') || 'radar-jobs',
+  cronSecret: () => clean(process.env.CRON_SECRET || '') || null,
 };
 
 /** Names of server keys that are not set — for health checks and startup logs. */

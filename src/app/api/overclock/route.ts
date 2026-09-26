@@ -3,10 +3,10 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/client';
 import { isSchemaMissing } from '@/lib/supabase/errors';
 import { isUuid } from '@/lib/validate';
-import { TailorError } from '@/lib/ai/tailor';
+import { aiEngine, TailorError } from '@/lib/ai/tailor';
 import { overclockMatch, OverclockError } from '@/lib/overclock';
 
-// Claude with adaptive thinking can take a minute or more on a long resume.
+// One tailoring call can take a minute or more on a long resume.
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
@@ -20,9 +20,11 @@ export async function GET() {
     .from('tailored_resumes')
     .select('id, job_id, base_score, projected_score, created_at')
     .eq('user_id', userId);
-  if (isSchemaMissing(error)) return NextResponse.json({ ready: false, items: [] });
+  // Which AI writes the next tailoring (AI_PROVIDER, else the first provider with a key), for the OVERCLOCK tab.
+  const engine = aiEngine();
+  if (isSchemaMissing(error)) return NextResponse.json({ ready: false, items: [], engine });
   if (error) return fail(error.message, 500);
-  return NextResponse.json({ ready: true, items: data || [] });
+  return NextResponse.json({ ready: true, items: data || [], engine });
 }
 
 // POST { matchId, force? } — tailor the resume for that match's job (cached per job unless force).

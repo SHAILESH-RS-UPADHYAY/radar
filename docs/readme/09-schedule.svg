@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="960" height="275" viewBox="0 0 960 275" role="img" aria-labelledby="09-schedule-t">
+<title id="09-schedule-t">SCHEDULE: the three crons</title>
+<style>
+  text { font-family: 'JetBrains Mono','Cascadia Mono',Consolas,Menlo,'DejaVu Sans Mono',monospace; font-size: 15px; }
+  .spin { transform-box: fill-box; transform-origin: center; animation: spin 2.4s linear infinite; }
+  .led { animation: led 1.6s steps(2, jump-none) infinite; }
+  .roll { animation: roll 0.18s steps(2) infinite; }
+  .glow { filter: drop-shadow(0 0 6px rgba(0,255,65,0.55)); }
+  .glitch-r { animation: gr 3.2s steps(1) infinite; }
+  .glitch-c { animation: gc 3.2s steps(1) infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes led { 50% { opacity: 0.25; } }
+  @keyframes roll { 50% { transform: translateY(1px); } }
+  @keyframes gr { 0%,88%,100% { transform: translate(0,0); } 90% { transform: translate(-4px,1px); } 94% { transform: translate(3px,-1px); } }
+  @keyframes gc { 0%,88%,100% { transform: translate(0,0); } 91% { transform: translate(4px,-1px); } 95% { transform: translate(-3px,1px); } }
+  @media (prefers-reduced-motion: reduce) { .spin, .led, .roll, .glitch-r, .glitch-c { animation: none; } }
+</style>
+<defs>
+  <clipPath id="09-schedule-win"><rect width="960" height="275" rx="10"/></clipPath>
+  <pattern id="09-schedule-scan" width="6" height="3" patternUnits="userSpaceOnUse"><rect width="6" height="1" fill="#ffffff" opacity="0.035"/></pattern>
+  <clipPath id="09-schedule-c0"><rect x="0" y="49" width="0" height="27"><animate attributeName="width" values="44;470" begin="0.35s" dur="0.74s" fill="freeze"/></rect></clipPath>
+  <clipPath id="09-schedule-c1"><rect x="0" y="74" width="0" height="27"><animate attributeName="width" values="108;705" begin="1.41s" dur="1.04s" fill="freeze"/></rect></clipPath>
+  <clipPath id="09-schedule-c2"><rect x="0" y="99" width="0" height="27"><animate attributeName="width" values="108;759" begin="2.57s" dur="1.14s" fill="freeze"/></rect></clipPath>
+  <clipPath id="09-schedule-c3"><rect x="0" y="124" width="0" height="27"><animate attributeName="width" values="108;759" begin="3.82s" dur="1.14s" fill="freeze"/></rect></clipPath>
+  <clipPath id="09-schedule-c4"><rect x="0" y="149" width="0" height="27"><animate attributeName="width" values="108;579" begin="5.08s" dur="0.82s" fill="freeze"/></rect></clipPath>
+  <clipPath id="09-schedule-c5"><rect x="0" y="174" width="0" height="27"><animate attributeName="width" values="108;777" begin="6.01s" dur="1.17s" fill="freeze"/></rect></clipPath>
+  <clipPath id="09-schedule-c6"><rect x="0" y="199" width="0" height="27"><animate attributeName="width" values="44;371" begin="7.30s" dur="0.56s" fill="freeze"/></rect></clipPath>
+</defs>
+<g clip-path="url(#09-schedule-win)">
+  <rect width="960" height="275" fill="#000"/>
+  <rect width="960" height="36" fill="#2b2b2b"/>
+  <text x="16" y="23" fill="#8a8a8a" textLength="171" lengthAdjust="spacingAndGlyphs" xml:space="preserve">&gt; radar cron --list</text>
+  <text x="938" y="23" text-anchor="end" fill="#a6e22e" font-size="13"><tspan class="led">●</tspan> SCHEDULED</text>
+  
+  <g clip-path="url(#09-schedule-c0)"><text x="22" y="68" fill="#8a8a8a">⎿</text><text x="44" y="68" fill="#f8f8f2" textLength="108" lengthAdjust="spacingAndGlyphs" xml:space="preserve">vercel.json </text><text x="152" y="68" fill="#8a8a8a" textLength="306" lengthAdjust="spacingAndGlyphs" xml:space="preserve">+ .github/workflows/radar-cron.yml</text></g>
+  <rect x="44" y="53" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="0.35s"/><animate attributeName="x" from="44" to="460" begin="0.35s" dur="0.74s" fill="freeze"/><set attributeName="opacity" to="0" begin="1.09s"/></rect>
+  <g clip-path="url(#09-schedule-c1)"><text x="76" y="93" text-anchor="end" fill="#6e6e6e">1</text><text x="108" y="93" fill="#ae81ff" textLength="99" lengthAdjust="spacingAndGlyphs" xml:space="preserve">01:30 UTC  </text><text x="207" y="93" fill="#e6db74" textLength="189" lengthAdjust="spacingAndGlyphs" xml:space="preserve">/api/cron/discover   </text><text x="396" y="93" fill="#f8f8f2" textLength="297" lengthAdjust="spacingAndGlyphs" xml:space="preserve">StartupMap + imports → ATS boards</text></g>
+  <rect x="108" y="78" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="1.41s"/><animate attributeName="x" from="108" to="695" begin="1.41s" dur="1.04s" fill="freeze"/><set attributeName="opacity" to="0" begin="2.45s"/></rect>
+  <g clip-path="url(#09-schedule-c2)"><text x="76" y="118" text-anchor="end" fill="#6e6e6e">2</text><text x="108" y="118" fill="#ae81ff" textLength="99" lengthAdjust="spacingAndGlyphs" xml:space="preserve">02:30 UTC  </text><text x="207" y="118" fill="#e6db74" textLength="189" lengthAdjust="spacingAndGlyphs" xml:space="preserve">/api/cron            </text><text x="396" y="118" fill="#f8f8f2" textLength="351" lengthAdjust="spacingAndGlyphs" xml:space="preserve">scrape → embed → match → verify → Vault</text></g>
+  <rect x="108" y="103" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="2.57s"/><animate attributeName="x" from="108" to="749" begin="2.57s" dur="1.14s" fill="freeze"/><set attributeName="opacity" to="0" begin="3.70s"/></rect>
+  <g clip-path="url(#09-schedule-c3)"><text x="76" y="143" text-anchor="end" fill="#6e6e6e">3</text><text x="108" y="143" fill="#ae81ff" textLength="99" lengthAdjust="spacingAndGlyphs" xml:space="preserve">03:30 UTC  </text><text x="207" y="143" fill="#e6db74" textLength="189" lengthAdjust="spacingAndGlyphs" xml:space="preserve">/api/cron/autopilot  </text><text x="396" y="143" fill="#f8f8f2" textLength="351" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Vault re-check · Gmail · auto-OVERCLOCK</text></g>
+  <rect x="108" y="128" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="3.82s"/><animate attributeName="x" from="108" to="749" begin="3.82s" dur="1.14s" fill="freeze"/><set attributeName="opacity" to="0" begin="4.96s"/></rect>
+  <rect x="30" y="150" width="914" height="25" fill="#003e00" opacity="0"><set attributeName="opacity" to="1" begin="5.08s"/></rect>
+  <g clip-path="url(#09-schedule-c4)"><text x="76" y="168" text-anchor="end" fill="#5fd35f">4</text><text x="88" y="168" fill="#5fd35f">+</text><text x="108" y="168" fill="#ae81ff" textLength="99" lengthAdjust="spacingAndGlyphs" xml:space="preserve">every 6h   </text><text x="207" y="168" fill="#e6db74" textLength="189" lengthAdjust="spacingAndGlyphs" xml:space="preserve">GitHub Actions       </text><rect x="395" y="152" width="173" height="21" rx="2" fill="#127a12"/><text x="396" y="168" fill="#a6e22e" textLength="171" lengthAdjust="spacingAndGlyphs" xml:space="preserve">all three, in order</text></g>
+  <rect x="108" y="153" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="5.08s"/><animate attributeName="x" from="108" to="569" begin="5.08s" dur="0.82s" fill="freeze"/><set attributeName="opacity" to="0" begin="5.89s"/></rect>
+  <rect x="30" y="175" width="914" height="25" fill="#500000" opacity="0"><set attributeName="opacity" to="1" begin="6.01s"/></rect>
+  <g clip-path="url(#09-schedule-c5)"><text x="76" y="193" text-anchor="end" fill="#ff6b6b">5</text><text x="88" y="193" fill="#ff6b6b">−</text><rect x="107" y="177" width="128" height="21" rx="2" fill="#9c1616"/><text x="108" y="193" fill="#ff6b6b" textLength="126" lengthAdjust="spacingAndGlyphs" xml:space="preserve">no CRON_SECRET</text><text x="234" y="193" fill="#8a8a8a" textLength="531" lengthAdjust="spacingAndGlyphs" xml:space="preserve">  → every scheduled run is refused (401) — set it in Vercel</text></g>
+  <rect x="108" y="178" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="6.01s"/><animate attributeName="x" from="108" to="767" begin="6.01s" dur="1.17s" fill="freeze"/><set attributeName="opacity" to="0" begin="7.18s"/></rect>
+  <g clip-path="url(#09-schedule-c6)"><text x="22" y="218" fill="#8a8a8a">⎿</text><text x="44" y="218" fill="#f8f8f2" textLength="108" lengthAdjust="spacingAndGlyphs" xml:space="preserve">/api/health </text><text x="152" y="218" fill="#a6e22e" textLength="207" lengthAdjust="spacingAndGlyphs" xml:space="preserve">→ pipeline.stale: false</text></g>
+  <rect x="44" y="203" width="9" height="19" fill="#e8e8e8" opacity="0"><set attributeName="opacity" to="1" begin="7.30s"/><animate attributeName="x" from="44" to="361" begin="7.30s" dur="0.56s" fill="freeze"/><animate attributeName="opacity" values="1;0" dur="1s" begin="7.86s" repeatCount="indefinite" calcMode="discrete"/></rect>
+  <g><text x="28" y="257" fill="#e8825a" class="spin">✻</text><text x="44" y="257" fill="#fd971f" textLength="72" lengthAdjust="spacingAndGlyphs" xml:space="preserve">Looping…</text><text x="125" y="257" fill="#8a8a8a" textLength="540" lengthAdjust="spacingAndGlyphs" xml:space="preserve">(time-boxed runs · every one resumes where the last stopped)</text></g>
+  <rect width="960" height="275" fill="url(#09-schedule-scan)" class="roll"/>
+</g>
+<rect x="0.5" y="0.5" width="959" height="274" rx="10" fill="none" stroke="#303030"/>
+</svg>

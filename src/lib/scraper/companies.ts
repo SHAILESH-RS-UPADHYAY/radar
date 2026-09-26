@@ -72,7 +72,8 @@ export const COMPANY_SEEDS: CompanySeed[] = [
   // ---------- Growth ----------
   c('Razorpay', 'https://razorpay.com/jobs/', 'greenhouse', 'razorpaysoftwareprivatelimited', 'Growth', 'Bangalore'),
   c('CRED', 'https://careers.cred.club/', 'lever', 'cred', 'Growth', 'Bangalore'),
-  c('Postman', 'https://www.postman.com/company/careers/', 'greenhouse', 'postman', 'Growth', 'Bangalore'),
+  // Moved from Greenhouse to Workable (checked 2026-09-26).
+  c('Postman', 'https://apply.workable.com/postman/', 'workable', 'postman', 'Growth', 'Bangalore'),
   c('Freshworks', 'https://www.freshworks.com/company/careers/', 'smartrecruiters', 'Freshworks', 'Growth', 'Chennai'),
   c('Groww', 'https://groww.in/careers', 'greenhouse', 'groww', 'Growth', 'Bangalore'),
   c('Meesho', 'https://meesho.io/careers', 'lever', 'meesho', 'Growth', 'Bangalore'),
