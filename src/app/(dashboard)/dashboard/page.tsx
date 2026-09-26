@@ -2,10 +2,13 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { useUser } from '@clerk/nextjs';
+import { UserButton, useUser } from '@clerk/nextjs';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useApi } from '@/lib/use-api';
 import type { MatchStatus } from '@/types';
+import { RadarLogo } from '@/components/brand/RadarLogo';
+import { HudPanel, StatusLight } from '@/components/hud/Hud';
+import { Toast, type Notice } from '@/components/hud/Toast';
 import { AppliedCard } from '@/components/dashboard/AppliedCard';
 import { DiscoveryCard } from '@/components/dashboard/DiscoveryCard';
 import { VaultCard } from '@/components/dashboard/VaultCard';
@@ -21,13 +24,41 @@ interface VaultSettings {
 }
 
 const byScore = (a: MatchedJob, b: MatchedJob) => b.score - a.score;
+const byRecent = (a: MatchedJob, b: MatchedJob) => (b.status_changed_at || '').localeCompare(a.status_changed_at || '');
 
-function EmptyState({ icon, title, body }: { icon: string; title: string; body: string }) {
+const SECTIONS: { key: Section; label: string; hint: string }[] = [
+  { key: 'dream', label: 'DREAM', hint: 'your picked companies' },
+  { key: 'recommended', label: 'RECOMMENDED', hint: 'best fits elsewhere' },
+  { key: 'startup', label: 'STARTUPS', hint: 'early-stage teams' },
+];
+
+function EmptyState({
+  label,
+  title,
+  body,
+  children,
+}: {
+  label: string;
+  title: string;
+  body: string;
+  children?: React.ReactNode;
+}) {
   return (
-    <div className="text-center py-32 border border-[#222] rounded-2xl bg-[#0D0D0D]">
-      <div className="text-[#333] text-6xl mb-4">{icon}</div>
-      <p className="text-xl text-white font-bold mb-2">{title}</p>
-      <p className="text-[#666]">{body}</p>
+    <HudPanel label={label} status="IDLE" tone="idle" bodyClassName="px-6 py-16 text-center sm:py-20">
+      <p className="font-mono text-4xl text-phosphor/25">[ ∅ ]</p>
+      <p className="mt-5 font-mono text-lg font-bold tracking-wide text-white">{title}</p>
+      <p className="mx-auto mt-2 max-w-md text-sm text-dim">{body}</p>
+      {children}
+    </HudPanel>
+  );
+}
+
+function PageTitle({ kicker, title, children }: { kicker: string; title: string; children?: React.ReactNode }) {
+  return (
+    <div className="mb-8">
+      <p className="font-mono text-[11px] tracking-[0.35em] text-phosphor/70">{kicker}</p>
+      <h1 className="mt-2 font-mono text-3xl font-extrabold tracking-tight text-white sm:text-4xl">{title}</h1>
+      {children && <p className="mt-2 text-sm text-dim">{children}</p>}
     </div>
   );
 }
@@ -38,19 +69,25 @@ export default function DashboardPage() {
   const [matches, setMatches] = useState<MatchedJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanning, setScanning] = useState(false);
-  const [scanError, setScanError] = useState('');
+  const [scanNote, setScanNote] = useState('');
+  const [notice, setNotice] = useState<Notice | null>(null);
   const [vaultSettings, setVaultSettings] = useState<VaultSettings | null>(null);
   const [primaryTab, setPrimaryTab] = useState<PrimaryTab>('DISCOVERY');
   const [activeTab, setActiveTab] = useState<Section>('recommended');
   const autoScanned = useRef(false);
+  const closeNotice = useCallback(() => setNotice(null), []);
 
+  // Optimistic: move the cards now, and put exactly those cards back if the server says no.
   const setStatus = useCallback(
     async (ids: string[], status: MatchStatus) => {
       if (!ids.length) return;
+      const before = new Map<string, Pick<MatchedJob, 'status' | 'auto_saved'>>();
       setMatches((prev) =>
-        prev.map((m) =>
-          ids.includes(m.id) ? { ...m, status, auto_saved: status === 'saved' ? m.auto_saved : false } : m,
-        ),
+        prev.map((m) => {
+          if (!ids.includes(m.id)) return m;
+          before.set(m.id, { status: m.status, auto_saved: m.auto_saved });
+          return { ...m, status, auto_saved: status === 'saved' ? m.auto_saved : false };
+        }),
       );
       try {
         const res = await api('/api/vault', {
@@ -60,8 +97,9 @@ export default function DashboardPage() {
         });
         if (!res.ok) throw new Error('HTTP ' + res.status);
       } catch (err) {
-        console.error('Failed to update status:', err);
-        setScanError('Could not save that change. Refresh and try again.');
+        console.warn('[VAULT] status update failed, reverting:', err);
+        setMatches((prev) => prev.map((m) => (before.has(m.id) ? { ...m, ...before.get(m.id) } : m)));
+        setNotice({ tone: 'alert', text: 'Could not save that change, so it was reverted. Check your connection.' });
       }
     },
     [api],
@@ -88,39 +126,50 @@ export default function DashboardPage() {
   const fetchMatches = useCallback(async () => {
     try {
       const res = await api('/api/dashboard');
-      if (res.ok) {
-        const data = await res.json();
-        setMatches(data.matches || []);
-        setVaultSettings(data.settings || null);
-      }
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const data = await res.json();
+      setMatches(data.matches || []);
+      setVaultSettings(data.settings || null);
     } catch (err) {
-      console.error('Failed to fetch matches:', err);
+      console.warn('[DASHBOARD] load failed:', err);
+      setNotice({
+        tone: 'alert',
+        text: 'Could not load your matches.',
+        action: { label: 'RETRY', run: () => void fetchMatches() },
+      });
     } finally {
       setLoading(false);
     }
   }, [api]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initial data load from the API
     void fetchMatches();
   }, [fetchMatches]);
 
   const handleScan = useCallback(async () => {
     setScanning(true);
-    setScanError('');
+    setScanNote('');
     try {
       const res = await api('/api/match', { method: 'POST' });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setScanError(data.error || 'Scan failed. Complete onboarding and make sure jobs have been scraped.');
+        const msg = data.error || 'Scan failed. Complete onboarding and make sure jobs have been scraped.';
+        setScanNote(msg);
+        setNotice({ tone: 'alert', text: msg });
         return;
       }
-      if (!data.total) setScanError(data.message || 'No matching jobs yet. Run the scrape job first.');
-      else if (data.vaulted > 0) setPrimaryTab('VAULT');
+      if (!data.total) setScanNote(data.message || 'No matching jobs yet. The next pipeline run will bring some in.');
+      else {
+        setNotice({
+          tone: 'ok',
+          text: `Scan complete · ${data.total} jobs scored · ${data.vaulted} new in your Vault.`,
+        });
+        if (data.vaulted > 0) setPrimaryTab('VAULT');
+      }
       await fetchMatches();
     } catch (err) {
-      console.error('Scan failed:', err);
-      setScanError('Scan failed. Check your connection and try again.');
+      console.warn('[SCAN] failed:', err);
+      setNotice({ tone: 'alert', text: 'Scan failed. Check your connection and try again.' });
     } finally {
       setScanning(false);
     }
@@ -137,235 +186,254 @@ export default function DashboardPage() {
 
   const available = matches.filter((m) => m.status === 'new');
   const saved = matches.filter((m) => m.status === 'saved').sort(byScore);
-  const applied = matches.filter((m) => m.status === 'applied').sort(byScore);
+  const applied = matches.filter((m) => m.status === 'applied').sort(byRecent);
   const discovery = available.filter((m) => m.section === activeTab).sort(byScore);
 
-  const sectionTabs: { key: Section; label: string }[] = [
-    { key: 'dream', label: 'DREAM' },
-    { key: 'recommended', label: 'RECOMMENDED' },
-    { key: 'startup', label: 'STARTUPS' },
+  const TABS: { key: PrimaryTab; label: string; short: string; count: number }[] = [
+    { key: 'DISCOVERY', label: 'DISCOVERY', short: 'DISCOVER', count: available.length },
+    { key: 'VAULT', label: 'THE VAULT', short: 'VAULT', count: saved.length },
+    { key: 'BATTLEFIELD', label: 'BATTLEFIELD', short: 'APPLIED', count: applied.length },
   ];
-  const tabLabel = (tab: PrimaryTab, short = false) =>
-    tab === 'VAULT'
-      ? `${short ? 'VAULT' : 'THE VAULT'} (${saved.length})`
-      : tab === 'BATTLEFIELD'
-        ? `${short ? 'APPLIED' : 'BATTLEFIELD'} (${applied.length})`
-        : tab;
-  const TABS: PrimaryTab[] = ['DISCOVERY', 'VAULT', 'BATTLEFIELD'];
+  const minScore = vaultSettings?.vault_min_score ?? 70;
+  const autoVault = vaultSettings?.auto_vault !== false;
+
+  const scanButton = (
+    <button
+      onClick={handleScan}
+      disabled={scanning}
+      className="flex items-center gap-2 bg-phosphor px-4 py-2 font-mono text-[11px] font-bold tracking-[0.2em] text-black shadow-[0_0_18px_rgba(0,255,65,0.3)] transition-colors hover:bg-[#33FF66] disabled:cursor-wait disabled:bg-phosphor/40"
+    >
+      {scanning && <span className="h-3 w-3 animate-spin rounded-full border-2 border-black/30 border-t-black" />}
+      {scanning ? 'SCANNING' : 'SCAN NOW'}
+    </button>
+  );
 
   return (
-    <div className="min-h-screen flex flex-col bg-[#0A0A0A]">
-      <header className="flex items-center justify-between px-6 py-4 shrink-0 relative z-50 border-b border-[#1A1A1A]">
-        <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-          <div className="w-8 h-8 rounded flex items-center justify-center text-xs font-black text-white bg-[#A67B5B] shadow-[0_0_15px_rgba(166,123,91,0.3)]">
-            R
-          </div>
-          <span className="text-white font-bold text-sm tracking-wider">RADAR.CORE</span>
-        </Link>
+    <div className="relative min-h-screen bg-void">
+      <div className="hud-grid pointer-events-none fixed inset-0" aria-hidden="true" />
+      <div
+        className="pointer-events-none fixed inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_at_top,rgba(0,255,65,0.07),transparent_65%)]"
+        aria-hidden="true"
+      />
 
-        <nav className="hidden md:flex items-center bg-[#111] border border-[#222] rounded-full p-1 shadow-inner">
-          {TABS.map((tab) => (
-            <button
-              key={tab}
-              onClick={() => setPrimaryTab(tab)}
-              className={`px-6 py-1.5 rounded-full text-xs font-bold tracking-widest transition-all ${primaryTab === tab ? 'bg-[#A67B5B] text-white shadow-lg' : 'text-[#666] hover:text-[#999]'}`}
+      <header className="sticky top-0 z-40 border-b border-phosphor/15 bg-black/85 backdrop-blur-md">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+          <Link href="/" aria-label="RADAR home" className="transition-opacity hover:opacity-85">
+            <RadarLogo />
+          </Link>
+
+          <nav className="hidden items-center border border-phosphor/20 md:flex" aria-label="Dashboard sections">
+            {TABS.map((t) => (
+              <button
+                key={t.key}
+                onClick={() => setPrimaryTab(t.key)}
+                aria-current={primaryTab === t.key ? 'page' : undefined}
+                className={
+                  'px-4 py-2 font-mono text-[11px] font-bold tracking-[0.2em] transition-colors ' +
+                  (primaryTab === t.key ? 'bg-phosphor text-black' : 'text-dim hover:text-phosphor')
+                }
+              >
+                {t.label} <span className="opacity-60">{t.count}</span>
+              </button>
+            ))}
+          </nav>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Link
+              href="/settings"
+              className="group flex items-center gap-2 border border-phosphor/20 px-3 py-2 font-mono text-[11px] tracking-[0.2em] text-dim transition-colors hover:border-phosphor/60 hover:text-phosphor"
             >
-              {tabLabel(tab)}
+              <span className="inline-block transition-transform duration-300 group-hover:rotate-90">⚙</span>
+              <span className="hidden sm:inline">PREFERENCES</span>
+            </Link>
+            {scanButton}
+            <UserButton
+              appearance={{ elements: { userButtonAvatarBox: 'h-8 w-8 rounded-none border border-phosphor/40' } }}
+            />
+          </div>
+        </div>
+
+        <nav className="grid grid-cols-3 border-t border-phosphor/10 md:hidden" aria-label="Dashboard sections">
+          {TABS.map((t) => (
+            <button
+              key={t.key}
+              onClick={() => setPrimaryTab(t.key)}
+              className={
+                'py-2.5 font-mono text-[10px] font-bold tracking-[0.2em] ' +
+                (primaryTab === t.key ? 'bg-phosphor text-black' : 'text-dim')
+              }
+            >
+              {t.short} {t.count}
             </button>
           ))}
         </nav>
-
-        <div className="flex items-center gap-4">
-          <Link
-            href="/settings"
-            className="flex items-center gap-2 group px-3 py-2 rounded border border-[#222] text-[#888] hover:text-[#A67B5B] hover:border-[#A67B5B] transition-colors"
-          >
-            <svg
-              className="w-5 h-5 group-hover:rotate-90 transition-transform duration-300"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={1.5}
-                d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-              />
-            </svg>
-            <span className="text-[10px] uppercase font-bold tracking-widest hidden sm:inline whitespace-nowrap">
-              Preferences
-            </span>
-          </Link>
-          <button
-            onClick={handleScan}
-            disabled={scanning}
-            className="px-4 py-2 rounded text-xs font-bold uppercase tracking-wider text-white shadow-[0_0_15px_rgba(166,123,91,0.2)]"
-            style={{ background: scanning ? '#555' : '#A67B5B' }}
-          >
-            {scanning ? 'SCANNING...' : 'SCAN NOW'}
-          </button>
-          {scanError && primaryTab === 'DISCOVERY' && discovery.length > 0 && (
-            <span className="hidden lg:block max-w-[220px] text-[10px] text-red-400">{scanError}</span>
-          )}
-        </div>
       </header>
 
-      <nav className="md:hidden flex items-center justify-center gap-2 py-4 border-b border-[#1A1A1A]">
-        {TABS.map((tab) => (
-          <button
-            key={tab}
-            onClick={() => setPrimaryTab(tab)}
-            className={`px-3 py-1.5 rounded text-[10px] font-bold tracking-widest transition-all ${primaryTab === tab ? 'bg-[#A67B5B] text-white' : 'text-[#666] bg-[#111]'}`}
-          >
-            {tabLabel(tab, true)}
-          </button>
-        ))}
-      </nav>
-
-      <main className="flex-1 overflow-y-auto custom-scrollbar relative">
-        <div className="max-w-6xl mx-auto px-6 py-8 relative z-10">
-          <AnimatePresence mode="wait">
-            {primaryTab === 'DISCOVERY' && (
-              <motion.section
-                key="DISCOVERY"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-              >
-                <div className="grid grid-cols-3 gap-4 mb-8">
-                  {sectionTabs.map((t) => {
-                    const active = activeTab === t.key;
-                    return (
-                      <button
-                        key={t.key}
-                        onClick={() => setActiveTab(t.key)}
-                        className="p-4 rounded-xl text-center transition-all hover:scale-[1.02]"
-                        style={{
-                          background: active ? '#141414' : '#0D0D0D',
-                          border: '1px solid ' + (active ? '#A67B5B' : '#1A1A1A'),
-                        }}
-                      >
-                        <p className="text-2xl font-black text-white font-mono">
-                          {available.filter((m) => m.section === t.key).length}
-                        </p>
-                        <p
-                          className="text-xs font-bold uppercase tracking-wider mt-1"
-                          style={{ color: active ? '#A67B5B' : '#555' }}
-                        >
-                          {t.label}
-                        </p>
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {loading ? (
-                  <p className="text-center py-20 text-sm text-[#555]">Loading Intelligence...</p>
-                ) : discovery.length === 0 ? (
-                  <div className="text-center py-20 border border-dashed border-[#222] rounded-xl bg-[#0D0D0D]">
-                    <p className="text-lg text-white font-bold mb-2">No active signals.</p>
-                    <p className="text-sm mb-6 text-[#666]">
-                      {scanError || 'Your discovery feed is empty. Scan to match your resume against live jobs.'}
-                    </p>
-                    <button
-                      onClick={handleScan}
-                      disabled={scanning}
-                      className="px-6 py-2 rounded text-xs font-bold uppercase tracking-wider text-white bg-[#A67B5B]"
-                    >
-                      {scanning ? 'SCANNING...' : 'SCAN NOW'}
-                    </button>
-                    <p className="text-xs mt-4">
-                      <Link href="/settings" className="underline text-[#888]">
-                        Update your profile
-                      </Link>
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <AnimatePresence>
-                      {discovery.map((m) => (
-                        <DiscoveryCard key={m.id} match={m} onAction={onAction} />
-                      ))}
-                    </AnimatePresence>
-                  </div>
-                )}
-              </motion.section>
-            )}
-
-            {primaryTab === 'VAULT' && (
-              <motion.section
-                key="VAULT"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-              >
-                <div className="mb-8">
-                  <h1 className="text-4xl font-black text-white tracking-tighter uppercase mb-2">The Vault</h1>
-                  <p className="text-[#888]">
-                    {vaultSettings?.auto_vault !== false
-                      ? `Matches scoring ${vaultSettings?.vault_min_score ?? 70}%+ land here automatically after every scan.`
-                      : 'Your curated list of highly targeted opportunities.'}
-                    {vaultSettings?.last_matched_at && (
-                      <span className="text-[#555]"> Last scan: {timeAgo(vaultSettings.last_matched_at)}.</span>
-                    )}
-                  </p>
-                </div>
-                {saved.length === 0 ? (
-                  <EmptyState
-                    icon="🔒"
-                    title="The Vault is empty."
-                    body="Strong matches are added automatically after each scan, or save jobs from Discovery."
-                  />
-                ) : (
-                  <div className="space-y-4">
-                    <AnimatePresence>
-                      {saved.map((m) => (
-                        <VaultCard key={m.id} match={m} onAction={onAction} />
-                      ))}
-                    </AnimatePresence>
-                  </div>
-                )}
-              </motion.section>
-            )}
-
-            {primaryTab === 'BATTLEFIELD' && (
-              <motion.section
-                key="BATTLEFIELD"
-                initial={{ opacity: 0, scale: 0.95 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-              >
-                <div className="mb-8">
-                  <h1 className="text-4xl font-black text-white tracking-tighter uppercase mb-2">The Battlefield</h1>
-                  <p className="text-[#888]">Track your active deployments and ongoing offensives.</p>
-                </div>
-                {applied.length === 0 ? (
-                  <EmptyState
-                    icon="⚔️"
-                    title="No active deployments."
-                    body="Apply to jobs to track them on the battlefield."
-                  />
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <AnimatePresence>
-                      {applied.map((m) => (
-                        <AppliedCard key={m.id} match={m} onAction={onAction} />
-                      ))}
-                    </AnimatePresence>
-                  </div>
-                )}
-              </motion.section>
-            )}
-          </AnimatePresence>
+      <div className="relative border-b border-phosphor/10 bg-black/50">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-x-6 gap-y-2 px-4 py-2.5 font-mono text-[10px] tracking-[0.2em] text-dim sm:px-6">
+          <StatusLight tone={scanning ? 'warn' : 'ok'}>{scanning ? 'SCANNING' : 'LINK ACTIVE'}</StatusLight>
+          <span>
+            LAST SCAN{' '}
+            <span className="text-phosphor/80">{timeAgo(vaultSettings?.last_matched_at ?? null) ?? 'never'}</span>
+          </span>
+          <span>
+            AUTO-VAULT <span className="text-phosphor/80">{autoVault ? '≥ ' + minScore + '%' : 'OFF'}</span>
+          </span>
+          <span>
+            SIGNALS <span className="text-phosphor/80">{matches.length}</span>
+          </span>
+          {user?.firstName && (
+            <span className="ml-auto hidden sm:inline">
+              OPERATOR <span className="text-phosphor/80">{user.firstName.toUpperCase()}</span>
+            </span>
+          )}
         </div>
+      </div>
+
+      <main className="relative mx-auto max-w-6xl px-4 py-8 sm:px-6">
+        <AnimatePresence mode="wait">
+          {primaryTab === 'DISCOVERY' && (
+            <motion.section
+              key="DISCOVERY"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+            >
+              <PageTitle kicker="// DISCOVERY" title="Live signals">
+                New matches from the latest scan, strongest first.
+              </PageTitle>
+
+              <div className="mb-8 grid grid-cols-3 border border-phosphor/20 bg-black/60">
+                {SECTIONS.map((s) => {
+                  const active = activeTab === s.key;
+                  return (
+                    <button
+                      key={s.key}
+                      onClick={() => setActiveTab(s.key)}
+                      aria-pressed={active}
+                      className={
+                        'relative border-r border-phosphor/15 p-4 text-left transition-colors last:border-r-0 sm:p-5 ' +
+                        (active ? 'bg-phosphor/[0.07]' : 'hover:bg-phosphor/[0.03]')
+                      }
+                    >
+                      {active && (
+                        <span className="absolute inset-x-0 top-0 h-0.5 bg-phosphor shadow-[0_0_10px_#00FF41]" />
+                      )}
+                      <p
+                        className={
+                          'font-mono text-2xl font-extrabold sm:text-3xl ' + (active ? 'text-phosphor' : 'text-white')
+                        }
+                      >
+                        {available.filter((m) => m.section === s.key).length}
+                      </p>
+                      <p
+                        className={
+                          'mt-1 font-mono text-[10px] tracking-[0.25em] ' + (active ? 'text-phosphor' : 'text-dim')
+                        }
+                      >
+                        {s.label}
+                      </p>
+                      <p className="mt-0.5 hidden text-[11px] text-dim/70 sm:block">{s.hint}</p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {loading ? (
+                <div className="space-y-3" aria-busy="true">
+                  {[0, 1, 2].map((i) => (
+                    <div key={i} className="h-40 animate-pulse border border-phosphor/10 bg-phosphor/[0.03]" />
+                  ))}
+                </div>
+              ) : discovery.length === 0 ? (
+                <EmptyState
+                  label={'SIGNAL://' + activeTab.toUpperCase()}
+                  title="No active signals."
+                  body={scanNote || 'Nothing new in this lane. Scan to match your profile against live jobs.'}
+                >
+                  <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+                    {scanButton}
+                    <Link
+                      href="/settings"
+                      className="border border-phosphor/30 px-4 py-2 font-mono text-[11px] tracking-[0.2em] text-phosphor/80 hover:text-phosphor"
+                    >
+                      TUNE PROFILE
+                    </Link>
+                  </div>
+                </EmptyState>
+              ) : (
+                <div className="space-y-4">
+                  <AnimatePresence>
+                    {discovery.map((m) => (
+                      <DiscoveryCard key={m.id} match={m} onAction={onAction} />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              )}
+            </motion.section>
+          )}
+
+          {primaryTab === 'VAULT' && (
+            <motion.section
+              key="VAULT"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+            >
+              <PageTitle kicker="// THE VAULT" title="Your shortlist">
+                {autoVault
+                  ? `Matches scoring ${minScore}%+ land here automatically after every scan.`
+                  : 'Auto-vault is off. Save jobs from Discovery to keep them here.'}
+              </PageTitle>
+              {saved.length === 0 ? (
+                <EmptyState
+                  label="VAULT://EMPTY"
+                  title="The Vault is empty."
+                  body="Strong matches are saved automatically after each scan, or save jobs from Discovery yourself."
+                />
+              ) : (
+                <div className="space-y-4">
+                  <AnimatePresence>
+                    {saved.map((m) => (
+                      <VaultCard key={m.id} match={m} onAction={onAction} />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              )}
+            </motion.section>
+          )}
+
+          {primaryTab === 'BATTLEFIELD' && (
+            <motion.section
+              key="BATTLEFIELD"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+            >
+              <PageTitle kicker="// BATTLEFIELD" title="Active deployments">
+                Everything you have applied to, most recent first.
+              </PageTitle>
+              {applied.length === 0 ? (
+                <EmptyState
+                  label="BATTLEFIELD://QUIET"
+                  title="No active deployments."
+                  body="Open a job's apply link from Discovery or the Vault and it will be tracked here."
+                />
+              ) : (
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3">
+                  <AnimatePresence>
+                    {applied.map((m) => (
+                      <AppliedCard key={m.id} match={m} onAction={onAction} />
+                    ))}
+                  </AnimatePresence>
+                </div>
+              )}
+            </motion.section>
+          )}
+        </AnimatePresence>
       </main>
+
+      <Toast notice={notice} onClose={closeNotice} />
     </div>
   );
 }

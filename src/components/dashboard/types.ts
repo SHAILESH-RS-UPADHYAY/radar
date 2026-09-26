@@ -51,14 +51,19 @@ export function formatSalary(job: MatchedJob['job']): string | null {
 
 export function timeAgo(iso: string | null, now = Date.now()): string | null {
   if (!iso) return null;
-  const days = Math.floor((now - new Date(iso).getTime()) / 86_400_000);
-  if (Number.isNaN(days)) return null;
-  if (days <= 0) return 'today';
+  const mins = Math.floor((now - new Date(iso).getTime()) / 60_000);
+  if (Number.isNaN(mins)) return null;
+  if (mins < 1) return 'just now';
+  if (mins < 60) return mins + ' min ago';
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return hours + 'h ago';
+  const days = Math.floor(hours / 24);
   if (days === 1) return '1 day ago';
   if (days < 30) return days + ' days ago';
   return Math.floor(days / 30) + ' mo ago';
 }
 
+/** HUD palette: phosphor for strong, amber for maybe, dim below. Matches the default 70% vault bar. */
 export function scoreColor(score: number): string {
-  return score >= 70 ? '#10B981' : score >= 40 ? '#F59E0B' : '#666';
+  return score >= 70 ? '#00FF41' : score >= 40 ? '#FACC15' : '#7B9481';
 }
