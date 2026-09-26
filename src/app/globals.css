@@ -1,55 +1,37 @@
+/* Clerk renders into its own layer, placed before utilities so Tailwind classes can restyle it. */
+@layer theme, base, clerk, components, utilities;
 @import 'tailwindcss';
 
-:root {
-  --bg-deep: #0a0a0a;
-  --bg-card: #141414;
-  --bg-surface: #1a1a1a;
-  --border: #2a2a2a;
-  --border-hover: #3a3a3a;
-  --wood: #a67b5b;
-  --wood-light: #c4a882;
-  --wood-glow: rgba(166, 123, 91, 0.15);
-  --text-primary: #f0f0f0;
-  --text-secondary: #888888;
-  --text-muted: #555555;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-}
-
-@theme inline {
-  --color-background: var(--bg-deep);
-  --color-foreground: var(--text-primary);
+/* HUD palette — the hero's phosphor-on-black look, as utilities: text-phosphor, border-phosphor/30, bg-void … */
+@theme {
+  --color-void: #000401;
+  --color-phosphor: #00ff41;
+  --color-phosphor-soft: #b6ffc6;
+  --color-hud-cyan: #22d3ee;
+  --color-hud-amber: #facc15;
+  --color-hud-red: #f87171;
+  --color-ink: #dcffe3;
+  --color-dim: #7b9481;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: #333 transparent;
+  scrollbar-color: rgba(0, 255, 65, 0.25) transparent;
 }
 html {
   scroll-behavior: auto;
 }
 ::selection {
-  background: rgba(166, 123, 91, 0.3);
+  background: rgba(0, 255, 65, 0.25);
   color: #fff;
 }
 
 body {
-  background: var(--bg-deep);
-  color: var(--text-primary);
+  background: var(--color-void);
+  color: #f0f0f0;
   overflow-x: hidden;
   font-family: var(--font-inter), sans-serif;
   -webkit-font-smoothing: antialiased;
-}
-
-.scroll-progress {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 2px;
-  z-index: 9999;
-  background: linear-gradient(90deg, var(--wood), var(--wood-light), var(--wood));
-  transform-origin: left;
 }
 
 .font-display {
@@ -61,264 +43,89 @@ body {
 .tracking-display {
   letter-spacing: -0.04em;
 }
-.tracking-label {
-  letter-spacing: 0.2em;
-}
 
-.card-dark {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-.card-dark:hover {
-  border-color: var(--wood);
-  background: var(--bg-surface);
-}
-
-.glass-nav-dark {
-  background: rgba(10, 10, 10, 0.85);
-  backdrop-filter: blur(20px) saturate(1.4);
-  border-bottom: 1px solid var(--border);
-}
-
-.btn-primary-dark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px 36px;
-  border: 2px solid var(--wood);
-  border-radius: 4px;
-  font-weight: 700;
-  font-size: 13px;
-  cursor: pointer;
-  background: var(--wood);
-  color: #fff;
-  transition: all 0.3s ease;
-  text-decoration: none;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-}
-.btn-primary-dark:hover {
-  background: var(--wood-light);
-  border-color: var(--wood-light);
-  transform: scale(1.02);
-}
-
-.btn-ghost-dark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 8px 20px;
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 11px;
-  cursor: pointer;
-  background: transparent;
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
-  transition: all 0.3s ease;
-  text-decoration: none;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-.btn-ghost-dark:hover {
-  border-color: var(--wood);
-  color: var(--wood);
-}
-
-.btn-outline-dark {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  padding: 14px 36px;
-  border-radius: 4px;
-  font-weight: 600;
-  font-size: 13px;
-  cursor: pointer;
-  background: transparent;
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-  transition: all 0.3s ease;
-  text-decoration: none;
-  text-transform: uppercase;
-  letter-spacing: 0.1em;
-}
-.btn-outline-dark:hover {
-  border-color: var(--wood);
-  color: var(--wood);
-}
-
-.text-warm-gradient {
-  background: linear-gradient(135deg, var(--wood-light) 0%, var(--wood) 50%, #d4a574 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-.section-label-dark {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.25em;
-  color: var(--wood);
-}
-.section-label-dark::before {
-  content: '';
-  width: 32px;
-  height: 1px;
-  background: var(--wood);
-}
-
-.heading-underline-dark {
-  position: relative;
-  display: inline-block;
-  padding-bottom: 14px;
-}
-.heading-underline-dark::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
+.scroll-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
   height: 2px;
-  background: var(--wood);
+  z-index: 9999;
+  background: linear-gradient(90deg, transparent, var(--color-phosphor), var(--color-phosphor-soft));
+  box-shadow: 0 0 10px rgba(0, 255, 65, 0.6);
+  transform-origin: left;
 }
 
-.dashed-box-dark {
-  border: 2px dashed var(--border);
-  border-radius: 6px;
-  padding: 14px 28px;
-  transition: border-color 0.4s ease;
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
 }
-.dashed-box-dark:hover {
-  border-color: var(--wood);
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(0, 255, 65, 0.25);
 }
 
-.divider-dark {
-  height: 1px;
-  background: linear-gradient(90deg, transparent, var(--border), var(--wood), var(--border), transparent);
+/* ---- HUD surfaces ---- */
+.hud-grid {
+  background-image:
+    linear-gradient(rgba(0, 255, 65, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 255, 65, 0.04) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
-
-@keyframes scrollLine {
-  0% {
-    transform: scaleY(0);
-    opacity: 0;
+.caret-blink {
+  animation: blink 1s step-end infinite;
+}
+@keyframes hud-flow {
+  to {
+    background-position: 24px 0;
   }
-  50% {
-    transform: scaleY(1);
+}
+.hud-flow {
+  background-image: linear-gradient(90deg, rgba(0, 255, 65, 0.7) 50%, transparent 50%);
+  background-size: 12px 1px;
+  animation: hud-flow 0.8s linear infinite;
+}
+
+/* RadarMark: the sweep turns around the scope centre; the blip lights as it passes. */
+.radar-sweep {
+  transform-box: view-box;
+  transform-origin: center;
+  animation: radar-spin 3.6s linear infinite;
+}
+.radar-blip {
+  animation: radar-blip 3.6s linear infinite;
+}
+@keyframes radar-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@keyframes radar-blip {
+  0% {
+    opacity: 0.9;
+  }
+  35%,
+  92% {
+    opacity: 0.25;
+  }
+  94% {
     opacity: 1;
   }
   100% {
-    transform: scaleY(0);
-    opacity: 0;
-    transform-origin: bottom;
+    opacity: 0.9;
   }
 }
-.scroll-indicator-dark {
-  width: 1px;
-  height: 48px;
-  transform-origin: top;
-  background: linear-gradient(180deg, var(--wood), transparent);
-  animation: scrollLine 2s ease-in-out infinite;
-}
 
-.faq-item-dark {
-  border-bottom: 1px solid var(--border);
-  transition: all 0.3s ease;
-}
-.faq-item-dark:hover {
-  background: var(--bg-card);
-}
-.faq-item-dark summary {
-  cursor: pointer;
-  list-style: none;
-}
-.faq-item-dark summary::-webkit-details-marker {
-  display: none;
-}
-
-.table-dark tr {
-  border-bottom: 1px solid var(--border);
-}
-.table-dark th {
-  color: var(--text-muted);
-  font-weight: 500;
-}
-.table-dark td {
-  color: var(--text-secondary);
-}
-.table-dark .featured {
-  background: rgba(166, 123, 91, 0.05);
-}
-
-.badge-status-dark {
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-}
-
-.badge-pro-dark {
-  font-size: 10px;
-  font-weight: 600;
-  padding: 3px 12px;
-  border-radius: 100px;
-  background: var(--wood-glow);
-  color: var(--wood);
-}
-
-@keyframes float {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
-}
-.float-anim {
-  animation: float 4s ease-in-out infinite;
-}
-
-@keyframes glow-pulse {
-  0%,
-  100% {
-    opacity: 0.4;
-  }
-  50% {
-    opacity: 0.8;
-  }
-}
-.glow-pulse {
-  animation: glow-pulse 3s ease-in-out infinite;
-}
-
-/* Terminal Styles */
-.terminal-window {
-  background: var(--terminal-bg);
-  border: 1px solid var(--terminal-border);
-  box-shadow: 0 0 20px rgba(0, 255, 65, 0.05);
-}
-
+/* ---- Terminal text ---- */
+/* Glow only: the text keeps its parent's colour (the hero title is white). */
 .text-matrix {
-  color: var(--matrix-green);
   text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
 }
-
 .terminal-input-caret {
   display: inline-block;
   width: 10px;
   height: 1.2em;
-  background-color: var(--matrix-green);
+  background-color: var(--color-phosphor);
   vertical-align: middle;
   animation: blink 1s step-end infinite;
 }
-
 @keyframes blink {
   0%,
   100% {
@@ -327,28 +134,6 @@ body {
   50% {
     opacity: 0;
   }
-}
-
-@keyframes scanline {
-  0% {
-    transform: translateY(-100%);
-  }
-  100% {
-    transform: translateY(100vh);
-  }
-}
-
-.scanline-effect::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 10px;
-  background: linear-gradient(to bottom, transparent, rgba(0, 255, 65, 0.2), transparent);
-  opacity: 0.5;
-  animation: scanline 8s linear infinite;
-  pointer-events: none;
 }
 
 /* ---- Hacker hero: glitch title ---- */
@@ -420,10 +205,16 @@ body {
     transform: none;
   }
 }
+
 @media (prefers-reduced-motion: reduce) {
   .glitch::before,
   .glitch::after,
-  .hacker-log-line {
+  .hacker-log-line,
+  .radar-sweep,
+  .radar-blip,
+  .hud-flow,
+  .caret-blink,
+  .terminal-input-caret {
     animation: none;
   }
 }
