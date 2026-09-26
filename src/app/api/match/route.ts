@@ -6,12 +6,29 @@ import { matchUser, MatchError } from '@/lib/pipeline/match';
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
 
+// A scan scores hundreds of jobs; a double click or a stuck button should not run it twice.
+const COOLDOWN_MS = 15_000;
+
 export async function POST() {
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
-    const summary = await matchUser(createServerClient(), userId);
+    const supabase = createServerClient();
+    const { data: last } = await supabase
+      .from('user_profiles')
+      .select('last_matched_at')
+      .eq('id', userId)
+      .maybeSingle();
+    const since = last?.last_matched_at ? Date.now() - Date.parse(last.last_matched_at) : Infinity;
+    if (since < COOLDOWN_MS) {
+      const wait = Math.ceil((COOLDOWN_MS - since) / 1000);
+      return NextResponse.json(
+        { error: 'Scanned a moment ago. Try again in ' + wait + 's.' },
+        { status: 429, headers: { 'retry-after': String(wait) } },
+      );
+    }
+    const summary = await matchUser(supabase, userId);
     return NextResponse.json({
       message: summary.message || 'Computed ' + summary.total + ' matches, ' + summary.vaulted + ' new in your Vault',
       ...summary,

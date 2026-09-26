@@ -28,38 +28,49 @@ verified against its live endpoint; `custom` entries are selectable but not scra
 
 ### Scoring (`src/lib/ai/matcher.ts`)
 
-`60% vector similarity + 40% skill overlap`, then:
+`60% vector similarity + 40% skill overlap` (similarity alone when the job or the profile lists no skills), then:
 
-- seniority: −30 for 5+ yr roles when you have < 4 yrs, +5 for entry-level roles
-- location: +5 in one of your cities, −10 remote you didn't ask for, −25 elsewhere
+- target role: +10 when the job title contains one of your target roles
+- seniority: −30 for 5+ yr roles when you have < 4 yrs, −15 for 3–5 yr roles below 2, +5 for entry-level roles
+- location: +5 in one of your cities, +3 remote you asked for, −10 other remote, −25 elsewhere
+
+Until you confirm skills in Preferences, the skills found in your resume are used. The full spec is rendered at `/protocol`.
 
 ## Project layout
 
 ```
 src/
+  proxy.ts             Clerk session gate for /dashboard, /onboarding, /settings (Next 16 "proxy")
   app/
+    page.tsx           landing page
+    (site)/            public docs: /system, /protocol, /architecture, /privacy, /terms
     (auth)/            Clerk sign-in / sign-up
-    (dashboard)/       dashboard (Discovery · Vault · Applied), onboarding, settings
+    (dashboard)/       dashboard (Discovery · Vault · Battlefield), onboarding, settings
     api/
       cron/            full pipeline: scrape → match → auto-vault
       scrape/          scrape only
-      match/           rescore the signed-in user
+      match/           rescore the signed-in user (15 s cooldown)
       vault/           move matches between new / saved / applied / dismissed
       dashboard/       matches for the dashboard
       companies/       companies really present in given cities
-      settings/        read + edit profile and vault preferences
+      settings/        read + edit profile; settings/resume replaces the resume
       onboarding/      resume upload + profile creation
-      webhook/clerk/   user sync
+      webhook/clerk/   user sync (created / updated / deleted)
+      health/          uptime check: database + vector index
+    not-found.tsx, error.tsx, global-error.tsx, robots.ts, sitemap.ts, icon.svg
   components/
+    brand/             animated RADAR logo
+    hud/               HUD primitives (panels, status lights, toast, status screens)
+    site/              public-site nav, footer, doc layout
+    dashboard/         job cards and helpers
     hero/              landing radar console
-    providers/         smooth scroll
-    ui/                small shared UI
   lib/
-    scraper/           adapters (ATS), boards (job boards), company list, helpers
+    scraper/           adapters (ATS), boards (job boards), company list, catalog, helpers
     pipeline/          scrape + match orchestration
     ai/                embeddings (Pinecone) + scoring
     geo/               city aliases + known offices per city
-    supabase/          clients
+    supabase/          server client with timeouts and safe retries
+    validate.ts        input rules shared by API routes and pages
 supabase/migrations/   SQL, run in order
 ```
 
@@ -67,20 +78,23 @@ supabase/migrations/   SQL, run in order
 
 1. `cp .env.example .env.local` and fill in the keys (Supabase → Project Settings → API Keys;
    Pinecone → API Keys).
-2. Supabase SQL editor: run `supabase/migrations/001_initial_schema.sql`, `002_update_vector_dimensions.sql`,
-   `003_sources_and_vault.sql` in order.
+2. Supabase SQL editor: run every file in `supabase/migrations/` in order (`001` → `004`). Each is safe to re-run.
 3. Pinecone: index `radar-jobs`, **1024** dimensions, cosine.
-4. `npm install && npm run dev`, sign up, finish onboarding.
-5. First run of the pipeline (no `CRON_SECRET` needed in dev):
+4. Clerk → Webhooks: endpoint `https://<your-domain>/api/webhook/clerk` with `user.created`, `user.updated` and
+   `user.deleted`; put its signing secret in `CLERK_WEBHOOK_SIGNING_SECRET`. Deleting an account then removes the
+   user's resume, preferences and matches.
+5. `npm install && npm run dev`, sign up, finish onboarding.
+6. First run of the pipeline (no `CRON_SECRET` needed in dev when it is empty):
 
    ```bash
    curl -X POST http://localhost:3000/api/cron
    ```
 
-### Scheduling in production
+### Scheduling and monitoring in production
 
 - Set `CRON_SECRET` in Vercel. `vercel.json` runs `/api/cron` daily.
 - For every 6 hours, add repo secrets `RADAR_URL` and `CRON_SECRET`; `.github/workflows/radar-cron.yml` does the rest.
+- Point an uptime monitor at `GET /api/health`: 200 when the database and the vector index answer, 503 otherwise.
 
 Tuning knobs (search terms, title filter, caps, similarity band) are documented in `.env.example`.
 

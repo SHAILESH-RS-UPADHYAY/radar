@@ -1,18 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { mockFetch } from '@/test/mock-fetch';
 import { scrapeAshby, scrapeCompany, scrapeGreenhouse, scrapeLever, scrapePersonio } from './adapters';
-
-/** Replace global fetch with a map of URL substring → response body. */
-function mockFetch(routes: Record<string, unknown>) {
-  const fn = vi.fn(async (input: RequestInfo | URL) => {
-    const url = String(input);
-    const hit = Object.entries(routes).find(([k]) => url.includes(k));
-    if (!hit) return new Response('not found', { status: 404 });
-    const body = hit[1];
-    return typeof body === 'string' ? new Response(body) : Response.json(body);
-  });
-  vi.stubGlobal('fetch', fn);
-  return fn;
-}
 
 afterEach(() => vi.unstubAllGlobals());
 

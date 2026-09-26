@@ -353,6 +353,19 @@ const DEFAULT_TITLE_KEYWORDS = [
   'sdet',
 ];
 
+/** Keywords used where a source needs a search (Workday, Amazon, Adzuna, Jooble). */
+export function searchTerms(): string[] {
+  return splitEnvList(process.env.RADAR_SEARCH_TERMS || 'software engineer,developer,data');
+}
+
+/** Comma- or pipe-separated env value → trimmed list (pipes when the values themselves contain commas). */
+export function splitEnvList(value: string, separator: ',' | '|' = ','): string[] {
+  return value
+    .split(separator)
+    .map((s) => s.trim())
+    .filter(Boolean);
+}
+
 function titleKeywords(): string[] {
   const env = process.env.RADAR_TITLE_KEYWORDS;
   if (env?.trim())

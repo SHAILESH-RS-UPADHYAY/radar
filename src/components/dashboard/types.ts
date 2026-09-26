@@ -1,4 +1,5 @@
-import type { MatchStatus } from '@/types';
+import type { MatchStatus, Stage } from '@/types';
+import type { Tone } from '@/components/hud/Hud';
 
 /** One row from GET /api/dashboard. */
 export interface MatchedJob {
@@ -12,6 +13,10 @@ export interface MatchedJob {
   auto_saved: boolean;
   status_changed_at: string | null;
   first_seen_at: string | null;
+  stage: Stage | null;
+  stage_changed_at: string | null;
+  applied_at: string | null;
+  notes: string | null;
   job: {
     id: string;
     title: string;
@@ -66,4 +71,56 @@ export function timeAgo(iso: string | null, now = Date.now()): string | null {
 /** HUD palette: phosphor for strong, amber for maybe, dim below. Matches the default 70% vault bar. */
 export function scoreColor(score: number): string {
   return score >= 70 ? '#00FF41' : score >= 40 ? '#FACC15' : '#7B9481';
+}
+
+// ---- C2 · OPS ----
+
+export const STAGE_META: Record<Stage, { label: string; tone: Tone }> = {
+  applied: { label: 'APPLIED', tone: 'info' },
+  screening: { label: 'SCREENING', tone: 'warn' },
+  interview: { label: 'INTERVIEW', tone: 'ok' },
+  offer: { label: 'OFFER', tone: 'ok' },
+  rejected: { label: 'REJECTED', tone: 'alert' },
+  withdrawn: { label: 'WITHDRAWN', tone: 'idle' },
+};
+export const ACTIVE_STAGES: Stage[] = ['applied', 'screening', 'interview', 'offer'];
+export const CLOSED_STAGES: Stage[] = ['rejected', 'withdrawn'];
+
+export const FOLLOW_UP_DAYS = 7;
+export const GHOST_DAYS = 14;
+
+export interface OpsSignal {
+  tone: Tone;
+  label: string;
+  hint: string;
+}
+
+/**
+ * What RADAR can tell about an application without access to the employer's system: whether the posting
+ * is still up (checked every scan) and how long it has been waiting on the employer.
+ */
+export function opsSignals(m: MatchedJob, now = Date.now()): OpsSignal[] {
+  const signals: OpsSignal[] = [];
+  if (!m.job.is_active) {
+    signals.push({
+      tone: 'alert',
+      label: 'POSTING CLOSED',
+      hint: 'The employer took the listing down, so it is likely filled or paused.',
+    });
+  }
+  const waiting = m.stage === 'applied' || m.stage === 'screening';
+  const since = Date.parse(m.stage_changed_at || m.applied_at || '');
+  if (waiting && !Number.isNaN(since)) {
+    const days = Math.floor((now - since) / 86_400_000);
+    if (days >= GHOST_DAYS) {
+      signals.push({
+        tone: 'warn',
+        label: 'GHOSTED · ' + days + 'D',
+        hint: 'No movement in ' + days + ' days. Follow up once, then move on.',
+      });
+    } else if (days >= FOLLOW_UP_DAYS) {
+      signals.push({ tone: 'info', label: 'FOLLOW UP', hint: days + ' days without news: a short check-in helps.' });
+    }
+  }
+  return signals;
 }

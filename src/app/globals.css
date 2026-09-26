@@ -26,6 +26,14 @@ html {
   color: #fff;
 }
 
+/* Visible keyboard focus everywhere; in the base layer so a component's own focus style can override it. */
+@layer base {
+  :focus-visible {
+    outline: 1px solid var(--color-phosphor);
+    outline-offset: 3px;
+  }
+}
+
 body {
   background: var(--color-void);
   color: #f0f0f0;
@@ -83,33 +91,123 @@ body {
   animation: hud-flow 0.8s linear infinite;
 }
 
-/* RadarMark: the sweep turns around the scope centre; the blip lights as it passes. */
+/* The radar sweep turns around the scope centre once every 3.6s (the logo blip timing depends on it). */
 .radar-sweep {
   transform-box: view-box;
   transform-origin: center;
   animation: radar-spin 3.6s linear infinite;
-}
-.radar-blip {
-  animation: radar-blip 3.6s linear infinite;
 }
 @keyframes radar-spin {
   to {
     transform: rotate(360deg);
   }
 }
-@keyframes radar-blip {
+
+/* Endless strip: the list is rendered twice, so sliding by half loops seamlessly. */
+.hud-marquee {
+  animation: hud-marquee 45s linear infinite;
+}
+.hud-marquee:hover {
+  animation-play-state: paused;
+}
+@keyframes hud-marquee {
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+/* ---- RADAR logo (components/brand/RadarLogo.tsx) ---- */
+.logo-orbit {
+  transform-box: view-box;
+  transform-origin: center;
+  animation: radar-spin 7s linear infinite;
+}
+.logo-scan {
+  animation: logo-scan 4.2s linear infinite;
+}
+@keyframes logo-scan {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    transform: translateY(34px);
+  }
+}
+/* The beam starts 60° past north and the blip sits at 46.6°: it is crossed 346.6/360 of a turn in. */
+.logo-blip {
+  opacity: 0.35;
+  animation: logo-blip 3.6s linear 3.466s infinite;
+}
+@keyframes logo-blip {
   0% {
-    opacity: 0.9;
-  }
-  35%,
-  92% {
-    opacity: 0.25;
-  }
-  94% {
     opacity: 1;
   }
+  45%,
   100% {
+    opacity: 0.35;
+  }
+}
+.logo-ping {
+  opacity: 0;
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: logo-ping 3.6s ease-out 3.466s infinite;
+}
+@keyframes logo-ping {
+  0% {
+    transform: scale(0.6);
     opacity: 0.9;
+  }
+  45% {
+    transform: scale(3.4);
+    opacity: 0;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+.logo-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: logo-draw 1.4s cubic-bezier(0.6, 0, 0.2, 1) 0.15s forwards;
+}
+@keyframes logo-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.group:hover .logo-mark {
+  animation: logo-glitch 0.45s steps(2) 1;
+}
+@keyframes logo-glitch {
+  0%,
+  100% {
+    transform: translate(0);
+    filter: none;
+  }
+  25% {
+    transform: translate(-1px, 0.5px);
+    filter: drop-shadow(-2px 0 rgba(34, 211, 238, 0.9)) drop-shadow(2px 0 rgba(248, 113, 113, 0.9));
+  }
+  50% {
+    transform: translate(1px, -0.5px);
+  }
+  75% {
+    transform: translate(-0.5px, 0);
+    filter: drop-shadow(2px 0 rgba(34, 211, 238, 0.9)) drop-shadow(-2px 0 rgba(248, 113, 113, 0.9));
+  }
+}
+.logo-underline {
+  background: linear-gradient(90deg, transparent, #00ff41, #b6ffc6, transparent) no-repeat;
+  background-size: 35% 100%;
+  animation: logo-underline 2.8s ease-in-out infinite;
+}
+@keyframes logo-underline {
+  from {
+    background-position: -40% 0;
+  }
+  to {
+    background-position: 140% 0;
   }
 }
 
@@ -211,10 +309,20 @@ body {
   .glitch::after,
   .hacker-log-line,
   .radar-sweep,
-  .radar-blip,
+  .hud-marquee,
+  .logo-orbit,
+  .logo-scan,
+  .logo-blip,
+  .logo-ping,
+  .logo-underline,
+  .group:hover .logo-mark,
   .hud-flow,
   .caret-blink,
   .terminal-input-caret {
     animation: none;
+  }
+  .logo-draw {
+    animation: none;
+    stroke-dashoffset: 0;
   }
 }
