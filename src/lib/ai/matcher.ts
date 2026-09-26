@@ -17,8 +17,8 @@ export interface MatchResult {
 // multilingual-e5-large cosine scores are compressed: unrelated text still lands around 0.7,
 // strong matches around 0.85–0.9. Stretch that band onto 0–100 so the score spreads out.
 // Tune these after looking at real scores (they are logged by the match pipeline).
-const SIM_FLOOR = Number(process.env.RADAR_SIM_FLOOR || 0.72);
-const SIM_CEIL = Number(process.env.RADAR_SIM_CEIL || 0.88);
+export const SIM_FLOOR = Number(process.env.RADAR_SIM_FLOOR || 0.72);
+export const SIM_CEIL = Number(process.env.RADAR_SIM_CEIL || 0.88);
 
 export function vectorToScore(similarity: number): number {
   const scaled = (similarity - SIM_FLOOR) / (SIM_CEIL - SIM_FLOOR);
