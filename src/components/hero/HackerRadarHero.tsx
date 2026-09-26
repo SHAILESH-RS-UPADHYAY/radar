@@ -394,6 +394,7 @@ function RadarScope({ onLock }: { onLock: (lock: Lock) => void }) {
       }
 
       // Contacts: drifting tracks, echoes when the sweep hits, lock-ons with a callout.
+      const placed: { l: number; r: number; t: number; b: number }[] = [];
       for (const k of contacts) {
         k.angle = wrap(k.angle + k.drift * dt);
         const r = rangeOf(k) * R;
@@ -455,31 +456,39 @@ function RadarScope({ onLock }: { onLock: (lock: Lock) => void }) {
         ctx.setLineDash([]);
         if (!big || acq < 1) continue;
 
-        // Callout: an elbow leader and three typed lines.
-        const right = x >= c;
-        const sx = right ? 1 : -1;
+        // Callout: an elbow leader and three typed lines, on the side where they fit, clear of other callouts.
+        const bearing = String(Math.round(((k.angle * 180) / Math.PI + 90) % 360)).padStart(3, '0');
+        const line2 = k.band === 'NEW' ? 'NEW SIGNAL · SCORING' : `MATCH ${k.score}% · ${k.band}`;
+        const line3 = `BRG ${bearing}° · RNG ${(r / R).toFixed(2)}`;
+        ctx.font = `bold 9px ${family}`;
+        let tw = ctx.measureText(k.label).width;
+        ctx.font = `500 8px ${family}`;
+        tw = Math.max(tw, ctx.measureText(line2).width, ctx.measureText(line3).width) + 42;
+        let sx = x >= c ? 1 : -1;
+        if (sx > 0 ? x + tw > size - 4 : x - tw < 4) sx = -sx;
+        const right = sx > 0;
+        let elbowY = y - 16;
+        const boxL = right ? x : x - tw;
+        for (const dy of [0, -34, 34, -68, 68]) {
+          const top = y - 16 + dy - 9;
+          if (!placed.some((p) => boxL < p.r && boxL + tw > p.l && top < p.b && top + 32 > p.t)) {
+            elbowY = y - 16 + dy;
+            break;
+          }
+        }
+        placed.push({ l: boxL, r: boxL + tw, t: elbowY - 9, b: elbowY + 23 });
         const elbowX = x + sx * 22;
-        const elbowY = y - 16;
         const endX = elbowX + sx * 14;
         ctx.strokeStyle = `rgba(${rgb},${(a * 0.8).toFixed(3)})`;
         ctx.beginPath();
-        ctx.moveTo(x + sx * 7, y - 7);
+        ctx.moveTo(x + sx * 7, y + (elbowY < y ? -7 : 7));
         ctx.lineTo(elbowX, elbowY);
         ctx.lineTo(endX, elbowY);
         ctx.stroke();
-        const bearing = String(Math.round(((k.angle * 180) / Math.PI + 90) % 360)).padStart(3, '0');
         const lines: [string, string, string][] = [
           [k.label, `bold 9px ${family}`, `rgba(${rgb},${a.toFixed(3)})`],
-          [
-            k.band === 'NEW' ? 'NEW SIGNAL · SCORING' : `MATCH ${k.score}% · ${k.band}`,
-            `500 8px ${family}`,
-            `rgba(182,255,198,${(a * 0.9).toFixed(3)})`,
-          ],
-          [
-            `BRG ${bearing}° · RNG ${(r / R).toFixed(2)}`,
-            `500 8px ${family}`,
-            `rgba(0,255,65,${(a * 0.6).toFixed(3)})`,
-          ],
+          [line2, `500 8px ${family}`, `rgba(182,255,198,${(a * 0.9).toFixed(3)})`],
+          [line3, `500 8px ${family}`, `rgba(0,255,65,${(a * 0.6).toFixed(3)})`],
         ];
         let shown = Math.floor((k.lockAge - 0.45) / 0.012);
         ctx.textAlign = right ? 'left' : 'right';

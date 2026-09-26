@@ -132,9 +132,9 @@ describe('headerLines / sectionLine', () => {
       '   title: "Backend Engineer",',
       '   company: "Pleo",  // Series C',
       '   where: "London · HYBRID",',
-      '   match: 86,  // out of 100',
-      '-  gaps: ["kubernetes"],  // asked for, not in your profile',
-      '+  yours: ["python", "react"],  // asked for, and you have it',
+      '   match: 86,',
+      '-  gaps: ["kubernetes"],',
+      '+  yours: ["python", "react"],',
       '-  posting: "CLOSED",  // taken down',
       ' };',
     ]);

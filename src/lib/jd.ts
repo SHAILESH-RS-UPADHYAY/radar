@@ -393,9 +393,9 @@ export function headerLines(f: JobFacts): TermLine[] {
     field('company', [str(f.company)], f.companyNote),
     field('where', [str(f.where)]),
     ...(f.pay ? [field('pay', [str(f.pay)])] : []),
-    ...(f.score === null ? [] : [field('match', [{ text: String(f.score), tone: 'num' }], 'out of 100')]),
-    ...(f.missing.length ? [field('gaps', list(f.missing), 'asked for, not in your profile', '-')] : []),
-    ...(f.have.length ? [field('yours', list(f.have), 'asked for, and you have it', '+')] : []),
+    ...(f.score === null ? [] : [field('match', [{ text: String(f.score), tone: 'num' }])]),
+    ...(f.missing.length ? [field('gaps', list(f.missing), null, '-')] : []),
+    ...(f.have.length ? [field('yours', list(f.have), null, '+')] : []),
     field('posting', [str(f.posting)], f.postingNote, f.posting === 'CLOSED' ? '-' : null),
     { kind: 'code', mark: null, segs: [{ text: '};', tone: 'plain' }] },
   ];
