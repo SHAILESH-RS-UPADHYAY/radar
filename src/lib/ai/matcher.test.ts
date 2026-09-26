@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeMatchScore, vectorToScore, type MatchInput } from './matcher';
+import { computeMatchScore, matchedRole, vectorToScore, type MatchInput } from './matcher';
 
 const base: MatchInput = {
   userSkills: ['React', 'TypeScript', 'node'],
@@ -55,6 +55,26 @@ describe('computeMatchScore', () => {
   it('treats Remote as a wanted location', () => {
     const r = computeMatchScore({ ...base, userCities: ['Remote'], jobLocation: 'Remote (Worldwide)' });
     expect(r.score).toBe(computeMatchScore(base).score + 3);
+  });
+
+  it('does not rank a job that lists no skills above an equally similar job you partly match', () => {
+    const copywriter = computeMatchScore({ ...base, jobSkills: [] });
+    const engineer = computeMatchScore({ ...base, jobSkills: ['react', 'python', 'go', 'rust'] });
+    expect(copywriter.score).toBe(Math.round(vectorToScore(base.vectorSimilarity)));
+    expect(copywriter.reasoning).not.toContain('listed skills');
+    expect(engineer.matchingSkills).toEqual(['react']);
+    // Without skills on the profile, only similarity counts.
+    expect(computeMatchScore({ ...base, userSkills: [] }).score).toBe(copywriter.score);
+  });
+
+  it('boosts titles that match a target role, ignoring seniority words', () => {
+    const roles = ['AI Engineer', 'Software Engineer'];
+    const hit = computeMatchScore({ ...base, targetRoles: roles, jobTitle: 'Senior Software Engineer II, Payments' });
+    expect(hit.score).toBe(computeMatchScore(base).score + 10);
+    expect(hit.reasoning).toContain('Title matches Software Engineer');
+    expect(matchedRole(roles, 'AI/ML Engineer')).toBe('AI Engineer');
+    expect(matchedRole(roles, 'Account Executive')).toBeNull();
+    expect(matchedRole(['AI Product Engineer'], 'Product Engineer, AI')).toBe('AI Product Engineer');
   });
 
   it('keeps the score within 0–100 and assigns sections', () => {

@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse, after } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
-import * as pdfParseModule from 'pdf-parse';
 import { createServerClient } from '@/lib/supabase/client';
 import { embedText, toVectorLiteral } from '@/lib/ai/embeddings';
 import { extractSkills } from '@/lib/scraper/utils';
 import { resolveDreamCompanyIds } from '@/lib/dream-companies';
 import { runScrape } from '@/lib/pipeline/scrape';
+import { extractPdfText } from '@/lib/resume';
 
 export const maxDuration = 60;
 
@@ -17,26 +17,6 @@ function parseJsonArray(value: FormDataEntryValue | null): string[] {
   } catch {
     return value ? [value] : [];
   }
-}
-
-async function extractPdfText(resumeFile: File): Promise<string> {
-  const buffer = Buffer.from(await resumeFile.arrayBuffer());
-  const PDFParse = (pdfParseModule as unknown as { PDFParse?: unknown }).PDFParse || pdfParseModule;
-  if (typeof PDFParse === 'function') {
-    try {
-      const parser = new (
-        PDFParse as new (opts: { data: Uint8Array }) => { getText: () => Promise<{ text?: string }> }
-      )({
-        data: new Uint8Array(buffer),
-      });
-      const parsed = await parser.getText();
-      return parsed.text?.substring(0, 15000) || '';
-    } catch {
-      const parsed = await (PDFParse as (buf: Buffer) => Promise<{ text?: string }>)(buffer);
-      return parsed.text?.substring(0, 15000) || '';
-    }
-  }
-  return '';
 }
 
 export async function POST(req: NextRequest) {
@@ -114,6 +94,7 @@ export async function POST(req: NextRequest) {
         country,
         is_fresher: isFresher,
         experience_years: experienceYears,
+        current_role: currentRole || null,
         skills,
         resume_text: resumeText || null,
         resume_embedding: resumeEmbedding ? toVectorLiteral(resumeEmbedding) : null,

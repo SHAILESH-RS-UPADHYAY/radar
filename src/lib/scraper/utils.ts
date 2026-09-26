@@ -193,6 +193,30 @@ export const SKILL_ALIASES: Record<string, string[]> = {
   'machine learning': ['machine learning', 'ml'],
   'deep learning': ['deep learning'],
   llm: ['llm', 'llms', 'large language model', 'large language models', 'genai', 'generative ai'],
+  rag: ['rag', 'retrieval augmented generation', 'retrieval-augmented generation'],
+  langchain: ['langchain'],
+  langgraph: ['langgraph'],
+  llamaindex: ['llamaindex', 'llama index', 'llama-index'],
+  openai: ['openai', 'gpt-4', 'gpt-4o'],
+  'ai agents': ['ai agents', 'ai agent', 'agentic', 'multi-agent', 'llm agents'],
+  'prompt engineering': ['prompt engineering'],
+  'fine-tuning': ['fine-tuning', 'fine tuning', 'finetuning', 'lora', 'peft', 'rlhf'],
+  'vector database': [
+    'vector database',
+    'vector databases',
+    'vector db',
+    'vector store',
+    'pinecone',
+    'weaviate',
+    'qdrant',
+    'milvus',
+    'chromadb',
+    'faiss',
+    'pgvector',
+  ],
+  'hugging face': ['hugging face', 'huggingface', 'transformers'],
+  mlops: ['mlops', 'mlflow', 'kubeflow'],
+  'scikit-learn': ['scikit-learn', 'sklearn'],
   nlp: ['nlp', 'natural language processing'],
   'computer vision': ['computer vision'],
   pytorch: ['pytorch'],
@@ -226,7 +250,11 @@ export const SKILL_ALIASES: Record<string, string[]> = {
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const SKILL_PATTERNS = Object.entries(SKILL_ALIASES).map(
   ([canonical, aliases]) =>
-    [canonical, new RegExp('(^|[^a-z0-9+#.])(' + aliases.map(escapeRe).join('|') + ')(?![a-z0-9+#])', 'i')] as const,
+    // "-to-" / " to market" keep "Go-to-market" (sales JDs) from reading as the Go language.
+    [
+      canonical,
+      new RegExp('(^|[^a-z0-9+#.])(' + aliases.map(escapeRe).join('|') + ')(?![a-z0-9+#]|-to-| to market)', 'i'),
+    ] as const,
 );
 
 export function extractSkills(text: string): string[] {
