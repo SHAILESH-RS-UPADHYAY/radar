@@ -94,7 +94,8 @@ export async function PATCH(req: Request) {
         if (error) return NextResponse.json({ error: error.message }, { status: 500 });
       }
     }
-    return NextResponse.json({ ok: true });
+    // Echo the saved profile so the page shows exactly what was stored (e.g. normalised skills).
+    return NextResponse.json({ ok: true, profile: await loadSettingsProfile(supabase, userId) });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
   }
