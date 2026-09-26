@@ -6,6 +6,7 @@ import { extractSkills } from '@/lib/scraper/utils';
 import { resolveDreamCompanyIds } from '@/lib/dream-companies';
 import { runScrape } from '@/lib/pipeline/scrape';
 import { extractPdfText } from '@/lib/resume';
+import { resumeProblem } from '@/lib/validate';
 
 export const maxDuration = 60;
 
@@ -47,6 +48,8 @@ export async function POST(req: NextRequest) {
     let resumeText = '';
 
     if (resumeFile && resumeFile.size > 0) {
+      const problem = resumeProblem(resumeFile);
+      if (problem) return NextResponse.json({ error: problem }, { status: 400 });
       resumeText = await extractPdfText(resumeFile);
     }
 

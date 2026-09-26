@@ -1,56 +1,51 @@
-﻿import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhook } from '@clerk/nextjs/webhooks';
 import { createServerClient } from '@/lib/supabase/client';
 
+// Clerk → Supabase user sync. Clerk retries failed deliveries for hours, so every branch is
+// idempotent, and a 5xx is returned only when a retry could help.
 export async function POST(req: NextRequest) {
+  let evt: Awaited<ReturnType<typeof verifyWebhook>>;
   try {
-    const evt = await verifyWebhook(req);
-    const eventType = evt.type;
-    const supabase = createServerClient();
-
-    if (eventType === 'user.created') {
-      const { id, email_addresses, first_name, last_name, phone_numbers } = evt.data;
-      const email = email_addresses?.[0]?.email_address || null;
-      const phone = phone_numbers?.[0]?.phone_number || null;
-      const fullName = [first_name, last_name].filter(Boolean).join(' ') || null;
-
-      const { error } = await supabase.from('user_profiles').upsert(
-        {
-          id,
-          email,
-          phone,
-          full_name: fullName,
-          is_fresher: true,
-          experience_years: 0,
-          skills: [],
-          country: 'India',
-          tier: 'free',
-        },
-        { onConflict: 'id' },
-      );
-
-      if (error) {
-        console.error('[WEBHOOK] Error creating user profile:', error);
-        return NextResponse.json({ error: error.message }, { status: 500 });
-      }
-      return NextResponse.json({ success: true, userId: id });
-    }
-
-    if (eventType === 'user.updated') {
-      const { id, email_addresses, first_name, last_name } = evt.data;
-      await supabase
-        .from('user_profiles')
-        .update({
-          email: email_addresses?.[0]?.email_address || null,
-          full_name: [first_name, last_name].filter(Boolean).join(' ') || null,
-        })
-        .eq('id', id);
-      return NextResponse.json({ success: true });
-    }
-
-    return NextResponse.json({ received: true });
+    evt = await verifyWebhook(req);
   } catch (error) {
-    console.error('[WEBHOOK] Error:', error);
+    console.error('[WEBHOOK] Verification failed:', error instanceof Error ? error.message : error);
     return NextResponse.json({ error: 'Webhook verification failed' }, { status: 400 });
   }
+
+  const supabase = createServerClient();
+
+  if (evt.type === 'user.created' || evt.type === 'user.updated') {
+    const { id, email_addresses, first_name, last_name, phone_numbers } = evt.data;
+    // Identity only. Preferences belong to onboarding, and a late retry must never reset them;
+    // a brand-new row takes the table defaults for everything else.
+    const { error } = await supabase.from('user_profiles').upsert(
+      {
+        id,
+        email: email_addresses?.[0]?.email_address || null,
+        phone: phone_numbers?.[0]?.phone_number || null,
+        full_name: [first_name, last_name].filter(Boolean).join(' ') || null,
+      },
+      { onConflict: 'id' },
+    );
+    if (error) {
+      console.error('[WEBHOOK]', evt.type, 'failed:', error.message);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    return NextResponse.json({ success: true });
+  }
+
+  if (evt.type === 'user.deleted') {
+    // Removes the resume and preferences; dream companies and matches go with it (ON DELETE CASCADE).
+    if (evt.data.id) {
+      const { error } = await supabase.from('user_profiles').delete().eq('id', evt.data.id);
+      if (error) {
+        console.error('[WEBHOOK] user.deleted failed:', error.message);
+        return NextResponse.json({ error: error.message }, { status: 500 });
+      }
+    }
+    return NextResponse.json({ success: true });
+  }
+
+  return NextResponse.json({ received: true });
 }

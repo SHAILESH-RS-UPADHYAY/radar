@@ -1,3 +1,5 @@
+// Next 16 'proxy' (formerly middleware): runs before routes render. Pages below require a session;
+// API routes check auth themselves so they can answer 401 instead of redirecting.
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
 const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/onboarding(.*)', '/settings(.*)']);

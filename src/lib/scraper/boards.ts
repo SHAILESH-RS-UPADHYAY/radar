@@ -9,6 +9,10 @@
 //   remoteok    remoteok.com/api — ToS: credit Remote OK and link to the job URL
 //   arbeitnow   arbeitnow.com/api/job-board-api
 //   himalayas   himalayas.app/jobs/api
+//   jobicy      jobicy.com/api/v2 — ToS: keep Jobicy as the source, link its canonical job URL, at most hourly
+//   themuse     themuse.com/api/public/jobs — public, 500 requests/hour without a key; link back to The Muse
+//   adzuna      api.adzuna.com — official API, needs ADZUNA_APP_ID + ADZUNA_APP_KEY; descriptions are snippets
+//   jooble      jooble.org/api — official API, needs JOOBLE_API_KEY; descriptions are snippets
 
 import {
   decodeEntities,
@@ -17,11 +21,13 @@ import {
   htmlToText,
   isRelevantTitle,
   parseSalaryRange,
+  searchTerms,
+  splitEnvList,
   toIso,
   type ScrapedJob,
 } from './utils';
 
-export const BOARD_PROVIDERS = ['hackernews', 'remotive', 'remoteok', 'arbeitnow', 'himalayas'] as const;
+export { BOARD_PROVIDERS } from '@/types';
 
 export async function scrapeBoard(provider: string): Promise<ScrapedJob[]> {
   switch (provider) {
@@ -35,6 +41,14 @@ export async function scrapeBoard(provider: string): Promise<ScrapedJob[]> {
       return scrapeArbeitnow();
     case 'himalayas':
       return scrapeHimalayas();
+    case 'jobicy':
+      return scrapeJobicy();
+    case 'themuse':
+      return scrapeTheMuse();
+    case 'adzuna':
+      return scrapeAdzuna();
+    case 'jooble':
+      return scrapeJooble();
     default:
       throw new Error('Unknown board: ' + provider);
   }
@@ -227,4 +241,184 @@ async function scrapeHimalayas(): Promise<ScrapedJob[]> {
     if (!cursor) break;
   }
   return jobs;
+}
+
+// ---------- Jobicy (remote, worldwide) ----------
+async function scrapeJobicy(): Promise<ScrapedJob[]> {
+  const jobs = new Map<string, ScrapedJob>();
+  for (const industry of splitEnvList(process.env.RADAR_JOBICY_INDUSTRIES || 'engineering,data-science')) {
+    const data = await fetchJson<any>(
+      'https://jobicy.com/api/v2/remote-jobs?count=100&industry=' + encodeURIComponent(industry),
+    );
+    for (const job of data.jobs || []) {
+      if (!job.id || !job.url) continue;
+      const geo = String(job.jobGeo || '')
+        .replace(/\s+/g, ' ')
+        .trim();
+      jobs.set(
+        String(job.id),
+        finalizeJob({
+          external_id: String(job.id),
+          title: decodeEntities(job.jobTitle || ''),
+          description: htmlToText(job.jobDescription || job.jobExcerpt) + '\n\nSource: Jobicy',
+          location: 'Remote' + (geo && geo !== 'Anywhere' ? ' (' + geo + ')' : ''),
+          apply_url: job.url,
+          department: job.jobIndustry?.[0] || null,
+          work_type: 'remote',
+          salary_min: Number(job.annualSalaryMin) || null,
+          salary_max: Number(job.annualSalaryMax) || null,
+          salary_currency: job.salaryCurrency || null,
+          posted_at: toIso(job.pubDate),
+          employer: job.companyName || null,
+        }),
+      );
+    }
+  }
+  return [...jobs.values()];
+}
+
+// ---------- The Muse (software engineering, by location) ----------
+// Location names contain commas, so RADAR_MUSE_LOCATIONS is pipe-separated.
+async function scrapeTheMuse(): Promise<ScrapedJob[]> {
+  const locations = splitEnvList(
+    process.env.RADAR_MUSE_LOCATIONS ||
+      'Flexible / Remote|Bengaluru, India|London, United Kingdom|Berlin, Germany|Amsterdam, Netherlands',
+    '|',
+  );
+  const pages = Math.max(1, Number(process.env.RADAR_MUSE_PAGES) || 3);
+  const jobs = new Map<string, ScrapedJob>();
+  for (const location of locations) {
+    for (let page = 1; page <= pages; page++) {
+      const data = await fetchJson<any>(
+        'https://www.themuse.com/api/public/jobs?category=Software%20Engineering&page=' +
+          page +
+          '&location=' +
+          encodeURIComponent(location),
+      );
+      for (const job of data.results || []) {
+        if (!job.id || !job.refs?.landing_page) continue;
+        const places: string[] = (job.locations || []).map((l: any) => l.name).filter(Boolean);
+        jobs.set(
+          String(job.id),
+          finalizeJob({
+            external_id: String(job.id),
+            title: decodeEntities(job.name || ''),
+            description: htmlToText(job.contents) + '\n\nSource: The Muse',
+            location: places.join(' / ') || location,
+            apply_url: job.refs.landing_page,
+            department: job.categories?.[0]?.name || null,
+            salary_min: null,
+            salary_max: null,
+            salary_currency: null,
+            posted_at: toIso(job.publication_date),
+            employer: job.company?.name || null,
+          }),
+        );
+      }
+      if (page >= (data.page_count || 0)) break;
+    }
+  }
+  return [...jobs.values()];
+}
+
+// ---------- Adzuna (official API, many countries) ----------
+const ADZUNA_CURRENCY: Record<string, string> = {
+  in: 'INR',
+  gb: 'GBP',
+  us: 'USD',
+  sg: 'SGD',
+  de: 'EUR',
+  nl: 'EUR',
+  fr: 'EUR',
+};
+
+async function scrapeAdzuna(): Promise<ScrapedJob[]> {
+  const id = process.env.ADZUNA_APP_ID?.trim();
+  const key = process.env.ADZUNA_APP_KEY?.trim();
+  if (!id || !key) {
+    console.warn('[SCRAPE] Adzuna skipped: set ADZUNA_APP_ID and ADZUNA_APP_KEY to enable it.');
+    return [];
+  }
+  const jobs = new Map<string, ScrapedJob>();
+  for (const country of splitEnvList(process.env.RADAR_ADZUNA_COUNTRIES || 'in,gb,de,nl,fr,sg,us')) {
+    for (const term of searchTerms()) {
+      const params = new URLSearchParams({
+        app_id: id,
+        app_key: key,
+        what: term,
+        results_per_page: '50',
+        max_days_old: '30',
+        'content-type': 'application/json',
+      });
+      const data = await fetchJson<any>(
+        'https://api.adzuna.com/v1/api/jobs/' + encodeURIComponent(country) + '/search/1?' + params,
+      );
+      for (const job of data.results || []) {
+        if (!job.id || !job.redirect_url) continue;
+        // A predicted salary is Adzuna's estimate, not the employer's figure.
+        const stated = String(job.salary_is_predicted) !== '1' && Number(job.salary_min) > 0;
+        jobs.set(
+          country + ':' + job.id,
+          finalizeJob({
+            external_id: country + ':' + job.id,
+            title: htmlToText(job.title),
+            description: htmlToText(job.description) + '\n\nSource: Adzuna',
+            location: job.location?.display_name || country.toUpperCase(),
+            apply_url: job.redirect_url,
+            department: job.category?.label || null,
+            salary_min: stated ? Math.round(job.salary_min) : null,
+            salary_max: stated && job.salary_max ? Math.round(job.salary_max) : null,
+            salary_currency: stated ? ADZUNA_CURRENCY[country] || null : null,
+            posted_at: toIso(job.created),
+            employer: job.company?.display_name || null,
+          }),
+        );
+      }
+    }
+  }
+  return [...jobs.values()];
+}
+
+// ---------- Jooble (official API, many countries) ----------
+async function scrapeJooble(): Promise<ScrapedJob[]> {
+  const key = process.env.JOOBLE_API_KEY?.trim();
+  if (!key) {
+    console.warn('[SCRAPE] Jooble skipped: set JOOBLE_API_KEY to enable it.');
+    return [];
+  }
+  const locations = splitEnvList(
+    process.env.RADAR_JOOBLE_LOCATIONS || 'India|United Kingdom|Germany|Netherlands|Remote',
+    '|',
+  );
+  const jobs = new Map<string, ScrapedJob>();
+  for (const location of locations) {
+    for (const term of searchTerms()) {
+      const data = await fetchJson<any>('https://jooble.org/api/' + encodeURIComponent(key), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ keywords: term, location, page: '1' }),
+      });
+      for (const job of data.jobs || []) {
+        if (!job.id || !job.link) continue;
+        const pay = parseSalaryRange(job.salary);
+        jobs.set(
+          String(job.id),
+          finalizeJob({
+            external_id: String(job.id),
+            title: htmlToText(job.title),
+            description: htmlToText(job.snippet) + '\n\nSource: Jooble',
+            location: job.location || location,
+            apply_url: job.link,
+            department: null,
+            salary_min: pay.min,
+            salary_max: pay.max,
+            salary_currency: pay.currency,
+            posted_at: toIso(job.updated),
+            employer: job.company || null,
+          }),
+        );
+      }
+    }
+  }
+  return [...jobs.values()];
 }

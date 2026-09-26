@@ -47,9 +47,22 @@ new ──save/auto-vault──▶ saved ──apply──▶ applied
 `score = 0.6 × vector + 0.4 × skills`, then adjustments:
 
 - **vector**: cosine similarity stretched from `[0.72, 0.88]` to `[0, 100]` (`RADAR_SIM_FLOOR` / `RADAR_SIM_CEIL`)
-- **skills**: share of the job's listed skills you have, after alias normalization
+- **skills**: share of the job's listed skills you have, after alias normalization. When the job or the profile lists
+  no skills the score is the vector part alone, so a vague non-tech posting cannot outrank a real partial match.
+  Profiles without confirmed skills use the skills found in the resume.
+- **target role**: +10 when every word of one of your target roles (`user_profiles.current_role`, comma-separated)
+  appears in the job title, ignoring seniority words
 - **seniority**: −30 for 5+ yr roles below 4 yrs of experience, −15 for 3–5 yr roles below 2, +5 for entry-level roles
 - **location**: +5 in one of your cities, +3 remote when you asked for remote, −10 remote otherwise, −25 elsewhere
+
+## Resilience
+
+- The Supabase client times out requests after 25 s and retries transient failures: connection failures for every
+  method, gateway errors and dropped connections for reads only (a write that may have landed is never repeated).
+- Closed postings lose their Pinecone vector, so they cannot crowd the top-K search.
+- The Clerk webhook writes identity fields only (a late retry never resets preferences) and deletes the profile on
+  `user.deleted`; dream companies and matches cascade.
+- `GET /api/health` reports database and vector-index reachability for uptime monitors.
 
 ## City-aware companies
 

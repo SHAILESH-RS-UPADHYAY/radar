@@ -13,7 +13,19 @@ export type AtsProvider =
   | 'breezy'
   | 'workday'
   | 'amazon';
-export type BoardProvider = 'hackernews' | 'remotive' | 'remoteok' | 'arbeitnow' | 'himalayas';
+/** Sources that list many employers each; the real employer is stored on the job. */
+export const BOARD_PROVIDERS = [
+  'hackernews',
+  'remotive',
+  'remoteok',
+  'arbeitnow',
+  'himalayas',
+  'jobicy',
+  'themuse',
+  'adzuna',
+  'jooble',
+] as const;
+export type BoardProvider = (typeof BOARD_PROVIDERS)[number];
 export type Provider = AtsProvider | BoardProvider | 'custom';
 
 export type CompanyCategory = 'MNC' | 'Growth' | 'Startup' | 'Board';
@@ -21,6 +33,10 @@ export type WorkType = 'remote' | 'hybrid' | 'in-office';
 export type ExperienceLevel = 'fresher' | '0-1' | '1-3' | '3-5' | '5+';
 export type JobSection = 'dream' | 'recommended' | 'startup';
 export type MatchStatus = 'new' | 'saved' | 'applied' | 'dismissed';
+
+/** Where an application stands (C2 · OPS). Only matches with status 'applied' have one. */
+export const STAGES = ['applied', 'screening', 'interview', 'offer', 'rejected', 'withdrawn'] as const;
+export type Stage = (typeof STAGES)[number];
 
 export interface Company {
   id: string;
@@ -108,4 +124,8 @@ export interface MatchScore {
   status_changed_at: string | null;
   first_seen_at: string;
   computed_at: string;
+  stage: Stage | null;
+  stage_changed_at: string | null;
+  applied_at: string | null;
+  notes: string | null;
 }

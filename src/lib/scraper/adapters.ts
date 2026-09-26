@@ -28,6 +28,7 @@ import {
   mapLimit,
   parseSalaryNumber,
   parseSalaryRange,
+  searchTerms,
   toIso,
   decodeEntities,
   type ScrapedJob,
@@ -38,13 +39,6 @@ export type { ScrapedJob } from './utils';
 
 // Big employers list thousands of roles; cap how many we pull (and fetch details for) per company.
 const MAX_PER_COMPANY = Number(process.env.RADAR_MAX_JOBS_PER_COMPANY || 150);
-
-function searchTerms(): string[] {
-  return (process.env.RADAR_SEARCH_TERMS || 'software engineer,developer,data')
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
 
 // ---------- Greenhouse ----------
 export async function scrapeGreenhouse(token: string): Promise<ScrapedJob[]> {

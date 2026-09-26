@@ -5,10 +5,10 @@ import { embedText, toVectorLiteral } from '@/lib/ai/embeddings';
 import { extractSkills, normalizeSkill } from '@/lib/scraper/utils';
 import { extractPdfText } from '@/lib/resume';
 import { loadSettingsProfile, splitList } from '@/lib/profile';
+import { resumeProblem } from '@/lib/validate';
 
 export const maxDuration = 60;
 
-const MAX_BYTES = 5 * 1024 * 1024;
 const fail = (error: string, status: number) => NextResponse.json({ error }, { status });
 
 // POST multipart { resume: File } — replace the resume, merge the skills it mentions, refresh the embedding.
@@ -18,10 +18,9 @@ export async function POST(req: NextRequest) {
 
   const form = await req.formData().catch(() => null);
   const file = form?.get('resume');
-  if (!(file instanceof File) || file.size === 0) return fail('Attach a PDF resume.', 400);
-  if (file.size > MAX_BYTES) return fail('Resume must be under 5 MB.', 413);
-  if (file.type !== 'application/pdf' && !file.name.toLowerCase().endsWith('.pdf'))
-    return fail('Only PDF resumes are supported.', 415);
+  if (!(file instanceof File)) return fail('Attach a PDF resume.', 400);
+  const problem = resumeProblem(file);
+  if (problem) return fail(problem, 400);
 
   const text = (await extractPdfText(file).catch(() => '')).trim();
   if (!text) return fail('No text found in this PDF. Export it as a text PDF (not a scanned image) and retry.', 422);

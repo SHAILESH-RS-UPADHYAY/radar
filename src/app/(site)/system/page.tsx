@@ -22,6 +22,18 @@ const TOC = [
 ];
 
 const feeds = CATALOG.tracked + CATALOG.boards.length;
+
+const BOARD_NOTES: Partial<Record<Provider, string>> = {
+  hackernews: 'Latest "Who is hiring" thread',
+  remotive: 'Remote software and data roles',
+  remoteok: 'Remote tech roles',
+  arbeitnow: 'European tech roles, many visa-friendly',
+  himalayas: 'Remote roles worldwide',
+  jobicy: 'Remote engineering and data roles, credited to Jobicy',
+  themuse: 'Software engineering in major cities and remote',
+  adzuna: 'Official API across India, UK, EU, Singapore and US (needs a key)',
+  jooble: 'Official multi-country search API (needs a key)',
+};
 const perProvider = (p: Provider) => COMPANY_SEEDS.filter((c) => c.ats_provider === p).length;
 const boards = new Set<string>(BOARD_PROVIDERS);
 const ATS = (Object.keys(SOURCE_NAMES) as Exclude<Provider, 'custom'>[]).filter((p) => !boards.has(p));
@@ -160,11 +172,7 @@ export default function SystemPage() {
           <DataTable
             label="JOB BOARDS"
             head={['BOARD', 'REGION', 'READS']}
-            rows={CATALOG.boards.map((b) => [
-              b.name,
-              b.country,
-              b.ats_provider === 'hackernews' ? 'Latest "Who is hiring" thread' : 'Tech listings, remote-first',
-            ])}
+            rows={CATALOG.boards.map((b) => [b.name, b.country, BOARD_NOTES[b.ats_provider] || 'Tech listings'])}
           />
         </DocSection>
 

@@ -2,49 +2,64 @@
 
 import { NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServerClient } from '@/lib/supabase/client';
+import { isSchemaMissing } from '@/lib/supabase/errors';
 
 export const dynamic = 'force-dynamic';
 
-const SELECT = `
-  id, score, reasoning, matching_skills, missing_skills, section, status, auto_saved, status_changed_at, first_seen_at,
+const JOB = `
   jobs!inner (
     id, title, description, location, work_type, skills, apply_url, department, employer, posted_at, is_active,
     experience_required, salary_min, salary_max, salary_currency,
     companies!inner ( name, category, ats_provider )
-  )
-`;
+  )`;
+const BASE =
+  'id, score, reasoning, matching_skills, missing_skills, section, status, auto_saved, status_changed_at, first_seen_at,';
+const OPS = ' stage, stage_changed_at, applied_at, notes,';
 
-export async function GET() {
-  const { userId } = await auth();
-  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-
-  const supabase = createServerClient();
-
-  // Vault + applied: everything, even if the posting has since closed.
-  // Discovery: the best open jobs not yet acted on.
-  const [tracked, discovery, profile] = await Promise.all([
+/** Vault + applied: everything, even if the posting has since closed. Discovery: the best open jobs not yet acted on. */
+function load(supabase: SupabaseClient, userId: string, withOps: boolean) {
+  const select = BASE + (withOps ? OPS : '') + JOB;
+  return Promise.all([
     supabase
       .from('match_scores')
-      .select(SELECT)
+      .select(select)
       .eq('user_id', userId)
       .in('status', ['saved', 'applied'])
       .order('score', { ascending: false })
       .limit(1000),
     supabase
       .from('match_scores')
-      .select(SELECT)
+      .select(select)
       .eq('user_id', userId)
       .eq('status', 'new')
       .eq('jobs.is_active', true)
       .order('score', { ascending: false })
       .limit(200),
-    supabase
-      .from('user_profiles')
-      .select('vault_min_score, auto_vault, last_matched_at')
-      .eq('id', userId)
-      .maybeSingle(),
   ]);
+}
+
+export async function GET() {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const supabase = createServerClient();
+  // Query builders are lazy; .then() starts this one now so it runs alongside the match queries.
+  const profile = supabase
+    .from('user_profiles')
+    .select('vault_min_score, auto_vault, last_matched_at')
+    .eq('id', userId)
+    .maybeSingle()
+    .then((r) => r);
+
+  // C2 · OPS columns arrive with migration 005; until then serve everything else and say so.
+  let opsReady = true;
+  let [tracked, discovery] = await load(supabase, userId, true);
+  if (isSchemaMissing(tracked.error) || isSchemaMissing(discovery.error)) {
+    opsReady = false;
+    [tracked, discovery] = await load(supabase, userId, false);
+  }
 
   const error = tracked.error || discovery.error;
   if (error) {
@@ -63,6 +78,10 @@ export async function GET() {
     auto_saved: m.auto_saved,
     status_changed_at: m.status_changed_at,
     first_seen_at: m.first_seen_at,
+    stage: m.stage ?? (m.status === 'applied' ? 'applied' : null),
+    stage_changed_at: m.stage_changed_at ?? null,
+    applied_at: m.applied_at ?? (m.status === 'applied' ? m.status_changed_at : null),
+    notes: m.notes ?? null,
     job: {
       id: m.jobs.id,
       title: m.jobs.title,
@@ -86,9 +105,11 @@ export async function GET() {
     },
   }));
 
+  const { data: settings } = await profile;
   return NextResponse.json({
     matches: formatted,
     total: formatted.length,
-    settings: profile.data || { vault_min_score: 70, auto_vault: true, last_matched_at: null },
+    opsReady,
+    settings: settings || { vault_min_score: 70, auto_vault: true, last_matched_at: null },
   });
 }

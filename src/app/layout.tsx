@@ -3,15 +3,27 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { Inter, JetBrains_Mono, Outfit } from 'next/font/google';
 import './globals.css';
 import SparkleCursor from '@/components/ui/SparkleCursor';
+import { SITE_URL } from '@/lib/site';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
 const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
 const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' });
 
+const DESCRIPTION = 'Your career, on autopilot. AI-powered job matching straight from company careers pages.';
+
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: { default: 'RADAR · AI Job Intelligence Engine', template: '%s · RADAR' },
-  description: 'Your career, on autopilot. AI-powered job matching straight from company careers pages.',
-  keywords: ['job search', 'AI', 'career', 'resume matching'],
+  description: DESCRIPTION,
+  keywords: ['job search', 'AI', 'career', 'resume matching', 'job alerts', 'freshers'],
+  applicationName: 'RADAR',
+  openGraph: {
+    type: 'website',
+    siteName: 'RADAR',
+    title: 'RADAR · AI Job Intelligence Engine',
+    description: DESCRIPTION,
+  },
+  twitter: { card: 'summary', title: 'RADAR · AI Job Intelligence Engine', description: DESCRIPTION },
 };
 
 export const viewport: Viewport = { themeColor: '#000401', colorScheme: 'dark' };

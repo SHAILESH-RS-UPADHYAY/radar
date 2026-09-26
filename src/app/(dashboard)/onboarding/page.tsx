@@ -5,6 +5,8 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import { RadarLogo } from '@/components/brand/RadarLogo';
 import { useUser } from '@clerk/nextjs';
 import { useApi } from '@/lib/use-api';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -247,10 +249,16 @@ export default function OnboardingPage() {
   const minDream = Math.min(5, Math.max(1, displayedCompanies.length));
 
   return (
-    <div
-      className="min-h-screen font-mono uppercase flex items-center justify-center px-4 py-20 relative overflow-hidden"
-      style={{ background: '#000000' }}
-    >
+    <div className="min-h-screen font-mono uppercase flex items-center justify-center px-4 py-24 relative overflow-hidden bg-void">
+      <div className="hud-grid pointer-events-none absolute inset-0" aria-hidden="true" />
+      <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-4 py-4 normal-case sm:px-8">
+        <Link href="/" aria-label="RADAR home" className="transition-opacity hover:opacity-85">
+          <RadarLogo />
+        </Link>
+        <span className="font-mono text-[11px] tracking-[0.3em] text-phosphor/70">
+          STEP <span className="text-phosphor">{step}</span>/7
+        </span>
+      </header>
       <div
         className="absolute top-0 left-0 w-full h-full pointer-events-none"
         style={{
@@ -258,7 +266,7 @@ export default function OnboardingPage() {
         }}
       />
 
-      <div className="w-full max-w-2xl relative z-10 flex flex-col max-h-[90vh]">
+      <div className="w-full max-w-4xl relative z-10 flex flex-col max-h-[85vh]">
         <div className="flex items-center gap-2 mb-8 shrink-0">
           {[1, 2, 3, 4, 5, 6, 7].map((s) => (
             <div

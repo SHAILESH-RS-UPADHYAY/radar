@@ -1,49 +1,157 @@
-// RADAR brand: a HUD-framed radar scope. Pure SVG, no ids, so it can render any number of times
-// per page (and in server components). The sweep fades in three layered wedges instead of a gradient.
+'use client';
 
-export function RadarMark({ className = 'h-8 w-8', animated = true }: { className?: string; animated?: boolean }) {
+// RADAR brand. The mark is a watch-dial bezel around a radar scope with an "R" monogram:
+// the sweep turns, a light orbits the bezel, a scanline rolls through the scope, the R draws
+// itself in on load, and the target blip pings exactly when the beam crosses it.
+// The wordmark decrypts from noise on load and on hover. All motion is CSS (globals.css, "RADAR logo")
+// and stops under prefers-reduced-motion.
+
+import { useEffect, useId, useState } from 'react';
+
+const TICKS = Array.from({ length: 60 }, (_, i) => {
+  const a = (i * 6 * Math.PI) / 180;
+  const major = i % 5 === 0;
+  const r0 = major ? 19.6 : 21.2;
+  const r1 = 22.6;
+  const p = (r: number) => [24 + r * Math.sin(a), 24 - r * Math.cos(a)].map((v) => v.toFixed(2));
+  const [x1, y1] = p(r0);
+  const [x2, y2] = p(r1);
+  return { x1, y1, x2, y2, major };
+});
+
+export function RadarMark({ className = 'h-9 w-9', animated = true }: { className?: string; animated?: boolean }) {
+  // useId can contain characters that break url(#id) references, so keep only safe ones.
+  const clip = 'radar-clip-' + useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const a = (cls: string) => (animated ? cls : undefined);
   return (
-    <svg viewBox="0 0 32 32" fill="none" className={className} aria-hidden="true">
-      <path
-        d="M1.5 8V1.5H8M24 1.5h6.5V8M30.5 24v6.5H24M8 30.5H1.5V24"
-        stroke="#00FF41"
-        strokeWidth="1.5"
-        strokeLinecap="square"
+    <svg viewBox="0 0 48 48" fill="none" className={'logo-mark ' + className} aria-hidden="true">
+      <defs>
+        <clipPath id={clip}>
+          <circle cx="24" cy="24" r="17.5" />
+        </clipPath>
+      </defs>
+
+      {/* bezel */}
+      {TICKS.map((t, i) => (
+        <line
+          key={i}
+          x1={t.x1}
+          y1={t.y1}
+          x2={t.x2}
+          y2={t.y2}
+          stroke="#00FF41"
+          strokeOpacity={t.major ? 0.95 : 0.4}
+          strokeWidth={t.major ? 1.1 : 0.6}
+        />
+      ))}
+      <circle
+        cx="24"
+        cy="24"
+        r="23.2"
+        stroke="#B6FFC6"
+        strokeWidth="0.9"
+        strokeLinecap="round"
+        strokeDasharray="10 136"
+        className={a('logo-orbit')}
       />
-      <circle cx="16" cy="16" r="10" stroke="#00FF41" strokeOpacity=".85" strokeWidth="1.25" />
-      <circle cx="16" cy="16" r="5.5" stroke="#00FF41" strokeOpacity=".4" strokeDasharray="1.5 2" />
-      <path d="M16 4.5v3M16 24.5v3M4.5 16h3M24.5 16h3" stroke="#00FF41" strokeOpacity=".6" strokeWidth="1.25" />
-      <g className={animated ? 'radar-sweep' : undefined}>
-        <path d="M16 16V6a10 10 0 0 1 8.66 5Z" fill="#00FF41" fillOpacity=".1" />
-        <path d="M16 16l5-8.66a10 10 0 0 1 3.66 3.66Z" fill="#00FF41" fillOpacity=".14" />
-        <path d="M16 16l7.43-6.69a10 10 0 0 1 1.23 1.69Z" fill="#00FF41" fillOpacity=".24" />
-        <path d="M16 16l8.66-5" stroke="#B6FFC6" strokeWidth="1.5" strokeLinecap="round" />
+
+      {/* scope */}
+      <circle cx="24" cy="24" r="17.5" fill="#000401" fillOpacity=".6" stroke="#00FF41" strokeOpacity=".6" />
+      <circle cx="24" cy="24" r="12" stroke="#00FF41" strokeOpacity=".3" strokeDasharray="1.2 2.2" />
+      <g clipPath={`url(#${clip})`}>
+        <g className={a('radar-sweep')}>
+          <path d="M24 24V6.5a17.5 17.5 0 0 1 15.155 8.75Z" fill="#00FF41" fillOpacity=".1" />
+          <path d="M24 24l8.75-15.155a17.5 17.5 0 0 1 6.405 6.405Z" fill="#00FF41" fillOpacity=".14" />
+          <path d="M24 24l13.005-11.71a17.5 17.5 0 0 1 2.15 2.96Z" fill="#00FF41" fillOpacity=".24" />
+          <path d="M24 24l15.155-8.75" stroke="#B6FFC6" strokeWidth="1.3" strokeLinecap="round" />
+        </g>
+        <rect x="6.5" y="6.5" width="35" height="0.7" fill="#B6FFC6" fillOpacity=".45" className={a('logo-scan')} />
       </g>
-      <circle cx="20.6" cy="9.8" r="1.3" fill="#FACC15" className={animated ? 'radar-blip' : undefined} />
-      <circle cx="16" cy="16" r="1.6" fill="#00FF41" />
+
+      {/* target blip: pings as the beam crosses it */}
+      <circle cx="35.2" cy="13.4" r="1.3" stroke="#FACC15" strokeWidth=".6" className={a('logo-ping')} />
+      <circle cx="35.2" cy="13.4" r="1.3" fill="#FACC15" className={a('logo-blip')} />
+
+      {/* R monogram, with a dark halo so it reads over the sweep */}
+      <path
+        d="M19.5 33V15H26a4.75 4.75 0 0 1 0 9.5h-6.5m5 0 6 8.5"
+        stroke="#000401"
+        strokeWidth="4.4"
+        strokeLinejoin="miter"
+      />
+      <path
+        d="M19.5 33V15H26a4.75 4.75 0 0 1 0 9.5h-6.5m5 0 6 8.5"
+        stroke="#00FF41"
+        strokeWidth="2.2"
+        strokeLinecap="square"
+        strokeLinejoin="miter"
+        pathLength={1}
+        className={a('logo-draw')}
+      />
     </svg>
   );
 }
 
-/** Mark + wordmark. `tagline` adds the small descriptor under the name (footer, auth pages). */
+const GLYPHS = '!<>-_\\/[]{}=+*^?#01ABCDEFXZ';
+
+/** Text that resolves from random glyphs, left to right. Re-runs whenever `run` changes. */
+function useDecrypt(text: string, run: number) {
+  const [out, setOut] = useState(text);
+  useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let frame = 0;
+    const id = setInterval(() => {
+      frame += 1;
+      setOut(
+        text
+          .split('')
+          .map((ch, i) => (frame > 3 + i * 2 ? ch : GLYPHS[(Math.random() * GLYPHS.length) | 0]))
+          .join(''),
+      );
+      if (frame > 3 + text.length * 2) clearInterval(id);
+    }, 45);
+    return () => clearInterval(id);
+  }, [text, run]);
+  return out;
+}
+
+const SIZES = {
+  sm: { mark: 'h-8 w-8', text: 'text-[15px]', tag: 'text-[8px]' },
+  md: { mark: 'h-9 w-9', text: 'text-[17px]', tag: 'text-[9px]' },
+  lg: { mark: 'h-16 w-16', text: 'text-3xl', tag: 'text-[11px]' },
+};
+
+/** Mark + decrypting wordmark. `tagline` adds the descriptor underneath (footer, auth pages). */
 export function RadarLogo({
   className = '',
+  size = 'md',
   tagline = false,
   animated = true,
 }: {
   className?: string;
+  size?: keyof typeof SIZES;
   tagline?: boolean;
   animated?: boolean;
 }) {
+  const [run, setRun] = useState(0);
+  const word = useDecrypt('RADAR', run);
+  const s = SIZES[size];
   return (
-    <span className={'inline-flex items-center gap-3 ' + className}>
-      <RadarMark className="h-8 w-8 shrink-0 drop-shadow-[0_0_8px_rgba(0,255,65,0.45)]" animated={animated} />
+    <span
+      className={'group inline-flex items-center gap-3 ' + className}
+      onMouseEnter={() => animated && setRun((n) => n + 1)}
+    >
+      <RadarMark className={s.mark + ' shrink-0 drop-shadow-[0_0_10px_rgba(0,255,65,0.45)]'} animated={animated} />
       <span className="flex flex-col font-mono leading-none">
-        <span className="text-[17px] font-extrabold tracking-[0.28em] text-white">
-          RADAR<span className="caret-blink text-phosphor">_</span>
+        <span className={s.text + ' font-extrabold tracking-[0.3em]'}>
+          <span className="bg-[linear-gradient(90deg,#ffffff,#b6ffc6_55%,#00ff41)] bg-clip-text text-transparent">
+            {word}
+          </span>
+          <span className="caret-blink text-phosphor">_</span>
         </span>
+        <span className="logo-underline mt-1.5 block h-px w-full" aria-hidden="true" />
         {tagline && (
-          <span className="mt-1.5 text-[9px] tracking-[0.32em] text-phosphor/60">JOB INTELLIGENCE ENGINE</span>
+          <span className={s.tag + ' mt-1.5 tracking-[0.32em] text-phosphor/60'}>JOB INTELLIGENCE ENGINE</span>
         )}
       </span>
     </span>

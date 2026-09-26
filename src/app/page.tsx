@@ -10,6 +10,8 @@ import { HudPanel, Prompt, SectionHeader, StatusLight, type Tone } from '@/compo
 import { SiteNav } from '@/components/site/SiteNav';
 import { SiteFooter } from '@/components/site/SiteFooter';
 import { CATALOG } from '@/lib/scraper/catalog';
+import { DiscoveryCard } from '@/components/dashboard/DiscoveryCard';
+import type { MatchedJob } from '@/components/dashboard/types';
 
 const HackerRadarHero = dynamic(() => import('@/components/hero/HackerRadarHero'), { ssr: false });
 const SmoothScroll = dynamic(() => import('@/components/providers/SmoothScroll'), { ssr: false });
@@ -134,7 +136,7 @@ const QUOTES = [
 const FAQ = [
   {
     q: 'Where do jobs come from?',
-    a: 'Straight from company careers pages through their public ATS feeds (Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Recruitee, Personio, Workday, Amazon Jobs) plus Hacker News "Who is hiring", Remotive, Remote OK, Arbeitnow and Himalayas.',
+    a: 'Straight from company careers pages through their public ATS feeds (Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Recruitee, Personio, Workday, Amazon Jobs), including European companies you know from Welcome to the Jungle, plus job boards and official job APIs: Hacker News "Who is hiring", Remotive, Remote OK, Arbeitnow, Himalayas, Jobicy, The Muse, Adzuna and Jooble.',
   },
   {
     q: 'How is the match score calculated?',
@@ -143,6 +145,14 @@ const FAQ = [
   {
     q: 'How is this different from LinkedIn?',
     a: 'RADAR rescans every 6 hours on its own, reads the source feeds directly instead of reposts, and ranks every job against your resume, not against keywords.',
+  },
+  {
+    q: 'Can I change my preferences later?',
+    a: 'Any time. Target roles, skills, cities, dream companies, your resume and the auto-vault threshold are all editable in Preferences, and a rescan applies them immediately.',
+  },
+  {
+    q: 'Is my resume safe?',
+    a: 'It is parsed on the server, used only to score jobs for you, never shared with employers, and deleted with your account. The Privacy page lists exactly what is stored.',
   },
   {
     q: 'What happens to jobs I dismiss?',
@@ -187,6 +197,97 @@ function Counter({ target, suffix = '' }: { target: number; suffix?: string }) {
   );
 }
 
+const JOURNEY = [
+  {
+    n: '01',
+    time: '≈ 2 MIN',
+    title: 'Brief the radar',
+    body: 'Upload your resume, then pick target roles, cities and up to 20 dream companies. Everything stays editable.',
+  },
+  {
+    n: '02',
+    time: 'EVERY 6H',
+    title: 'It scans for you',
+    body: `RADAR reads ${CATALOG.tracked + CATALOG.boards.length} live feeds, scores every new opening against your profile and explains each score.`,
+  },
+  {
+    n: '03',
+    time: '1 CLICK',
+    title: 'Apply from the Vault',
+    body: 'Strong matches wait in your Vault. Open the real apply link and RADAR tracks it on your Battlefield.',
+  },
+];
+
+// A made-up match rendered with the real Discovery card, so the preview is exactly what users get.
+const SAMPLE: MatchedJob = {
+  id: 'sample',
+  score: 91,
+  reasoning:
+    'Title matches Software Engineer. Matches 5/6 listed skills. Missing: kubernetes. Strong resume-JD alignment. Remote',
+  matching_skills: ['python', 'typescript', 'llm', 'rag', 'react'],
+  missing_skills: ['kubernetes'],
+  section: 'dream',
+  status: 'new',
+  auto_saved: false,
+  status_changed_at: null,
+  first_seen_at: null,
+  stage: null,
+  stage_changed_at: null,
+  applied_at: null,
+  notes: null,
+  job: {
+    id: 'sample',
+    title: 'Software Engineer, AI Platform',
+    description: null,
+    location: 'Remote · India',
+    work_type: 'remote',
+    skills: [],
+    apply_url: '#',
+    department: 'Engineering',
+    posted_at: null,
+    is_active: true,
+    experience_required: '1-3',
+    salary_min: null,
+    salary_max: null,
+    salary_currency: null,
+    company: { name: 'Linear', source: null, category: 'Growth' },
+  },
+};
+
+const ANATOMY: [string, string][] = [
+  ['SCORE', 'Meaning and skills blended into one number, 0-100.'],
+  ['+10', 'The title contains one of your target roles.'],
+  ['SKILLS', 'Green: you have it. Red: the job wants it and you have not listed it.'],
+  ['WHY', 'Every card says why it scored what it did, in one line.'],
+  ['ACTIONS', 'Apply, keep it in the Vault, or dismiss it for good.'],
+];
+
+/** Scrolling strip of the companies RADAR reads every cycle. */
+function SignalTicker() {
+  const names = CATALOG.byCategory.flatMap((c) =>
+    c.companies.filter((x) => x.ats_provider !== 'custom').map((x) => x.name),
+  );
+  return (
+    <section aria-label="Companies RADAR tracks" className="relative border-y border-phosphor/15 bg-black/80">
+      <div className="mx-auto flex max-w-[1280px] items-center gap-6 px-4 py-4 sm:px-6">
+        <span className="shrink-0">
+          <StatusLight tone="ok">LIVE FEEDS</StatusLight>
+        </span>
+        <div className="relative min-w-0 flex-1 overflow-hidden [mask-image:linear-gradient(90deg,transparent,black_6%,black_94%,transparent)]">
+          <div className="hud-marquee flex w-max gap-10 pr-10 font-mono text-xs tracking-[0.25em] text-dim">
+            {[...names, ...names].map((n, i) => (
+              <span key={i} aria-hidden={i >= names.length} className="whitespace-nowrap">
+                <span className="text-phosphor/60">▸ </span>
+                {n.toUpperCase()}
+              </span>
+            ))}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 /** Rotating quotes, isolated so the timer re-renders only this panel. */
 function Transmissions() {
   const [i, setI] = useState(0);
@@ -199,7 +300,8 @@ function Transmissions() {
       label={`INCOMING://TRANSMISSION 0x0${i + 1}`}
       status="DECRYPTED"
       tone="info"
-      bodyClassName="px-5 py-10 sm:px-10 sm:py-14"
+      className="flex w-full flex-col"
+      bodyClassName="flex flex-1 flex-col justify-center px-5 py-10 sm:px-10 sm:py-14"
     >
       <AnimatePresence mode="wait">
         <motion.p
@@ -250,7 +352,7 @@ export default function LandingPage() {
               className="inline-flex items-center gap-3 mb-6 px-3 py-1.5 border border-[#00FF41]/40 bg-black/60 text-[11px] tracking-widest text-[#00FF41]"
             >
               <span className="w-2 h-2 rounded-full bg-[#00FF41] animate-pulse" />
-              <span>root@radar:~# ./scan --sources=15 --mode=live</span>
+              <span>root@radar:~# ./scan --sources={CATALOG.sources} --mode=live</span>
             </motion.div>
 
             <motion.h1
@@ -273,7 +375,8 @@ export default function LandingPage() {
                 <span className="text-[#00FF41]">&gt;</span> AI job-intelligence engine for your target companies.
               </p>
               <p>
-                <span className="text-[#00FF41]">&gt;</span> 15 live sources · 1024-d embeddings · 6h scan loop.
+                <span className="text-[#00FF41]">&gt;</span> {CATALOG.sources} live sources · 1024-d embeddings · 6h
+                scan loop.
               </p>
               <p>
                 <span className="text-[#00FF41]">&gt;</span> Strong matches land in your Vault automatically.
@@ -307,7 +410,7 @@ export default function LandingPage() {
               className="mt-10 grid grid-cols-3 max-w-md text-[11px] tracking-widest border border-[#00FF41]/20"
             >
               {[
-                ['15', 'SOURCES'],
+                [String(CATALOG.sources), 'SOURCES'],
                 ['1024D', 'VECTORS'],
                 ['6H', 'CYCLE'],
               ].map(([v, l]) => (
@@ -321,15 +424,52 @@ export default function LandingPage() {
         </HackerRadarHero>
       </section>
 
+      <SignalTicker />
+
       {/* Everything below the hero shares its grid, so the page reads as one console. */}
       <div className="relative overflow-hidden">
         <div className="hud-grid pointer-events-none absolute inset-0" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_at_top,rgba(0,255,65,0.07),transparent_65%)]" />
 
-        {/* CORE MODULES */}
+        {/* HOW IT WORKS: the user's side of the loop */}
         <section id="how-it-works" className="relative mx-auto max-w-[1280px] scroll-mt-24 px-4 py-24 sm:px-6 sm:py-32">
           <motion.div {...reveal}>
-            <SectionHeader index="01" kicker="CORE_MODULES" title="Three modules. One loop.">
+            <SectionHeader index="01" kicker="HOW_IT_WORKS" title="Two minutes of setup. Then it runs itself.">
+              You tell RADAR what you want once. From then on it does the searching, and you only do the applying.
+            </SectionHeader>
+          </motion.div>
+          <div className="mt-14 grid gap-4 lg:grid-cols-3 lg:gap-0">
+            {JOURNEY.map((j, i) => (
+              <motion.div
+                key={j.n}
+                {...reveal}
+                transition={{ ...reveal.transition, delay: i * 0.12 }}
+                className="relative lg:pr-6"
+              >
+                {i < JOURNEY.length - 1 && (
+                  <span className="hud-flow absolute right-0 top-10 hidden h-px w-6 lg:block" aria-hidden="true" />
+                )}
+                <HudPanel className="h-full" bodyClassName="p-6 sm:p-7">
+                  <div className="flex items-start justify-between gap-4">
+                    <span className="font-mono text-5xl font-extrabold text-transparent [-webkit-text-stroke:1px_rgba(0,255,65,0.7)]">
+                      {j.n}
+                    </span>
+                    <span className="border border-hud-amber/40 px-2 py-1 font-mono text-[10px] tracking-[0.25em] text-hud-amber">
+                      {j.time}
+                    </span>
+                  </div>
+                  <h3 className="mt-5 font-mono text-xl font-bold text-white">{j.title}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-dim">{j.body}</p>
+                </HudPanel>
+              </motion.div>
+            ))}
+          </div>
+        </section>
+
+        {/* CORE MODULES */}
+        <section id="modules" className="relative mx-auto max-w-[1280px] scroll-mt-24 px-4 pb-24 sm:px-6 sm:pb-32">
+          <motion.div {...reveal}>
+            <SectionHeader index="02" kicker="CORE_MODULES" title="Three modules. One loop.">
               Each module runs on its own and hands off to the next. Together they turn thousands of openings into the
               handful worth your time.
             </SectionHeader>
@@ -369,10 +509,35 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* PREVIEW: a sample match on the real card */}
+        <section className="relative mx-auto grid max-w-[1280px] items-center gap-10 px-4 pb-24 sm:px-6 sm:pb-32 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.5fr)] lg:gap-14">
+          <motion.div {...reveal}>
+            <SectionHeader index="03" kicker="PREVIEW" title="Every score explains itself.">
+              No black box. Each match shows the number, the reasons behind it and what to do next.
+            </SectionHeader>
+            <dl className="mt-8 space-y-3 font-mono text-xs">
+              {ANATOMY.map(([k, v]) => (
+                <div key={k} className="grid grid-cols-[76px_1fr] gap-4">
+                  <dt className="font-bold tracking-[0.2em] text-phosphor">{k}</dt>
+                  <dd className="text-dim">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </motion.div>
+          <motion.div {...reveal} className="relative">
+            <span className="absolute -top-3 right-4 z-10 border border-hud-amber/50 bg-black px-2 py-0.5 font-mono text-[10px] tracking-[0.3em] text-hud-amber">
+              SAMPLE MATCH
+            </span>
+            <div inert className="select-none">
+              <DiscoveryCard match={SAMPLE} onAction={() => {}} />
+            </div>
+          </motion.div>
+        </section>
+
         {/* PIPELINE */}
         <section className="relative mx-auto max-w-[1280px] px-4 pb-24 sm:px-6 sm:pb-32">
           <motion.div {...reveal} className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
-            <SectionHeader index="02" kicker="PIPELINE" title="From careers page to your Vault.">
+            <SectionHeader index="04" kicker="PIPELINE" title="From careers page to your Vault.">
               One run, four stages, fully automatic. Time-boxed runs pick up exactly where the last one stopped.
             </SectionHeader>
             <Link
@@ -407,11 +572,18 @@ export default function LandingPage() {
         </section>
 
         {/* DIFF */}
-        <section className="relative mx-auto max-w-5xl px-4 pb-24 sm:px-6 sm:pb-32">
+        <section className="relative mx-auto grid max-w-[1280px] items-center gap-10 px-4 pb-24 sm:px-6 sm:pb-32 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.5fr)] lg:gap-14">
           <motion.div {...reveal}>
-            <SectionHeader index="03" kicker="DIFF" title="Us vs. everyone else." align="center" />
+            <SectionHeader index="05" kicker="DIFF" title="Us vs. everyone else.">
+              Job boards show you reposts, days late, ranked by keywords. RADAR reads the source feeds, scores every job
+              against your resume and keeps watch on its own.
+            </SectionHeader>
+            <p className="mt-6 font-mono text-[10px] tracking-[0.2em] text-dim">
+              <span className="text-phosphor">[+]</span> yes · <span className="text-hud-amber/80">[~]</span> partly ·{' '}
+              <span className="text-hud-red/70">[-]</span> no
+            </p>
           </motion.div>
-          <motion.div {...reveal} className="mt-12">
+          <motion.div {...reveal}>
             <HudPanel label="$ radar diff --against linkedin,naukri" status="3 TARGETS" bodyClassName="overflow-x-auto">
               <table className="w-full min-w-[520px] font-mono text-sm">
                 <thead>
@@ -439,21 +611,18 @@ export default function LandingPage() {
                 </tbody>
               </table>
             </HudPanel>
-            <p className="mt-3 text-right font-mono text-[10px] tracking-[0.2em] text-dim">
-              [+] yes · [~] partly · [-] no
-            </p>
           </motion.div>
         </section>
 
-        {/* TELEMETRY */}
-        <section className="relative mx-auto max-w-[1280px] px-4 pb-24 sm:px-6 sm:pb-32">
-          <div className="grid grid-cols-2 border border-phosphor/20 bg-black/60 md:grid-cols-4">
+        {/* SIGNAL DECK: telemetry beside the rotating transmissions */}
+        <section className="relative mx-auto grid max-w-[1280px] gap-6 px-4 pb-24 sm:px-6 sm:pb-32 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.35fr)]">
+          <div className="grid grid-cols-2 border border-phosphor/20 bg-black/60">
             {STATS.map((s, i) => (
               <motion.div
                 key={s.label}
                 {...reveal}
                 transition={{ ...reveal.transition, delay: i * 0.08 }}
-                className="border-phosphor/15 p-6 sm:p-8 [&:not(:last-child)]:border-r max-md:[&:nth-child(2)]:border-r-0 max-md:[&:nth-child(-n+2)]:border-b"
+                className="flex flex-col justify-center border-phosphor/15 p-6 sm:p-8 [&:nth-child(-n+2)]:border-b [&:nth-child(odd)]:border-r"
               >
                 <div className="font-mono text-4xl font-extrabold text-phosphor [text-shadow:0_0_18px_rgba(0,255,65,0.35)] sm:text-5xl">
                   <Counter target={s.value} suffix={s.suffix} />
@@ -462,22 +631,26 @@ export default function LandingPage() {
               </motion.div>
             ))}
           </div>
-        </section>
-
-        {/* TRANSMISSIONS */}
-        <section className="relative mx-auto max-w-4xl px-4 pb-24 sm:px-6 sm:pb-32">
-          <motion.div {...reveal}>
+          <motion.div {...reveal} className="flex">
             <Transmissions />
           </motion.div>
         </section>
 
         {/* FAQ */}
-        <section className="relative mx-auto max-w-3xl px-4 pb-24 sm:px-6 sm:pb-32">
-          <motion.div {...reveal}>
-            <SectionHeader index="04" kicker="MAN RADAR" title="Frequently asked." align="center" />
+        <section className="relative mx-auto grid max-w-[1280px] items-start gap-10 px-4 pb-24 sm:px-6 sm:pb-32 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.5fr)] lg:gap-14">
+          <motion.div {...reveal} className="lg:sticky lg:top-28">
+            <SectionHeader index="06" kicker="MAN RADAR" title="Frequently asked.">
+              Short answers here. The exact scoring rules, thresholds and data handling live in the protocol spec.
+            </SectionHeader>
+            <Link
+              href="/protocol"
+              className="mt-6 inline-block font-mono text-[11px] tracking-[0.25em] text-phosphor/70 transition-colors hover:text-phosphor"
+            >
+              $ cat /protocol →
+            </Link>
           </motion.div>
-          <motion.div {...reveal} className="mt-12">
-            <HudPanel label="$ radar --help" status="5 ENTRIES" tone="idle" bodyClassName="">
+          <motion.div {...reveal}>
+            <HudPanel label="$ radar --help" status={FAQ.length + ' ENTRIES'} tone="idle" bodyClassName="">
               {FAQ.map((f) => (
                 <details key={f.q} className="group border-b border-phosphor/10 last:border-b-0">
                   <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-5 font-mono text-sm text-ink transition-colors hover:bg-phosphor/[0.03] [&::-webkit-details-marker]:hidden">
@@ -496,27 +669,27 @@ export default function LandingPage() {
 
         {/* CTA */}
         <section className="relative px-4 pb-28 sm:px-6 sm:pb-36">
-          <motion.div {...reveal} className="relative mx-auto max-w-4xl">
+          <motion.div {...reveal} className="relative mx-auto max-w-[1280px]">
             <HudPanel
               label="SESSION://NEW"
               status="AWAITING INPUT"
               tone="warn"
-              bodyClassName="relative overflow-hidden px-6 py-16 text-center sm:px-12 sm:py-20"
+              bodyClassName="relative overflow-hidden px-6 py-16 text-center sm:px-12 sm:py-24"
             >
               <span
-                className="pointer-events-none absolute inset-0 flex select-none items-center justify-center font-mono text-[18vw] font-extrabold leading-none text-phosphor/[0.035] lg:text-[11rem]"
+                className="pointer-events-none absolute inset-0 flex select-none items-center justify-center font-mono text-[18vw] font-extrabold leading-none text-phosphor/[0.035] lg:text-[13rem]"
                 aria-hidden="true"
               >
                 INTERCEPT
               </span>
               <div className="relative">
                 <Prompt>./intercept --target=you</Prompt>
-                <h2 className="mt-6 font-mono text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-6xl">
+                <h2 className="mt-6 font-mono text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-6xl lg:text-7xl">
                   INITIATE SYSTEM
                   <br />
                   <span className="text-phosphor [text-shadow:0_0_24px_rgba(0,255,65,0.45)]">OVERRIDE.</span>
                 </h2>
-                <p className="mx-auto mt-6 max-w-lg text-sm leading-relaxed text-dim sm:text-base">
+                <p className="mx-auto mt-6 max-w-xl text-sm leading-relaxed text-dim sm:text-base">
                   Point RADAR at the companies you want. It keeps watch, so you can spend your time applying.
                 </p>
                 <Link

@@ -9,6 +9,8 @@ import type { SettingsProfile } from '@/types';
 import { RadarLogo } from '@/components/brand/RadarLogo';
 import { HudPanel, StatusLight } from '@/components/hud/Hud';
 import { Toast, type Notice } from '@/components/hud/Toast';
+import { resumeProblem } from '@/lib/validate';
+import { useEscapeTo } from '@/lib/use-escape';
 
 interface CityCompany {
   name: string;
@@ -41,7 +43,6 @@ const ROLE_SUGGESTIONS = [
   'Data Scientist',
   'Data Engineer',
 ];
-const MAX_RESUME_BYTES = 5 * 1024 * 1024;
 
 /** "React, Python; SQL" → ['React', 'Python', 'SQL'] */
 const splitInput = (v: string) =>
@@ -173,32 +174,65 @@ function ChipInput({
 }
 
 function Section({
+  id,
   n,
   name,
   status,
   tone,
   hint,
+  className = '',
   children,
 }: {
+  id: string;
   n: string;
   name: string;
   status?: string;
   tone?: 'ok' | 'warn' | 'alert' | 'info' | 'idle';
   hint?: ReactNode;
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <HudPanel label={`CONFIG://${n} · ${name}`} status={status} tone={tone}>
+    <HudPanel
+      id={id}
+      label={`CONFIG://${n} · ${name}`}
+      status={status}
+      tone={tone}
+      className={'scroll-mt-24 ' + className}
+    >
       {hint && <p className="-mt-1 mb-5 text-sm leading-relaxed text-dim">{hint}</p>}
       {children}
     </HudPanel>
   );
 }
 
+/** How complete the profile is, and what to fill in next for better matches. */
+function profileChecks(profile: SettingsProfile, cities: string[], dream: string[]) {
+  return [
+    { id: 'roles', label: 'Target roles set', done: profile.target_roles.length > 0, weight: 20 },
+    { id: 'skills', label: '5+ skills confirmed', done: profile.skills.length >= 5, weight: 25 },
+    { id: 'resume', label: 'Resume on file', done: profile.has_resume, weight: 25 },
+    { id: 'locations', label: 'Cities chosen', done: cities.length > 0, weight: 15 },
+    { id: 'companies', label: '3+ dream companies', done: dream.length >= 3, weight: 15 },
+  ];
+}
+
+const INDEX = [
+  ['roles', 'TARGET_ROLES'],
+  ['skills', 'SKILLS'],
+  ['resume', 'RESUME'],
+  ['experience', 'EXPERIENCE'],
+  ['locations', 'LOCATIONS'],
+  ['auto-vault', 'AUTO_VAULT'],
+  ['companies', 'DREAM_COMPANIES'],
+  ['identity', 'IDENTITY'],
+];
+
 export default function SettingsPage() {
   const { user } = useUser();
   const api = useApi();
   const router = useRouter();
+  useEscapeTo('/dashboard');
 
   const [profile, setProfile] = useState<SettingsProfile | null>(null);
   const [dream, setDream] = useState<string[]>([]);
@@ -328,8 +362,8 @@ export default function SettingsPage() {
   };
 
   const uploadResume = async (file: File) => {
-    if (!file.name.toLowerCase().endsWith('.pdf')) return setNotice({ tone: 'alert', text: 'Resume must be a PDF.' });
-    if (file.size > MAX_RESUME_BYTES) return setNotice({ tone: 'alert', text: 'Resume must be under 5 MB.' });
+    const problem = resumeProblem(file);
+    if (problem) return setNotice({ tone: 'alert', text: problem });
     setUploading(true);
     try {
       await queue.current;
@@ -392,12 +426,34 @@ export default function SettingsPage() {
     (s) => !(profile?.skills || []).some((x) => x.toLowerCase() === s),
   );
 
+  const checks = profile ? profileChecks(profile, cities, dream) : [];
+  const strength = checks.reduce((sum, c) => sum + (c.done ? c.weight : 0), 0);
+
+  const rescanPanel = (
+    <HudPanel label="APPLY://RESCAN" status={changed ? 'PENDING' : 'IN SYNC'} tone={changed ? 'warn' : 'ok'}>
+      <p className="text-sm leading-relaxed text-dim">
+        {changed
+          ? 'Your profile changed. Rescan to rescore every open job with it now.'
+          : 'The next scheduled scan uses this profile. Rescan any time to see results now.'}
+      </p>
+      <button
+        type="button"
+        onClick={rescan}
+        disabled={rescanning || uploading}
+        className="mt-4 flex w-full items-center justify-center gap-2 bg-phosphor px-6 py-3 font-mono text-xs font-bold tracking-[0.2em] text-black shadow-[0_0_20px_rgba(0,255,65,0.3)] transition-colors hover:bg-[#33FF66] disabled:cursor-wait disabled:bg-phosphor/40"
+      >
+        {rescanning && <span className="h-3 w-3 animate-spin rounded-full border-2 border-black/30 border-t-black" />}
+        {rescanning ? 'RESCANNING' : '[ RESCAN NOW ]'}
+      </button>
+    </HudPanel>
+  );
+
   return (
     <div className="relative min-h-screen bg-void">
       <div className="hud-grid pointer-events-none fixed inset-0" aria-hidden="true" />
 
       <header className="sticky top-0 z-40 border-b border-phosphor/15 bg-black/85 backdrop-blur-md">
-        <div className="mx-auto flex max-w-3xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
+        <div className="mx-auto flex max-w-[1440px] items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-10">
           <Link href="/" aria-label="RADAR home" className="transition-opacity hover:opacity-85">
             <RadarLogo />
           </Link>
@@ -405,9 +461,11 @@ export default function SettingsPage() {
             <span className="hidden sm:inline">{syncState}</span>
             <Link
               href="/dashboard"
+              aria-keyshortcuts="Escape"
+              title="Back to the dashboard (Esc)"
               className="border border-phosphor/30 px-3 py-2 font-mono text-[11px] font-bold tracking-[0.2em] text-phosphor transition-colors hover:bg-phosphor/10"
             >
-              [ESC] DASHBOARD
+              <kbd className="font-mono">[ESC]</kbd> DASHBOARD
             </Link>
             <UserButton
               appearance={{ elements: { userButtonAvatarBox: 'h-8 w-8 rounded-none border border-phosphor/40' } }}
@@ -416,7 +474,7 @@ export default function SettingsPage() {
         </div>
       </header>
 
-      <main className="relative mx-auto max-w-3xl space-y-6 px-4 py-10 sm:px-6">
+      <main className="relative mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
         <div>
           <p className="font-mono text-[11px] tracking-[0.35em] text-phosphor/70">{'// PREFERENCES'}</p>
           <h1 className="mt-2 font-mono text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
@@ -427,343 +485,400 @@ export default function SettingsPage() {
         </div>
 
         {loading ? (
-          <div className="space-y-6" aria-busy="true">
-            {[0, 1, 2].map((i) => (
-              <div key={i} className="h-44 animate-pulse border border-phosphor/10 bg-phosphor/[0.03]" />
-            ))}
+          <div className="mt-8 grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)] xl:gap-8" aria-busy="true">
+            <div className="hidden h-96 animate-pulse border border-phosphor/10 bg-phosphor/[0.03] lg:block" />
+            <div className="grid gap-6 xl:grid-cols-2">
+              {[0, 1, 2, 3].map((i) => (
+                <div key={i} className="h-56 animate-pulse border border-phosphor/10 bg-phosphor/[0.03]" />
+              ))}
+            </div>
           </div>
         ) : !profile ? (
-          <HudPanel label="CONFIG://ERROR" status="NO PROFILE" tone="alert">
-            <p className="text-sm text-hud-red">{loadError || 'No profile found.'}</p>
-            <Link
-              href="/onboarding"
-              className="mt-4 inline-block font-mono text-xs tracking-[0.2em] text-phosphor hover:underline"
-            >
-              → RUN ONBOARDING
-            </Link>
-          </HudPanel>
+          <div className="mt-8 max-w-xl">
+            <HudPanel label="CONFIG://ERROR" status="NO PROFILE" tone="alert">
+              <p className="text-sm text-hud-red">{loadError || 'No profile found.'}</p>
+              <Link
+                href="/onboarding"
+                className="mt-4 inline-block font-mono text-xs tracking-[0.2em] text-phosphor hover:underline"
+              >
+                → RUN ONBOARDING
+              </Link>
+            </HudPanel>
+          </div>
         ) : (
-          <>
-            <Section
-              n="01"
-              name="TARGET_ROLES"
-              status={profile.target_roles.length ? profile.target_roles.length + ' SET' : 'NONE'}
-              tone={profile.target_roles.length ? 'ok' : 'warn'}
-              hint="The roles you want. Any job whose title contains one of these gets +10, so they rise to the top."
-            >
-              <ChipInput
-                values={profile.target_roles}
-                max={8}
-                placeholder="e.g. AI Engineer, Software Engineer"
-                suggestions={ROLE_SUGGESTIONS}
-                suggestionLabel="QUICK ADD"
-                onChange={(next) => update({ target_roles: next }, { target_roles: next }, 'Target roles')}
-              />
-            </Section>
+          <div className="mt-8 grid items-start gap-6 lg:grid-cols-[300px_minmax(0,1fr)] xl:gap-8">
+            <aside className="space-y-6 lg:sticky lg:top-24">
+              <HudPanel
+                label="PROFILE://STRENGTH"
+                status={strength >= 80 ? 'STRONG' : strength >= 50 ? 'PARTIAL' : 'WEAK'}
+                tone={strength >= 80 ? 'ok' : strength >= 50 ? 'warn' : 'alert'}
+              >
+                <div className="flex items-end justify-between gap-3 font-mono">
+                  <span className="text-5xl font-extrabold leading-none text-phosphor [text-shadow:0_0_20px_rgba(0,255,65,0.35)]">
+                    {strength}
+                    <span className="text-xl">%</span>
+                  </span>
+                  <span className="text-[10px] tracking-[0.25em] text-dim">MATCH READINESS</span>
+                </div>
+                <div className="mt-4 h-1.5 bg-phosphor/10">
+                  <div
+                    className="h-full bg-phosphor shadow-[0_0_10px_#00FF41] transition-[width] duration-500"
+                    style={{ width: strength + '%' }}
+                  />
+                </div>
+                <ul className="mt-5 space-y-2.5 font-mono text-xs">
+                  {checks.map((c) => (
+                    <li key={c.id}>
+                      <a
+                        href={'#' + c.id}
+                        className={
+                          'flex items-center justify-between gap-3 transition-colors ' +
+                          (c.done ? 'text-phosphor/75' : 'text-hud-amber hover:text-white')
+                        }
+                      >
+                        <span>
+                          {c.done ? '[x] ' : '[ ] '}
+                          {c.label}
+                        </span>
+                        {!c.done && <span className="shrink-0 text-[10px] tracking-[0.2em]">FIX →</span>}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </HudPanel>
 
-            <Section
-              n="02"
-              name="SKILLS"
-              status={profile.skills.length ? profile.skills.length + ' CONFIRMED' : 'FROM RESUME'}
-              tone={profile.skills.length ? 'ok' : 'warn'}
-              hint={
-                profile.skills.length
-                  ? '40% of every score is how many of a job’s listed skills you have.'
-                  : `Matching currently uses the ${profile.resume_skills.length} skills found in your resume. Add your own to take control.`
-              }
-            >
-              <ChipInput
-                values={profile.skills}
-                placeholder="e.g. Python, LangChain, RAG, React"
-                suggestions={suggestedSkills}
-                suggestionLabel="DETECTED IN YOUR RESUME"
-                onChange={(next) => update({ skills: next }, { skills: next }, 'Skills')}
-              />
-            </Section>
+              {rescanPanel}
 
-            <Section
-              n="03"
-              name="RESUME"
-              status={profile.has_resume ? 'ON FILE' : 'MISSING'}
-              tone={profile.has_resume ? 'ok' : 'alert'}
-              hint="Your resume drives the semantic half of every score. Upload a new one any time; its skills are merged into yours."
-            >
-              <label
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragging(true);
-                }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  setDragging(false);
-                  const f = e.dataTransfer.files?.[0];
-                  if (f) void uploadResume(f);
-                }}
-                className={
-                  'flex cursor-pointer flex-col items-center justify-center gap-2 border border-dashed px-6 py-8 text-center transition-colors ' +
-                  (dragging
-                    ? 'border-phosphor bg-phosphor/10'
-                    : 'border-phosphor/30 hover:border-phosphor/70 hover:bg-phosphor/[0.03]')
+              <nav
+                aria-label="Preference sections"
+                className="hidden border-l border-phosphor/15 pl-5 font-mono lg:block"
+              >
+                <p className="mb-3 text-[10px] tracking-[0.35em] text-dim">{'// INDEX'}</p>
+                <ol className="space-y-2">
+                  {INDEX.map(([id, label], i) => (
+                    <li key={id}>
+                      <a
+                        href={'#' + id}
+                        className="text-[11px] tracking-[0.2em] text-phosphor/60 transition-colors hover:text-phosphor"
+                      >
+                        <span className="text-dim">{String(i + 1).padStart(2, '0')} </span>
+                        {label}
+                      </a>
+                    </li>
+                  ))}
+                </ol>
+              </nav>
+            </aside>
+
+            <div className="grid gap-6 xl:grid-cols-2">
+              <Section
+                id="roles"
+                n="01"
+                name="TARGET_ROLES"
+                status={profile.target_roles.length ? profile.target_roles.length + ' SET' : 'NONE'}
+                tone={profile.target_roles.length ? 'ok' : 'warn'}
+                hint="The roles you want. Any job whose title contains one of these gets +10, so they rise to the top."
+              >
+                <ChipInput
+                  values={profile.target_roles}
+                  max={8}
+                  placeholder="e.g. AI Engineer, Software Engineer"
+                  suggestions={ROLE_SUGGESTIONS}
+                  suggestionLabel="QUICK ADD"
+                  onChange={(next) => update({ target_roles: next }, { target_roles: next }, 'Target roles')}
+                />
+              </Section>
+
+              <Section
+                id="skills"
+                n="02"
+                name="SKILLS"
+                status={profile.skills.length ? profile.skills.length + ' CONFIRMED' : 'FROM RESUME'}
+                tone={profile.skills.length ? 'ok' : 'warn'}
+                hint={
+                  profile.skills.length
+                    ? '40% of every score is how many of a job’s listed skills you have.'
+                    : `Matching currently uses the ${profile.resume_skills.length} skills found in your resume. Add your own to take control.`
                 }
               >
-                <input
-                  ref={fileRef}
-                  type="file"
-                  accept="application/pdf,.pdf"
-                  className="sr-only"
-                  disabled={uploading}
-                  onChange={(e) => {
-                    const f = e.target.files?.[0];
+                <ChipInput
+                  values={profile.skills}
+                  placeholder="e.g. Python, LangChain, RAG, React"
+                  suggestions={suggestedSkills}
+                  suggestionLabel="DETECTED IN YOUR RESUME"
+                  onChange={(next) => update({ skills: next }, { skills: next }, 'Skills')}
+                />
+              </Section>
+
+              <Section
+                id="resume"
+                n="03"
+                name="RESUME"
+                status={profile.has_resume ? 'ON FILE' : 'MISSING'}
+                tone={profile.has_resume ? 'ok' : 'alert'}
+                hint="Your resume drives the semantic half of every score. Upload a new one any time; its skills are merged into yours."
+              >
+                <label
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setDragging(true);
+                  }}
+                  onDragLeave={() => setDragging(false)}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    setDragging(false);
+                    const f = e.dataTransfer.files?.[0];
                     if (f) void uploadResume(f);
                   }}
-                />
-                <span className="font-mono text-sm font-bold tracking-[0.2em] text-phosphor">
-                  {uploading ? 'PARSING RESUME…' : '[ UPLOAD NEW RESUME ]'}
-                </span>
-                <span className="font-mono text-[10px] tracking-wider text-dim">
-                  PDF · max 5 MB · drop it here or click
-                </span>
-              </label>
-            </Section>
+                  className={
+                    'flex cursor-pointer flex-col items-center justify-center gap-2 border border-dashed px-6 py-10 text-center transition-colors ' +
+                    (dragging
+                      ? 'border-phosphor bg-phosphor/10'
+                      : 'border-phosphor/30 hover:border-phosphor/70 hover:bg-phosphor/[0.03]')
+                  }
+                >
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="application/pdf,.pdf"
+                    className="sr-only"
+                    disabled={uploading}
+                    onChange={(e) => {
+                      const f = e.target.files?.[0];
+                      if (f) void uploadResume(f);
+                    }}
+                  />
+                  <span className="font-mono text-sm font-bold tracking-[0.2em] text-phosphor">
+                    {uploading ? 'PARSING RESUME…' : '[ UPLOAD NEW RESUME ]'}
+                  </span>
+                  <span className="font-mono text-[10px] tracking-wider text-dim">
+                    PDF · max 5 MB · drop it here or click
+                  </span>
+                </label>
+              </Section>
 
-            <Section n="04" name="EXPERIENCE" hint="Used to keep senior-only roles from crowding your feed.">
-              <div className="grid grid-cols-2 border border-phosphor/25">
-                {[
-                  { v: true, t: 'FRESHER / INTERN' },
-                  { v: false, t: 'EXPERIENCED' },
-                ].map((o) => (
-                  <button
-                    key={o.t}
-                    type="button"
-                    aria-pressed={profile.is_fresher === o.v}
-                    onClick={() =>
-                      update(
-                        { is_fresher: o.v, ...(o.v ? { experience_years: 0 } : {}) },
-                        { is_fresher: o.v, ...(o.v ? { experience_years: 0 } : {}) },
-                        'Experience',
-                      )
-                    }
+              <Section
+                id="experience"
+                n="04"
+                name="EXPERIENCE"
+                hint="Used to keep senior-only roles from crowding your feed."
+              >
+                <div className="grid grid-cols-2 border border-phosphor/25">
+                  {[
+                    { v: true, t: 'FRESHER / INTERN' },
+                    { v: false, t: 'EXPERIENCED' },
+                  ].map((o) => (
+                    <button
+                      key={o.t}
+                      type="button"
+                      aria-pressed={profile.is_fresher === o.v}
+                      onClick={() =>
+                        update(
+                          { is_fresher: o.v, ...(o.v ? { experience_years: 0 } : {}) },
+                          { is_fresher: o.v, ...(o.v ? { experience_years: 0 } : {}) },
+                          'Experience',
+                        )
+                      }
+                      className={
+                        'py-3 font-mono text-xs font-bold tracking-[0.2em] transition-colors first:border-r first:border-phosphor/25 ' +
+                        (profile.is_fresher === o.v ? 'bg-phosphor text-black' : 'text-dim hover:text-phosphor')
+                      }
+                    >
+                      {o.t}
+                    </button>
+                  ))}
+                </div>
+                {!profile.is_fresher && (
+                  <div className="mt-5">
+                    <div className="flex justify-between font-mono text-[11px] tracking-[0.2em] text-dim">
+                      <span>YEARS OF EXPERIENCE</span>
+                      <span className="text-phosphor">{profile.experience_years}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={0}
+                      max={20}
+                      value={profile.experience_years}
+                      aria-label="Years of experience"
+                      className="mt-2 w-full accent-[#00FF41]"
+                      onChange={(e) => setProfile({ ...profile, experience_years: Number(e.target.value) })}
+                      onPointerUp={() => save({ experience_years: profile.experience_years }, 'Experience')}
+                      onKeyUp={() => save({ experience_years: profile.experience_years }, 'Experience')}
+                    />
+                  </div>
+                )}
+              </Section>
+
+              <Section
+                id="locations"
+                n="05"
+                name="LOCATIONS"
+                status={cities.length ? cities.length + ' CITIES' : 'NONE'}
+                tone={cities.length ? 'ok' : 'alert'}
+                hint="+5 for jobs in these cities, −25 for anywhere else. Add Remote if you want remote roles."
+              >
+                <ChipInput
+                  values={cities}
+                  placeholder="Add a city"
+                  suggestions={CITY_SUGGESTIONS}
+                  suggestionLabel="QUICK ADD"
+                  onChange={setCities}
+                />
+              </Section>
+
+              <Section
+                id="auto-vault"
+                n="06"
+                name="AUTO_VAULT"
+                status={profile.auto_vault ? 'ARMED' : 'OFF'}
+                tone={profile.auto_vault ? 'ok' : 'idle'}
+                hint="After every scan, new matches at or above this score are saved to your Vault for you."
+              >
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={profile.auto_vault}
+                  onClick={() =>
+                    update({ auto_vault: !profile.auto_vault }, { auto_vault: !profile.auto_vault }, 'Auto-vault')
+                  }
+                  className="flex w-full items-center justify-between gap-4 text-left"
+                >
+                  <span className="text-sm text-ink">Save strong matches automatically</span>
+                  <span
                     className={
-                      'py-3 font-mono text-xs font-bold tracking-[0.2em] transition-colors first:border-r first:border-phosphor/25 ' +
-                      (profile.is_fresher === o.v ? 'bg-phosphor text-black' : 'text-dim hover:text-phosphor')
+                      'relative h-6 w-11 shrink-0 border transition-colors ' +
+                      (profile.auto_vault ? 'border-phosphor bg-phosphor/20' : 'border-phosphor/25')
                     }
                   >
-                    {o.t}
-                  </button>
-                ))}
-              </div>
-              {!profile.is_fresher && (
-                <div className="mt-5">
+                    <span
+                      className={
+                        'absolute top-0.5 h-4 w-4 transition-all ' +
+                        (profile.auto_vault ? 'left-[22px] bg-phosphor shadow-[0_0_8px_#00FF41]' : 'left-0.5 bg-dim')
+                      }
+                    />
+                  </span>
+                </button>
+                <div className={'mt-6 ' + (profile.auto_vault ? '' : 'opacity-40')}>
                   <div className="flex justify-between font-mono text-[11px] tracking-[0.2em] text-dim">
-                    <span>YEARS OF EXPERIENCE</span>
-                    <span className="text-phosphor">{profile.experience_years}</span>
+                    <span>MINIMUM MATCH SCORE</span>
+                    <span className="text-phosphor">{profile.vault_min_score}%</span>
                   </div>
                   <input
                     type="range"
-                    min={0}
-                    max={20}
-                    value={profile.experience_years}
-                    aria-label="Years of experience"
+                    min={40}
+                    max={95}
+                    step={5}
+                    value={profile.vault_min_score}
+                    disabled={!profile.auto_vault}
+                    aria-label="Minimum match score for auto-vault"
                     className="mt-2 w-full accent-[#00FF41]"
-                    onChange={(e) => setProfile({ ...profile, experience_years: Number(e.target.value) })}
-                    onPointerUp={() => save({ experience_years: profile.experience_years }, 'Experience')}
-                    onKeyUp={() => save({ experience_years: profile.experience_years }, 'Experience')}
+                    onChange={(e) => setProfile({ ...profile, vault_min_score: Number(e.target.value) })}
+                    onPointerUp={() => save({ vault_min_score: profile.vault_min_score }, 'Minimum score')}
+                    onKeyUp={() => save({ vault_min_score: profile.vault_min_score }, 'Minimum score')}
                   />
                 </div>
-              )}
-            </Section>
+              </Section>
 
-            <Section
-              n="05"
-              name="LOCATIONS"
-              status={cities.length ? cities.length + ' CITIES' : 'NONE'}
-              tone={cities.length ? 'ok' : 'alert'}
-              hint="+5 for jobs in these cities, −25 for anywhere else. Add Remote if you want remote roles."
-            >
-              <ChipInput
-                values={cities}
-                placeholder="Add a city"
-                suggestions={CITY_SUGGESTIONS}
-                suggestionLabel="QUICK ADD"
-                onChange={setCities}
-              />
-            </Section>
-
-            <Section
-              n="06"
-              name="DREAM_COMPANIES"
-              status={dream.length + ' / 20'}
-              tone={dream.length ? 'ok' : 'idle'}
-              hint="Every open role at these companies is scored for you on each scan. ● = live jobs tracked · number = open roles now."
-            >
-              {dream.length > 0 && (
-                <div className="mb-4 flex flex-wrap gap-2">
-                  {dream.map((d) => (
-                    <span
-                      key={d}
-                      className="flex items-center gap-2 bg-phosphor px-2 py-1 font-mono text-[11px] font-bold tracking-wider text-black"
-                    >
-                      {d.toUpperCase()}
-                      <button type="button" onClick={() => toggleDream(d)} aria-label={'Remove ' + d}>
-                        ×
-                      </button>
-                    </span>
-                  ))}
-                </div>
-              )}
-              <input
-                value={companyFilter}
-                placeholder="Filter companies…"
-                onChange={(e) => setCompanyFilter(e.target.value)}
-                className="mb-3 w-full border border-phosphor/25 bg-black/60 px-3 py-2 font-mono text-sm text-phosphor placeholder:text-phosphor/35 focus:border-phosphor/70 focus:outline-none"
-              />
-              <div className="custom-scrollbar grid max-h-80 grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3">
-                {visibleCompanies.map((c) => {
-                  const on = dream.includes(c.name);
-                  return (
-                    <button
-                      key={c.name}
-                      type="button"
-                      aria-pressed={on}
-                      onClick={() => toggleDream(c.name)}
-                      className={
-                        'border px-3 py-2 text-left font-mono text-xs transition-colors ' +
-                        (on
-                          ? 'border-phosphor bg-phosphor/10 text-phosphor'
-                          : 'border-phosphor/15 text-phosphor/70 hover:border-phosphor/50 hover:text-phosphor')
-                      }
-                    >
-                      <span className="block truncate font-bold">
-                        {c.tracked ? '● ' : ''}
-                        {c.name}
-                      </span>
-                      <span className="block text-[10px] text-dim">
-                        {c.tier}
-                        {c.openJobs ? ' · ' + c.openJobs + ' open' : ''}
-                      </span>
-                    </button>
-                  );
-                })}
-                {!visibleCompanies.length && (
-                  <p className="col-span-full font-mono text-xs text-dim">
-                    {cities.length
-                      ? 'No companies found for these cities yet.'
-                      : 'Add a location to see companies there.'}
-                  </p>
-                )}
-              </div>
-            </Section>
-
-            <Section
-              n="07"
-              name="AUTO_VAULT"
-              status={profile.auto_vault ? 'ARMED' : 'OFF'}
-              tone={profile.auto_vault ? 'ok' : 'idle'}
-              hint="After every scan, new matches at or above this score are saved to your Vault for you."
-            >
-              <button
-                type="button"
-                role="switch"
-                aria-checked={profile.auto_vault}
-                onClick={() =>
-                  update({ auto_vault: !profile.auto_vault }, { auto_vault: !profile.auto_vault }, 'Auto-vault')
-                }
-                className="flex w-full items-center justify-between gap-4 text-left"
+              <Section
+                id="companies"
+                n="07"
+                name="DREAM_COMPANIES"
+                status={dream.length + ' / 20'}
+                tone={dream.length ? 'ok' : 'idle'}
+                className="xl:col-span-2"
+                hint="Every open role at these companies is scored for you on each scan. ● = live jobs tracked · number = open roles now."
               >
-                <span className="text-sm text-ink">Save strong matches automatically</span>
-                <span
-                  className={
-                    'relative h-6 w-11 shrink-0 border transition-colors ' +
-                    (profile.auto_vault ? 'border-phosphor bg-phosphor/20' : 'border-phosphor/25')
-                  }
-                >
-                  <span
-                    className={
-                      'absolute top-0.5 h-4 w-4 transition-all ' +
-                      (profile.auto_vault ? 'left-[22px] bg-phosphor shadow-[0_0_8px_#00FF41]' : 'left-0.5 bg-dim')
-                    }
-                  />
-                </span>
-              </button>
-              <div className={'mt-6 ' + (profile.auto_vault ? '' : 'opacity-40')}>
-                <div className="flex justify-between font-mono text-[11px] tracking-[0.2em] text-dim">
-                  <span>MINIMUM MATCH SCORE</span>
-                  <span className="text-phosphor">{profile.vault_min_score}%</span>
-                </div>
+                {dream.length > 0 && (
+                  <div className="mb-4 flex flex-wrap gap-2">
+                    {dream.map((d) => (
+                      <span
+                        key={d}
+                        className="flex items-center gap-2 bg-phosphor px-2 py-1 font-mono text-[11px] font-bold tracking-wider text-black"
+                      >
+                        {d.toUpperCase()}
+                        <button type="button" onClick={() => toggleDream(d)} aria-label={'Remove ' + d}>
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
                 <input
-                  type="range"
-                  min={40}
-                  max={95}
-                  step={5}
-                  value={profile.vault_min_score}
-                  disabled={!profile.auto_vault}
-                  aria-label="Minimum match score for auto-vault"
-                  className="mt-2 w-full accent-[#00FF41]"
-                  onChange={(e) => setProfile({ ...profile, vault_min_score: Number(e.target.value) })}
-                  onPointerUp={() => save({ vault_min_score: profile.vault_min_score }, 'Minimum score')}
-                  onKeyUp={() => save({ vault_min_score: profile.vault_min_score }, 'Minimum score')}
+                  value={companyFilter}
+                  placeholder="Filter companies…"
+                  aria-label="Filter companies"
+                  onChange={(e) => setCompanyFilter(e.target.value)}
+                  className="mb-3 w-full border border-phosphor/25 bg-black/60 px-3 py-2 font-mono text-sm text-phosphor placeholder:text-phosphor/35 focus:border-phosphor/70 focus:outline-none"
                 />
-              </div>
-            </Section>
-
-            <Section n="08" name="IDENTITY">
-              <div className="grid gap-4 sm:grid-cols-2">
-                <div>
-                  <p className="mb-2 font-mono text-[10px] tracking-[0.3em] text-dim">EMAIL</p>
-                  <p className="break-all py-2 font-mono text-sm text-phosphor/90">
-                    {user?.emailAddresses?.[0]?.emailAddress || '—'}
-                  </p>
-                </div>
-                <label>
-                  <span className="mb-2 block font-mono text-[10px] tracking-[0.3em] text-dim">NAME</span>
-                  <input
-                    value={name}
-                    placeholder="Your name"
-                    onChange={(e) => setName(e.target.value)}
-                    onBlur={() => {
-                      if (name.trim() !== (profile.full_name || ''))
-                        update({ full_name: name.trim() }, { full_name: name }, 'Name');
-                    }}
-                    className="w-full border border-phosphor/25 bg-black/60 px-3 py-2 font-mono text-sm text-phosphor placeholder:text-phosphor/35 focus:border-phosphor/70 focus:outline-none"
-                  />
-                </label>
-              </div>
-            </Section>
-
-            <HudPanel
-              label="APPLY://RESCAN"
-              status={changed ? 'CHANGES PENDING' : 'IN SYNC'}
-              tone={changed ? 'warn' : 'ok'}
-              className="border-phosphor/50"
-            >
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <p className="text-sm text-dim">
-                  {changed
-                    ? 'Your profile changed. Rescan to rescore every open job with it now.'
-                    : 'The next scheduled scan uses this profile. Rescan any time to see results now.'}
-                </p>
-                <button
-                  type="button"
-                  onClick={rescan}
-                  disabled={rescanning || uploading}
-                  className="flex shrink-0 items-center justify-center gap-2 bg-phosphor px-6 py-3 font-mono text-xs font-bold tracking-[0.2em] text-black shadow-[0_0_20px_rgba(0,255,65,0.3)] transition-colors hover:bg-[#33FF66] disabled:cursor-wait disabled:bg-phosphor/40"
-                >
-                  {rescanning && (
-                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-black/30 border-t-black" />
+                <div className="custom-scrollbar grid max-h-96 grid-cols-2 gap-2 overflow-y-auto pr-1 sm:grid-cols-3 lg:grid-cols-4 2xl:grid-cols-5">
+                  {visibleCompanies.map((c) => {
+                    const on = dream.includes(c.name);
+                    return (
+                      <button
+                        key={c.name}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => toggleDream(c.name)}
+                        className={
+                          'border px-3 py-2 text-left font-mono text-xs transition-colors ' +
+                          (on
+                            ? 'border-phosphor bg-phosphor/10 text-phosphor'
+                            : 'border-phosphor/15 text-phosphor/70 hover:border-phosphor/50 hover:text-phosphor')
+                        }
+                      >
+                        <span className="block truncate font-bold">
+                          {c.tracked ? '● ' : ''}
+                          {c.name}
+                        </span>
+                        <span className="block text-[10px] text-dim">
+                          {c.tier}
+                          {c.openJobs ? ' · ' + c.openJobs + ' open' : ''}
+                        </span>
+                      </button>
+                    );
+                  })}
+                  {!visibleCompanies.length && (
+                    <p className="col-span-full font-mono text-xs text-dim">
+                      {cities.length
+                        ? 'No companies found for these cities yet.'
+                        : 'Add a location to see companies there.'}
+                    </p>
                   )}
-                  {rescanning ? 'RESCANNING' : '[ RESCAN NOW ]'}
-                </button>
-              </div>
-            </HudPanel>
+                </div>
+              </Section>
 
-            <Link
-              href="/onboarding"
-              className="block border border-phosphor/15 py-3 text-center font-mono text-[11px] tracking-[0.25em] text-dim transition-colors hover:border-phosphor/40 hover:text-phosphor"
-            >
-              REDO FULL ONBOARDING
-            </Link>
-          </>
+              <Section id="identity" n="08" name="IDENTITY" className="xl:col-span-2">
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div>
+                    <p className="mb-2 font-mono text-[10px] tracking-[0.3em] text-dim">EMAIL</p>
+                    <p className="break-all py-2 font-mono text-sm text-phosphor/90">
+                      {user?.emailAddresses?.[0]?.emailAddress || '—'}
+                    </p>
+                  </div>
+                  <label>
+                    <span className="mb-2 block font-mono text-[10px] tracking-[0.3em] text-dim">NAME</span>
+                    <input
+                      value={name}
+                      placeholder="Your name"
+                      onChange={(e) => setName(e.target.value)}
+                      onBlur={() => {
+                        if (name.trim() !== (profile.full_name || ''))
+                          update({ full_name: name.trim() }, { full_name: name }, 'Name');
+                      }}
+                      className="w-full border border-phosphor/25 bg-black/60 px-3 py-2 font-mono text-sm text-phosphor placeholder:text-phosphor/35 focus:border-phosphor/70 focus:outline-none"
+                    />
+                  </label>
+                </div>
+              </Section>
+
+              <Link
+                href="/onboarding"
+                className="block border border-phosphor/15 py-3 text-center font-mono text-[11px] tracking-[0.25em] text-dim transition-colors hover:border-phosphor/40 hover:text-phosphor xl:col-span-2"
+              >
+                REDO FULL ONBOARDING
+              </Link>
+            </div>
+          </div>
         )}
       </main>
 

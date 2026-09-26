@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { CATALOG } from '@/lib/scraper/catalog';
 
 // Decorative targets the sweep "acquires".
 const TARGETS = [
@@ -366,7 +367,10 @@ export default function HackerRadarHero({ children }: { children?: ReactNode }) 
               <div className="p-3 space-y-0.5 text-[#00FF41]/80">
                 <div className="text-[#00FF41]/50 mb-1 tracking-widest">TELEMETRY</div>
                 <div>
-                  SOURCES <span className="float-right text-[#00FF41]">15/15</span>
+                  SOURCES{' '}
+                  <span className="float-right text-[#00FF41]">
+                    {CATALOG.sources}/{CATALOG.sources}
+                  </span>
                 </div>
                 <div>
                   MODEL <span className="float-right text-[#22D3EE]">e5-L 1024D</span>
