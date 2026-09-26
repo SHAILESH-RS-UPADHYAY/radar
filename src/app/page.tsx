@@ -1,733 +1,540 @@
 'use client';
 
-/* eslint-disable @typescript-eslint/no-unused-vars */
-/* eslint-disable react/no-unescaped-entities */
-/* eslint-disable react/jsx-no-comment-textnodes */
-
 import { useEffect, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
-import { motion, AnimatePresence } from 'framer-motion';
-import { TerminalText } from '@/components/ui/TerminalText';
 import Link from 'next/link';
-import { useAuth, UserButton } from '@clerk/nextjs';
-import gsap from 'gsap';
-import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-gsap.registerPlugin(ScrollTrigger);
+import { AnimatePresence, motion, useScroll } from 'framer-motion';
+import { useAuth } from '@clerk/nextjs';
+import { TerminalText } from '@/components/ui/TerminalText';
+import { HudPanel, Prompt, SectionHeader, StatusLight, type Tone } from '@/components/hud/Hud';
+import { SiteNav } from '@/components/site/SiteNav';
+import { SiteFooter } from '@/components/site/SiteFooter';
+import { CATALOG } from '@/lib/scraper/catalog';
 
 const HackerRadarHero = dynamic(() => import('@/components/hero/HackerRadarHero'), { ssr: false });
 const SmoothScroll = dynamic(() => import('@/components/providers/SmoothScroll'), { ssr: false });
 
-const Chk = () => (
-  <svg
-    className="w-4 h-4 shrink-0"
-    style={{ color: '#00FF41' }}
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    strokeWidth={2.5}
-  >
-    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-  </svg>
-);
-const Crs = () => (
-  <svg
-    className="w-4 h-4 shrink-0"
-    style={{ color: '#555' }}
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    strokeWidth={2}
-  >
-    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-  </svg>
-);
-const Wrn = () => (
-  <svg
-    className="w-4 h-4 shrink-0"
-    style={{ color: '#888' }}
-    fill="none"
-    viewBox="0 0 24 24"
-    stroke="currentColor"
-    strokeWidth={2}
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-    />
-  </svg>
-);
-const IM: Record<string, React.FC> = { check: Chk, cross: Crs, warn: Wrn };
+const reveal = {
+  initial: { opacity: 0, y: 24 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: '-80px' },
+  transition: { duration: 0.6, ease: [0.22, 1, 0.36, 1] as const },
+};
 
-function Counter({ target, suffix = '' }: { target: number; suffix?: string }) {
-  const [n, setN] = useState(0);
-  const ref = useRef<HTMLSpanElement>(null);
-  useEffect(() => {
-    const obs = new IntersectionObserver(
-      ([e]) => {
-        if (!e.isIntersecting) return;
-        obs.disconnect();
-        let v = 0;
-        const step = Math.ceil(target / 50);
-        const t = setInterval(() => {
-          v += step;
-          if (v >= target) {
-            setN(target);
-            clearInterval(t);
-          } else setN(v);
-        }, 25);
-      },
-      { threshold: 0.5 },
-    );
-    if (ref.current) obs.observe(ref.current);
-    return () => obs.disconnect();
-  }, [target]);
-  return (
-    <span ref={ref}>
-      {n.toLocaleString()}
-      {suffix}
-    </span>
-  );
-}
+const MODULES: {
+  code: string;
+  anchor: string;
+  name: string;
+  title: string;
+  desc: string;
+  spec: [string, string][];
+  status: string;
+  tone: Tone;
+}[] = [
+  {
+    code: 'A',
+    anchor: 'dream-tracking',
+    name: 'DREAM_TRACK',
+    title: 'Dream company tracking',
+    desc: `Pick up to 20 of ${CATALOG.companies} companies. Every open role at them is scored for you on each scan, even the ones outside the semantic top 400.`,
+    spec: [
+      ['feeds', `${CATALOG.tracked} ATS + ${CATALOG.boards.length} boards`],
+      ['priority', 'always scored'],
+      ['lane', 'DREAM'],
+    ],
+    status: 'ACTIVE',
+    tone: 'ok',
+  },
+  {
+    code: 'B',
+    anchor: 'semantic-matching',
+    name: 'SEMANTIC_MATCH',
+    title: 'AI semantic matching',
+    desc: 'Your resume and every job description become 1024-dimension vectors. Meaning, skills, target role, seniority and location blend into one score.',
+    spec: [
+      ['model', 'e5-large · 1024d'],
+      ['blend', '60% meaning · 40% skills'],
+      ['boost', '+10 target role'],
+    ],
+    status: 'OPTIMAL',
+    tone: 'info',
+  },
+  {
+    code: 'C',
+    anchor: 'scan-loop',
+    name: 'SCAN_LOOP',
+    title: 'Automated scan loop',
+    desc: 'Every 6 hours RADAR re-reads every feed, embeds only what changed, closes postings that were taken down and drops strong matches into your Vault.',
+    spec: [
+      ['cycle', 'every 6h'],
+      ['dedupe', 'sha1 content hash'],
+      ['vault', 'score ≥ your bar'],
+    ],
+    status: 'ARMED',
+    tone: 'warn',
+  },
+];
+
+const STAGES = [
+  {
+    n: '01',
+    title: 'SCRAPE',
+    body: `${CATALOG.sources} adapters pull openings straight from company ATS feeds and job boards.`,
+    stat: `${CATALOG.tracked + CATALOG.boards.length} feeds`,
+  },
+  {
+    n: '02',
+    title: 'EMBED',
+    body: 'New or changed postings become 1024-d vectors. Unchanged ones are skipped by content hash.',
+    stat: '1024-d',
+  },
+  {
+    n: '03',
+    title: 'MATCH',
+    body: 'Your profile meets every open job: meaning, skills, role, seniority, location.',
+    stat: '0-100',
+  },
+  {
+    n: '04',
+    title: 'VAULT',
+    body: 'Jobs above your threshold are saved for you. Dismissed ones never come back.',
+    stat: '≥ 70%',
+  },
+];
+
+type Mark = 'yes' | 'no' | 'part';
+const COMPARISON: [string, Mark, Mark, Mark][] = [
+  ['AI resume ↔ JD matching (1024-d)', 'yes', 'no', 'no'],
+  ['Reads company ATS feeds directly', 'yes', 'no', 'no'],
+  ['Rescans on its own every 6h', 'yes', 'no', 'no'],
+  ['Fresher-first ranking', 'yes', 'no', 'part'],
+  ['Location-aware sorting', 'yes', 'part', 'part'],
+];
+const MARK: Record<Mark, { glyph: string; cls: string }> = {
+  yes: { glyph: '[+]', cls: 'text-phosphor' },
+  no: { glyph: '[-]', cls: 'text-hud-red/70' },
+  part: { glyph: '[~]', cls: 'text-hud-amber/80' },
+};
+
+const STATS = [
+  { value: CATALOG.sources, suffix: '', label: 'SOURCE ADAPTERS' },
+  { value: CATALOG.companies, suffix: '', label: 'COMPANIES INDEXED' },
+  { value: 1024, suffix: 'D', label: 'EMBEDDING DIMS' },
+  { value: 6, suffix: 'H', label: 'SCAN CYCLE' },
+];
 
 const QUOTES = [
-  "Your placement officer can't do what our AI does in 60 seconds.",
+  "Your placement officer can't do what RADAR does in 60 seconds.",
   "Gharwale poochenge 'Beta job lagi?' — You say 'RADAR laga rakha hai.'",
   'While you sleep, RADAR scrapes. While they scroll LinkedIn, you apply first.',
   '50 companies. 1 click. 0 recruiter ghosting. Math checks out.',
   "We don't find jobs. We intercept them before they go viral.",
 ];
 
-// Pricing is hidden while RADAR is a personal tool. Flip to true to bring it back.
-const SHOW_PRICING = false;
-
-const FEATURES = [
-  {
-    letter: 'A',
-    title: 'DREAM COMPANY TRACKING',
-    desc: 'Select from 50+ top companies. Get matched the instant they post a role — before LinkedIn, before Naukri, before anyone.',
-    status: 'ACTIVE',
-    statusColor: '#10B981',
-  },
-  {
-    letter: 'B',
-    title: 'AI SEMANTIC MATCHING',
-    desc: '1024-dimension embeddings (multilingual-e5-large) analyze your resume against every JD. Not keywords — real understanding of your skills.',
-    status: 'OPTIMAL',
-    statusColor: '#F59E0B',
-  },
-  {
-    letter: 'C',
-    title: 'AUTOMATED SCAN LOOP',
-    desc: 'Greenhouse, Lever, Ashby, Workday, SmartRecruiters, HN and more — scraped every 6 hours, strong matches dropped into your Vault. Zero manual effort. Jobs flow to you automatically.',
-    status: 'READY',
-    statusColor: '#00FF41',
-  },
-];
-
-const STATS = [
-  { value: 15, suffix: '', label: 'Job Sources' },
-  { value: 5000, suffix: '+', label: 'Jobs Scanned Daily' },
-  { value: 1024, suffix: 'D', label: 'AI Embedding Dims' },
-  { value: 24, suffix: '/7', label: 'Always Scanning' },
-];
-
-const COMPARISON = [
-  ['AI Resume Match', { i: 'check', t: ' 1024D' }, { i: 'cross' }, { i: 'cross' }],
-  ['Direct ATS Data', { i: 'check' }, { i: 'cross' }, { i: 'cross' }],
-  ['Auto Scan (6h)', { i: 'check' }, { i: 'cross' }, { i: 'cross' }],
-  ['Fresher-First', { i: 'check' }, { i: 'cross' }, { i: 'warn' }],
-  ['Location Sort', { i: 'check' }, { i: 'warn' }, { i: 'warn' }],
-  ...(SHOW_PRICING ? [['Free to Start', { i: 'check', t: ' 3 Searches' }, { i: 'check' }, { i: 'check' }]] : []),
-];
-
 const FAQ = [
-  ...(SHOW_PRICING
-    ? [{ q: 'Is RADAR really free?', a: 'Yes. 3 searches, all sections, AI matching. No credit card.' }]
-    : []),
   {
     q: 'Where do jobs come from?',
-    a: 'Directly from company career pages via free public ATS APIs (Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Recruitee, Personio, Workday) plus HN, Remotive, RemoteOK, Arbeitnow and Himalayas.',
+    a: 'Straight from company careers pages through their public ATS feeds (Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Recruitee, Personio, Workday, Amazon Jobs) plus Hacker News "Who is hiring", Remotive, Remote OK, Arbeitnow and Himalayas.',
+  },
+  {
+    q: 'How is the match score calculated?',
+    a: '60% semantic similarity between your resume and the job description, 40% skill overlap, +10 when the title contains one of your target roles, then seniority and location adjustments. The full spec is on the Protocol page.',
   },
   {
     q: 'How is this different from LinkedIn?',
-    a: 'We scan every 6 hours, match with AI embeddings, and rank by YOUR specific skills.',
+    a: 'RADAR rescans every 6 hours on its own, reads the source feeds directly instead of reposts, and ranks every job against your resume, not against keywords.',
   },
-  { q: 'Is this for freshers only?', a: 'Primarily Indian freshers and recent graduates, but anyone can use RADAR.' },
+  {
+    q: 'What happens to jobs I dismiss?',
+    a: 'They are gone for good: a dismissed job is never shown in Discovery or auto-saved to your Vault again.',
+  },
+  {
+    q: 'Is this for freshers only?',
+    a: 'Built for Indian freshers and early-career engineers first, but anyone can use it.',
+  },
 ];
 
-export default function LandingPage() {
-  const [scrolled, setScrolled] = useState(false);
-  const { isSignedIn } = useAuth();
-  const [qIdx, setQIdx] = useState(0);
-  const [scrollP, setScrollP] = useState(0);
-  const cardsRef = useRef<HTMLDivElement>(null);
-  const statsRef = useRef<HTMLDivElement>(null);
-  const tableRef = useRef<HTMLDivElement>(null);
-
+function Counter({ target, suffix = '' }: { target: number; suffix?: string }) {
+  const [n, setN] = useState(0);
+  const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
-    const h = () => {
-      setScrolled(window.scrollY > 50);
-      setScrollP(window.scrollY / (document.body.scrollHeight - window.innerHeight));
+    let timer: ReturnType<typeof setInterval> | undefined;
+    const obs = new IntersectionObserver(
+      ([e]) => {
+        if (!e.isIntersecting) return;
+        obs.disconnect();
+        let v = 0;
+        const step = Math.max(1, Math.ceil(target / 40));
+        timer = setInterval(() => {
+          v = Math.min(target, v + step);
+          setN(v);
+          if (v >= target) clearInterval(timer);
+        }, 25);
+      },
+      { threshold: 0.5 },
+    );
+    if (ref.current) obs.observe(ref.current);
+    return () => {
+      obs.disconnect();
+      clearInterval(timer);
     };
-    window.addEventListener('scroll', h, { passive: true });
-    return () => window.removeEventListener('scroll', h);
-  }, []);
+  }, [target]);
+  return (
+    <span ref={ref}>
+      {n}
+      {suffix}
+    </span>
+  );
+}
 
+/** Rotating quotes, isolated so the timer re-renders only this panel. */
+function Transmissions() {
+  const [i, setI] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setQIdx((i) => (i + 1) % QUOTES.length), 5000);
+    const t = setInterval(() => setI((x) => (x + 1) % QUOTES.length), 6000);
     return () => clearInterval(t);
   }, []);
+  return (
+    <HudPanel
+      label={`INCOMING://TRANSMISSION 0x0${i + 1}`}
+      status="DECRYPTED"
+      tone="info"
+      bodyClassName="px-5 py-10 sm:px-10 sm:py-14"
+    >
+      <AnimatePresence mode="wait">
+        <motion.p
+          key={i}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.3 }}
+          className="min-h-[4.5rem] text-center font-mono text-lg font-bold leading-relaxed text-white sm:text-2xl"
+        >
+          <span className="text-phosphor">&quot;</span>
+          <TerminalText text={QUOTES[i]} typingSpeed={22} />
+          <span className="text-phosphor">&quot;</span>
+        </motion.p>
+      </AnimatePresence>
+      <div className="mt-8 flex justify-center gap-2">
+        {QUOTES.map((_, k) => (
+          <button
+            key={k}
+            onClick={() => setI(k)}
+            aria-label={'Transmission ' + (k + 1)}
+            className={'h-1 transition-all duration-300 ' + (k === i ? 'w-8 bg-phosphor' : 'w-3 bg-phosphor/25')}
+          />
+        ))}
+      </div>
+    </HudPanel>
+  );
+}
 
-  useEffect(() => {
-    if (cardsRef.current) {
-      gsap.fromTo(
-        cardsRef.current.querySelectorAll('.feature-card'),
-        { opacity: 0, y: 40 },
-        {
-          opacity: 1,
-          y: 0,
-          stagger: 0.12,
-          duration: 0.7,
-          ease: 'power3.out',
-          scrollTrigger: { trigger: cardsRef.current, start: 'top 75%' },
-        },
-      );
-    }
-    if (statsRef.current) {
-      gsap.fromTo(
-        statsRef.current.querySelectorAll('.stat-item'),
-        { opacity: 0, y: 30 },
-        {
-          opacity: 1,
-          y: 0,
-          stagger: 0.08,
-          duration: 0.5,
-          ease: 'power2.out',
-          scrollTrigger: { trigger: statsRef.current, start: 'top 80%' },
-        },
-      );
-    }
-    if (tableRef.current) {
-      gsap.fromTo(
-        tableRef.current.querySelectorAll('tr'),
-        { opacity: 0, x: 30 },
-        {
-          opacity: 1,
-          x: 0,
-          stagger: 0.08,
-          duration: 0.4,
-          ease: 'power2.out',
-          scrollTrigger: { trigger: tableRef.current, start: 'top 75%' },
-        },
-      );
-    }
-  }, []);
-
-  const scrollVal = 'scaleX(' + scrollP + ')';
+export default function LandingPage() {
+  const { isSignedIn } = useAuth();
+  const { scrollYProgress } = useScroll();
 
   return (
-    <SmoothScroll>
-      <main className="relative min-h-screen" style={{ background: '#0A0A0A' }}>
-        <div className="scroll-progress" style={{ transform: 'scaleX(' + scrollP + ')' }} />
+    <main className="relative min-h-screen bg-void">
+      <SmoothScroll />
+      <motion.div className="scroll-progress w-full" style={{ scaleX: scrollYProgress }} />
+      <SiteNav overlay />
 
-        {/* 1. NAVBAR */}
-        <nav
-          className={
-            'fixed top-0 left-0 right-0 z-50 transition-all duration-500 ' + (scrolled ? 'glass-nav-dark py-3' : 'py-5')
-          }
-          style={{ background: scrolled ? undefined : 'transparent' }}
-        >
-          <div className="max-w-[1280px] mx-auto px-6 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded flex items-center justify-center" style={{ background: '#00FF41' }}>
-                <span className="text-white text-xs font-black font-display">R</span>
-              </div>
-              <span className="text-lg font-black font-display tracking-display text-white">
-                RADAR<span style={{ color: '#00FF41' }}>.CORE</span>
-              </span>
-            </div>
-            <div className="hidden md:flex items-center gap-10">
+      {/* HERO */}
+      <section className="relative">
+        <HackerRadarHero>
+          <div className="font-mono">
+            <motion.div
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="inline-flex items-center gap-3 mb-6 px-3 py-1.5 border border-[#00FF41]/40 bg-black/60 text-[11px] tracking-widest text-[#00FF41]"
+            >
+              <span className="w-2 h-2 rounded-full bg-[#00FF41] animate-pulse" />
+              <span>root@radar:~# ./scan --sources=15 --mode=live</span>
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.8, delay: 0.35 }}
+              className="glitch text-4xl sm:text-6xl lg:text-[4.75rem] font-black font-display tracking-display leading-[0.95] mb-6 text-white"
+              data-text="INITIALIZING PROTOCOL"
+            >
+              <TerminalText text="INITIALIZING PROTOCOL" typingSpeed={70} className="text-matrix" />
+            </motion.h1>
+
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.7, delay: 0.6 }}
+              className="mb-8 max-w-xl border-l-2 border-[#00FF41]/60 pl-4 space-y-1 text-sm sm:text-base text-[#9CA3AF]"
+            >
+              <p>
+                <span className="text-[#00FF41]">&gt;</span> AI job-intelligence engine for your target companies.
+              </p>
+              <p>
+                <span className="text-[#00FF41]">&gt;</span> 15 live sources · 1024-d embeddings · 6h scan loop.
+              </p>
+              <p>
+                <span className="text-[#00FF41]">&gt;</span> Strong matches land in your Vault automatically.
+              </p>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.85 }}
+              className="flex flex-col sm:flex-row gap-4"
+            >
+              <Link
+                href={isSignedIn ? '/dashboard' : '/sign-up'}
+                className="px-8 py-4 text-sm font-bold tracking-widest text-black bg-[#00FF41] hover:bg-[#33FF66] shadow-[0_0_25px_rgba(0,255,65,0.35)] transition-colors text-center"
+              >
+                {isSignedIn ? '[ ENTER DASHBOARD ]' : '[ START SCAN ]'}
+              </Link>
               <a
                 href="#how-it-works"
-                className="text-xs font-semibold uppercase tracking-label transition-opacity hover:opacity-60"
-                style={{ color: '#888' }}
+                className="px-8 py-4 text-sm font-bold tracking-widest text-[#00FF41] border border-[#00FF41]/50 hover:bg-[#00FF41]/10 transition-colors text-center"
               >
-                SYSTEMS
+                ./how-it-works
               </a>
-              <a
-                href="#features"
-                className="text-xs font-semibold uppercase tracking-label transition-opacity hover:opacity-60"
-                style={{ color: '#888' }}
-              >
-                PROTOCOL
-              </a>
-              <a
-                href={SHOW_PRICING ? '#pricing' : '#features'}
-                className="text-xs font-semibold uppercase tracking-label transition-opacity hover:opacity-60"
-                style={{ color: '#888' }}
-              >
-                ARCHITECTURE
-              </a>
-            </div>
-            <div className="flex items-center gap-3">
-              {isSignedIn ? (
-                <>
-                  <Link
-                    href="/dashboard"
-                    className="text-sm font-bold uppercase tracking-label transition-opacity hover:opacity-80"
-                    style={{ color: '#00FF41' }}
-                  >
-                    Dashboard
-                  </Link>
-                  <UserButton
-                    appearance={{ elements: { userButtonAvatarBox: 'w-8 h-8 rounded-md border border-[#2A2A2A]' } }}
-                  />
-                </>
-              ) : (
-                <>
-                  <Link
-                    href="/sign-in"
-                    className="text-sm font-medium transition-opacity hover:opacity-60"
-                    style={{ color: '#888' }}
-                  >
-                    Sign In
-                  </Link>
-                  <Link
-                    href="/sign-up"
-                    className="btn-outline-dark text-xs px-5 py-2"
-                    style={{ borderColor: '#EF4444', color: '#EF4444' }}
-                  >
-                    LOGIN TERMINAL
-                  </Link>
-                </>
-              )}
-            </div>
-          </div>
-        </nav>
+            </motion.div>
 
-        {/* 2. HERO */}
-        <section className="relative">
-          <HackerRadarHero>
-            <div className="font-mono">
-              <motion.div
-                initial={{ opacity: 0, x: -20 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="inline-flex items-center gap-3 mb-6 px-3 py-1.5 border border-[#00FF41]/40 bg-black/60 text-[11px] tracking-widest text-[#00FF41]"
-              >
-                <span className="w-2 h-2 rounded-full bg-[#00FF41] animate-pulse" />
-                <span>root@radar:~# ./scan --sources=15 --mode=live</span>
-              </motion.div>
-
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.8, delay: 0.35 }}
-                className="glitch text-4xl sm:text-6xl lg:text-[4.75rem] font-black font-display tracking-display leading-[0.95] mb-6 text-white"
-                data-text="INITIALIZING PROTOCOL"
-              >
-                <TerminalText text="INITIALIZING PROTOCOL" typingSpeed={70} className="text-matrix" />
-              </motion.h1>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ duration: 0.7, delay: 0.6 }}
-                className="mb-8 max-w-xl border-l-2 border-[#00FF41]/60 pl-4 space-y-1 text-sm sm:text-base text-[#9CA3AF]"
-              >
-                <p>
-                  <span className="text-[#00FF41]">&gt;</span> AI job-intelligence engine for your target companies.
-                </p>
-                <p>
-                  <span className="text-[#00FF41]">&gt;</span> 15 live sources · 1024-d embeddings · 6h scan loop.
-                </p>
-                <p>
-                  <span className="text-[#00FF41]">&gt;</span> Strong matches land in your Vault automatically.
-                </p>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.7, delay: 0.85 }}
-                className="flex flex-col sm:flex-row gap-4"
-              >
-                <Link
-                  href={isSignedIn ? '/dashboard' : '/sign-up'}
-                  className="px-8 py-4 text-sm font-bold tracking-widest text-black bg-[#00FF41] hover:bg-[#33FF66] shadow-[0_0_25px_rgba(0,255,65,0.35)] transition-colors text-center"
-                >
-                  {isSignedIn ? '[ ENTER DASHBOARD ]' : '[ START SCAN ]'}
-                </Link>
-                <a
-                  href="#how-it-works"
-                  className="px-8 py-4 text-sm font-bold tracking-widest text-[#00FF41] border border-[#00FF41]/50 hover:bg-[#00FF41]/10 transition-colors text-center"
-                >
-                  ./how-it-works
-                </a>
-              </motion.div>
-
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 1.2 }}
-                className="mt-10 grid grid-cols-3 max-w-md text-[11px] tracking-widest border border-[#00FF41]/20"
-              >
-                {[
-                  ['15', 'SOURCES'],
-                  ['1024D', 'VECTORS'],
-                  ['6H', 'CYCLE'],
-                ].map(([v, l]) => (
-                  <div key={l} className="p-3 border-r last:border-r-0 border-[#00FF41]/20">
-                    <div className="text-lg font-black text-[#00FF41]">{v}</div>
-                    <div className="text-[#00FF41]/50">{l}</div>
-                  </div>
-                ))}
-              </motion.div>
-            </div>
-          </HackerRadarHero>
-        </section>
-
-        {/* 3. CORE MODULES */}
-        <section id="how-it-works" className="relative py-28 px-6">
-          <div className="max-w-[1280px] mx-auto">
-            <div className="text-center mb-16">
-              <h2 className="text-3xl md:text-4xl font-black font-display tracking-display heading-underline-dark text-white">
-                CORE MODULES
-              </h2>
-              <p className="text-sm max-w-lg mx-auto mt-10" style={{ color: '#888' }}>
-                Three precision-engineered systems working in concert. Each module is a calibrated point of control.
-              </p>
-            </div>
-            <div ref={cardsRef} className="grid md:grid-cols-3 gap-6">
-              {FEATURES.map((f, i) => {
-                const targetSection =
-                  i === 0 ? '#features' : i === 1 ? (SHOW_PRICING ? '#pricing' : '#features') : '#how-it-works';
-                return (
-                  <a
-                    href={targetSection}
-                    key={i}
-                    className="feature-card card-dark p-8 flex flex-col justify-between hover:-translate-y-2 transition-transform duration-300 block"
-                  >
-                    <div>
-                      <div className="flex items-start gap-3 mb-6">
-                        <span className="text-4xl font-black font-display" style={{ color: f.statusColor }}>
-                          {f.letter}
-                        </span>
-                        <h3 className="text-sm font-bold uppercase tracking-label pt-2 text-white">{f.title}</h3>
-                      </div>
-                      <p className="text-sm leading-relaxed mb-8" style={{ color: '#888' }}>
-                        {f.desc}
-                      </p>
-                    </div>
-                    <div className="flex items-center justify-between pt-6" style={{ borderTop: '1px dashed #2A2A2A' }}>
-                      <span className="badge-status-dark" style={{ color: f.statusColor }}>
-                        STATUS: {f.status}
-                      </span>
-                      <span className="btn-ghost-dark text-xs">JUMP TO DETAIL &rarr;</span>
-                    </div>
-                  </a>
-                );
-              })}
-            </div>
-          </div>
-        </section>
-
-        <div className="divider-dark max-w-[1280px] mx-auto" />
-
-        {/* 4. COMPARISON */}
-        <section id="features" className="relative py-28 px-6">
-          <div className="max-w-4xl mx-auto">
-            <div className="text-center mb-14">
-              <div className="section-label-dark justify-center mb-6">Why RADAR</div>
-              <h2 className="text-3xl md:text-4xl font-black font-display tracking-display text-white">
-                Us vs. <span className="text-matrix">Everyone Else</span>
-              </h2>
-            </div>
-            <div ref={tableRef} className="card-dark p-1 overflow-hidden">
-              <table className="w-full text-sm table-dark">
-                <thead>
-                  <tr className="text-left">
-                    <th className="p-4 font-medium" style={{ color: '#555' }}>
-                      Feature
-                    </th>
-                    <th className="p-4 font-bold featured" style={{ color: '#00FF41' }}>
-                      RADAR
-                    </th>
-                    <th className="p-4 font-medium" style={{ color: '#555' }}>
-                      LinkedIn
-                    </th>
-                    <th className="p-4 font-medium" style={{ color: '#555' }}>
-                      Naukri
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {COMPARISON.map((row, i) => (
-                    <tr key={i} className="hover:bg-[#1A1A1A] transition-colors">
-                      <td className="p-4 font-medium text-white">{row[0] as string}</td>
-                      {(row.slice(1) as { i: string; t?: string }[]).map((c, j) => {
-                        const Icon = IM[c.i];
-                        return (
-                          <td key={j} className={'p-4 ' + (j === 0 ? 'featured' : '')}>
-                            <div className="flex items-center gap-1.5">
-                              <Icon />
-                              {c.t && (
-                                <span className="font-semibold text-xs" style={{ color: j === 0 ? '#00FF41' : '#555' }}>
-                                  {c.t}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                        );
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </section>
-
-        <div className="divider-dark max-w-[1280px] mx-auto" />
-
-        {/* 5. STATS */}
-        <section className="relative py-24 px-6">
-          <div ref={statsRef} className="max-w-[1280px] mx-auto">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {STATS.map((s, i) => (
-                <div key={i} className="stat-item text-center p-8 card-dark">
-                  <div
-                    className="text-4xl md:text-5xl font-black font-mono tracking-display mb-2"
-                    style={{ color: '#00FF41' }}
-                  >
-                    <Counter target={s.value} suffix={s.suffix} />
-                  </div>
-                  <div className="text-[11px] font-semibold uppercase tracking-label" style={{ color: '#555' }}>
-                    {s.label}
-                  </div>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.2 }}
+              className="mt-10 grid grid-cols-3 max-w-md text-[11px] tracking-widest border border-[#00FF41]/20"
+            >
+              {[
+                ['15', 'SOURCES'],
+                ['1024D', 'VECTORS'],
+                ['6H', 'CYCLE'],
+              ].map(([v, l]) => (
+                <div key={l} className="p-3 border-r last:border-r-0 border-[#00FF41]/20">
+                  <div className="text-lg font-black text-[#00FF41]">{v}</div>
+                  <div className="text-[#00FF41]/50">{l}</div>
                 </div>
               ))}
-            </div>
+            </motion.div>
           </div>
-        </section>
+        </HackerRadarHero>
+      </section>
 
-        <div className="divider-dark max-w-[1280px] mx-auto" />
+      {/* Everything below the hero shares its grid, so the page reads as one console. */}
+      <div className="relative overflow-hidden">
+        <div className="hud-grid pointer-events-none absolute inset-0" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_at_top,rgba(0,255,65,0.07),transparent_65%)]" />
 
-        {/* 6. QUOTES */}
-        <section className="relative py-24 px-6">
-          <div className="max-w-3xl mx-auto text-center">
-            <AnimatePresence mode="wait">
-              <motion.p
-                key={qIdx}
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.45 }}
-                className="text-xl md:text-2xl font-bold font-display tracking-display italic text-white"
-              >
-                "{QUOTES[qIdx]}"
-              </motion.p>
-            </AnimatePresence>
-            <div className="flex justify-center gap-2.5 mt-8">
-              {QUOTES.map((_, i) => (
-                <button
-                  key={i}
-                  onClick={() => setQIdx(i)}
-                  className="transition-all duration-300 rounded-full"
-                  style={{ width: i === qIdx ? 28 : 8, height: 8, background: i === qIdx ? '#00FF41' : '#2A2A2A' }}
-                />
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <div className="divider-dark max-w-[1280px] mx-auto" />
-
-        {/* 7. PRICING */}
-        {SHOW_PRICING && (
-          <>
-            <section id="pricing" className="relative py-28 px-6">
-              <div className="max-w-4xl mx-auto">
-                <div className="text-center mb-16">
-                  <div className="section-label-dark justify-center mb-6">Pricing</div>
-                  <h2 className="text-3xl md:text-4xl font-black font-display tracking-display text-white">
-                    Start free. <span className="text-matrix">Upgrade when ready.</span>
-                  </h2>
-                </div>
-                <div className="grid md:grid-cols-2 gap-6 max-w-3xl mx-auto">
-                  <div className="card-dark p-8 flex flex-col">
-                    <div className="text-xs font-bold uppercase tracking-label mb-3" style={{ color: '#888' }}>
-                      Free
-                    </div>
-                    <div className="text-5xl font-black font-display tracking-display mb-1 text-white">FREE</div>
-                    <div className="text-xs mb-8" style={{ color: '#555' }}>
-                      3 searches included
-                    </div>
-                    <ul className="space-y-3 mb-8 flex-1">
-                      {[
-                        'All 3 job sections',
-                        '5 companies per section',
-                        '3 total searches',
-                        'AI match scoring',
-                        '2 mini-games',
-                      ].map((f, i) => (
-                        <li key={i} className="flex items-center gap-2.5 text-sm" style={{ color: '#888' }}>
-                          <Chk />
-                          {f}
-                        </li>
+        {/* CORE MODULES */}
+        <section id="how-it-works" className="relative mx-auto max-w-[1280px] scroll-mt-24 px-4 py-24 sm:px-6 sm:py-32">
+          <motion.div {...reveal}>
+            <SectionHeader index="01" kicker="CORE_MODULES" title="Three modules. One loop.">
+              Each module runs on its own and hands off to the next. Together they turn thousands of openings into the
+              handful worth your time.
+            </SectionHeader>
+          </motion.div>
+          <div className="mt-14 grid gap-6 md:grid-cols-3">
+            {MODULES.map((m, i) => (
+              <motion.div key={m.code} {...reveal} transition={{ ...reveal.transition, delay: i * 0.1 }}>
+                <Link href={`/system#${m.anchor}`} className="group block h-full">
+                  <HudPanel
+                    label={`MODULE://${m.code} · ${m.name}`}
+                    status={m.status}
+                    tone={m.tone}
+                    className="flex h-full flex-col transition-colors duration-300 group-hover:border-phosphor/60 group-hover:bg-phosphor/[0.03]"
+                    bodyClassName="flex flex-1 flex-col p-6"
+                  >
+                    <span className="font-mono text-5xl font-extrabold text-transparent [-webkit-text-stroke:1px_rgba(0,255,65,0.7)]">
+                      {m.code}
+                    </span>
+                    <h3 className="mt-4 text-xl font-bold text-white">{m.title}</h3>
+                    <p className="mt-3 text-sm leading-relaxed text-dim">{m.desc}</p>
+                    <dl className="mt-6 space-y-1.5 border-t border-dashed border-phosphor/15 pt-5 font-mono text-[11px]">
+                      {m.spec.map(([k, v]) => (
+                        <div key={k} className="flex justify-between gap-4">
+                          <dt className="text-dim">{k}</dt>
+                          <dd className="text-phosphor/90">{v}</dd>
+                        </div>
                       ))}
-                    </ul>
-                    <Link href="/sign-up" className="btn-outline-dark block w-full py-3.5 text-center text-sm">
-                      Try Free
-                    </Link>
-                  </div>
-                  <div
-                    className="card-dark p-8 flex flex-col relative overflow-hidden"
-                    style={{ border: '2px solid #00FF41' }}
-                  >
-                    <div
-                      className="absolute -top-16 -right-16 w-48 h-48 rounded-full blur-3xl glow-pulse"
-                      style={{ background: 'rgba(0,255,65,0.08)' }}
-                    />
-                    <div className="relative z-10 flex flex-col flex-1">
-                      <div className="flex items-center gap-2 mb-3">
-                        <span className="text-xs font-bold uppercase tracking-label" style={{ color: '#00FF41' }}>
-                          Pro
-                        </span>
-                        <span className="badge-pro-dark">Popular</span>
-                      </div>
-                      <div className="flex items-baseline gap-1 mb-1">
-                        <span className="text-5xl font-black font-display tracking-display text-white">PRO</span>
-                      </div>
-                      <div className="text-xs mb-8" style={{ color: '#555' }}>
-                        UPI & PayPal accepted
-                      </div>
-                      <ul className="space-y-3 mb-8 flex-1">
-                        {[
-                          '50+ dream companies',
-                          'Unlimited scanning',
-                          'All sections unlimited',
-                          'AI match + reasoning',
-                          'Priority alerts',
-                          '4 premium mini-games',
-                        ].map((f, i) => (
-                          <li key={i} className="flex items-center gap-2.5 text-sm text-white">
-                            <Chk />
-                            {f}
-                          </li>
-                        ))}
-                      </ul>
-                      <Link href="/sign-up" className="btn-primary-dark block w-full py-3.5 text-center text-sm">
-                        Get Pro Access
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <div className="divider-dark max-w-[1280px] mx-auto" />
-          </>
-        )}
-
-        {/* 8. FAQ */}
-        <section className="relative py-24 px-6">
-          <div className="max-w-3xl mx-auto">
-            <div className="text-center mb-14">
-              <h2 className="text-3xl md:text-4xl font-black font-display tracking-display text-white">
-                Frequently Asked
-              </h2>
-            </div>
-            {FAQ.map((f, i) => (
-              <details key={i} className="faq-item-dark group">
-                <summary className="py-5 px-2 text-sm font-semibold flex items-center justify-between text-white">
-                  {f.q}
-                  <span
-                    className="text-xl transition-transform duration-200 group-open:rotate-45"
-                    style={{ color: '#00FF41' }}
-                  >
-                    +
-                  </span>
-                </summary>
-                <div className="px-2 pb-5 text-sm leading-relaxed" style={{ color: '#888' }}>
-                  {f.a}
-                </div>
-              </details>
+                    </dl>
+                    <span className="mt-auto pt-6 font-mono text-[11px] tracking-[0.25em] text-phosphor/70 transition-colors group-hover:text-phosphor">
+                      $ open /system#{m.anchor}{' '}
+                      <span className="inline-block transition-transform group-hover:translate-x-1">→</span>
+                    </span>
+                  </HudPanel>
+                </Link>
+              </motion.div>
             ))}
           </div>
         </section>
 
-        <div className="divider-dark max-w-[1280px] mx-auto" />
-
-        {/* 9. CTA */}
-        <section className="relative py-32 px-6 text-center overflow-hidden">
-          <div
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-[16vw] font-black font-display leading-none pointer-events-none select-none"
-            style={{ color: 'rgba(0,255,65,0.04)' }}
-          >
-            INTERCEPT
-          </div>
-          <div className="max-w-3xl mx-auto relative z-10">
-            <h2 className="text-4xl md:text-6xl font-black font-display tracking-display mb-6 leading-tight text-white">
-              INITIATE SYSTEM
-              <br />
-              <span className="text-matrix">OVERRIDE.</span>
-            </h2>
-            <p className="text-base mb-10 max-w-lg mx-auto" style={{ color: '#888' }}>
-              The future requires infrastructure that doesn&apos;t exist yet. Secure your allocation now.
-            </p>
+        {/* PIPELINE */}
+        <section className="relative mx-auto max-w-[1280px] px-4 pb-24 sm:px-6 sm:pb-32">
+          <motion.div {...reveal} className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+            <SectionHeader index="02" kicker="PIPELINE" title="From careers page to your Vault.">
+              One run, four stages, fully automatic. Time-boxed runs pick up exactly where the last one stopped.
+            </SectionHeader>
             <Link
-              href="/sign-up"
-              className="btn-primary-dark inline-flex items-center gap-3 px-12 py-5 text-base"
-              style={{ borderColor: '#EF4444', background: '#EF4444' }}
+              href="/architecture"
+              className="shrink-0 font-mono text-[11px] tracking-[0.25em] text-phosphor/70 transition-colors hover:text-phosphor"
             >
-              FIND YOUR DREAM JOB
+              $ cat /architecture →
             </Link>
+          </motion.div>
+          <div className="mt-14 grid gap-4 lg:grid-cols-4 lg:gap-0">
+            {STAGES.map((s, i) => (
+              <motion.div
+                key={s.n}
+                {...reveal}
+                transition={{ ...reveal.transition, delay: i * 0.12 }}
+                className="relative lg:pr-6"
+              >
+                {i < STAGES.length - 1 && (
+                  <span className="hud-flow absolute right-0 top-9 hidden h-px w-6 lg:block" aria-hidden="true" />
+                )}
+                <HudPanel bodyClassName="p-5">
+                  <div className="flex items-center justify-between font-mono text-[10px] tracking-[0.3em]">
+                    <span className="text-phosphor">STAGE {s.n}</span>
+                    <span className="text-hud-cyan">{s.stat}</span>
+                  </div>
+                  <p className="mt-4 font-mono text-2xl font-extrabold tracking-[0.15em] text-white">{s.title}</p>
+                  <p className="mt-3 text-sm leading-relaxed text-dim">{s.body}</p>
+                </HudPanel>
+              </motion.div>
+            ))}
           </div>
         </section>
 
-        {/* 10. FOOTER */}
-        <footer className="relative py-12 px-6" style={{ borderTop: '1px solid #2A2A2A' }}>
-          <div className="max-w-[1280px] mx-auto">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-2.5">
-                <div className="w-6 h-6 rounded flex items-center justify-center" style={{ background: '#00FF41' }}>
-                  <span className="text-white text-[9px] font-black font-display">R</span>
+        {/* DIFF */}
+        <section className="relative mx-auto max-w-5xl px-4 pb-24 sm:px-6 sm:pb-32">
+          <motion.div {...reveal}>
+            <SectionHeader index="03" kicker="DIFF" title="Us vs. everyone else." align="center" />
+          </motion.div>
+          <motion.div {...reveal} className="mt-12">
+            <HudPanel label="$ radar diff --against linkedin,naukri" status="3 TARGETS" bodyClassName="overflow-x-auto">
+              <table className="w-full min-w-[520px] font-mono text-sm">
+                <thead>
+                  <tr className="border-b border-phosphor/15 text-left text-[10px] tracking-[0.3em]">
+                    <th className="p-4 font-normal text-dim">CAPABILITY</th>
+                    <th className="bg-phosphor/[0.04] p-4 font-bold text-phosphor">RADAR</th>
+                    <th className="p-4 font-normal text-dim">LINKEDIN</th>
+                    <th className="p-4 font-normal text-dim">NAUKRI</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {COMPARISON.map(([label, ...marks]) => (
+                    <tr
+                      key={label}
+                      className="border-b border-phosphor/10 transition-colors last:border-b-0 hover:bg-phosphor/[0.03]"
+                    >
+                      <td className="p-4 text-ink">{label}</td>
+                      {marks.map((m, j) => (
+                        <td key={j} className={'p-4 font-bold ' + MARK[m].cls + (j === 0 ? ' bg-phosphor/[0.04]' : '')}>
+                          {MARK[m].glyph}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </HudPanel>
+            <p className="mt-3 text-right font-mono text-[10px] tracking-[0.2em] text-dim">
+              [+] yes · [~] partly · [-] no
+            </p>
+          </motion.div>
+        </section>
+
+        {/* TELEMETRY */}
+        <section className="relative mx-auto max-w-[1280px] px-4 pb-24 sm:px-6 sm:pb-32">
+          <div className="grid grid-cols-2 border border-phosphor/20 bg-black/60 md:grid-cols-4">
+            {STATS.map((s, i) => (
+              <motion.div
+                key={s.label}
+                {...reveal}
+                transition={{ ...reveal.transition, delay: i * 0.08 }}
+                className="border-phosphor/15 p-6 sm:p-8 [&:not(:last-child)]:border-r max-md:[&:nth-child(2)]:border-r-0 max-md:[&:nth-child(-n+2)]:border-b"
+              >
+                <div className="font-mono text-4xl font-extrabold text-phosphor [text-shadow:0_0_18px_rgba(0,255,65,0.35)] sm:text-5xl">
+                  <Counter target={s.value} suffix={s.suffix} />
                 </div>
-                <span className="text-sm font-black font-display text-white">RADAR</span>
-              </div>
-              <div className="flex items-center gap-6">
-                <a
-                  href="#"
-                  className="text-xs font-medium transition-opacity hover:opacity-60"
-                  style={{ color: '#00FF41' }}
-                >
-                  // SECURITY
-                </a>
-                <a
-                  href="#"
-                  className="text-xs font-medium transition-opacity hover:opacity-60"
-                  style={{ color: '#00FF41' }}
-                >
-                  // TERMS
-                </a>
-                <a
-                  href="#"
-                  className="text-xs font-medium transition-opacity hover:opacity-60"
-                  style={{ color: '#00FF41' }}
-                >
-                  // DISCONNECT
-                </a>
-              </div>
-              <p className="text-[11px]" style={{ color: '#555' }}>
-                &copy; 2026 RADAR. AI Job Intelligence Engine. | INTERFACE V. 3.1.4
-              </p>
-            </div>
+                <div className="mt-2 font-mono text-[10px] tracking-[0.3em] text-dim">{s.label}</div>
+              </motion.div>
+            ))}
           </div>
-        </footer>
-      </main>
-    </SmoothScroll>
+        </section>
+
+        {/* TRANSMISSIONS */}
+        <section className="relative mx-auto max-w-4xl px-4 pb-24 sm:px-6 sm:pb-32">
+          <motion.div {...reveal}>
+            <Transmissions />
+          </motion.div>
+        </section>
+
+        {/* FAQ */}
+        <section className="relative mx-auto max-w-3xl px-4 pb-24 sm:px-6 sm:pb-32">
+          <motion.div {...reveal}>
+            <SectionHeader index="04" kicker="MAN RADAR" title="Frequently asked." align="center" />
+          </motion.div>
+          <motion.div {...reveal} className="mt-12">
+            <HudPanel label="$ radar --help" status="5 ENTRIES" tone="idle" bodyClassName="">
+              {FAQ.map((f) => (
+                <details key={f.q} className="group border-b border-phosphor/10 last:border-b-0">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 px-5 py-5 font-mono text-sm text-ink transition-colors hover:bg-phosphor/[0.03] [&::-webkit-details-marker]:hidden">
+                    <span>
+                      <span className="text-phosphor">&gt; </span>
+                      {f.q}
+                    </span>
+                    <span className="text-phosphor transition-transform duration-200 group-open:rotate-45">+</span>
+                  </summary>
+                  <p className="px-5 pb-5 pl-9 text-sm leading-relaxed text-dim">{f.a}</p>
+                </details>
+              ))}
+            </HudPanel>
+          </motion.div>
+        </section>
+
+        {/* CTA */}
+        <section className="relative px-4 pb-28 sm:px-6 sm:pb-36">
+          <motion.div {...reveal} className="relative mx-auto max-w-4xl">
+            <HudPanel
+              label="SESSION://NEW"
+              status="AWAITING INPUT"
+              tone="warn"
+              bodyClassName="relative overflow-hidden px-6 py-16 text-center sm:px-12 sm:py-20"
+            >
+              <span
+                className="pointer-events-none absolute inset-0 flex select-none items-center justify-center font-mono text-[18vw] font-extrabold leading-none text-phosphor/[0.035] lg:text-[11rem]"
+                aria-hidden="true"
+              >
+                INTERCEPT
+              </span>
+              <div className="relative">
+                <Prompt>./intercept --target=you</Prompt>
+                <h2 className="mt-6 font-mono text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-6xl">
+                  INITIATE SYSTEM
+                  <br />
+                  <span className="text-phosphor [text-shadow:0_0_24px_rgba(0,255,65,0.45)]">OVERRIDE.</span>
+                </h2>
+                <p className="mx-auto mt-6 max-w-lg text-sm leading-relaxed text-dim sm:text-base">
+                  Point RADAR at the companies you want. It keeps watch, so you can spend your time applying.
+                </p>
+                <Link
+                  href={isSignedIn ? '/dashboard' : '/sign-up'}
+                  className="mt-10 inline-flex items-center gap-3 bg-phosphor px-10 py-4 font-mono text-sm font-bold tracking-[0.25em] text-black shadow-[0_0_30px_rgba(0,255,65,0.35)] transition-colors hover:bg-[#33FF66]"
+                >
+                  {isSignedIn ? '[ ENTER DASHBOARD ]' : '[ FIND YOUR DREAM JOB ]'}
+                </Link>
+                <div className="mt-8 flex justify-center">
+                  <StatusLight tone="ok">{CATALOG.tracked + CATALOG.boards.length} FEEDS ONLINE</StatusLight>
+                </div>
+              </div>
+            </HudPanel>
+          </motion.div>
+        </section>
+      </div>
+
+      <SiteFooter />
+    </main>
   );
 }
