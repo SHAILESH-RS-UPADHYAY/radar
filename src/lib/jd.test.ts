@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatDescription, headerLines, jdLines, sectionLine } from './jd';
+import { formatDescription, headerLines, jdLines, salaryFromText, sectionLine } from './jd';
 
 describe('formatDescription', () => {
   it('turns the escaped HTML older scrapes stored into paragraphs, headings and bullets', () => {
@@ -119,7 +119,8 @@ describe('headerLines / sectionLine', () => {
       company: 'Pleo',
       companyNote: 'Series C',
       where: 'London · HYBRID',
-      pay: null,
+      salary: null,
+      salaryNote: 'not disclosed',
       score: 86,
       have: ['python', 'react'],
       missing: ['kubernetes'],
@@ -132,6 +133,7 @@ describe('headerLines / sectionLine', () => {
       '   title: "Backend Engineer",',
       '   company: "Pleo",  // Series C',
       '   where: "London · HYBRID",',
+      '   salary: null,  // not disclosed',
       '   match: 86,',
       '-  gaps: ["kubernetes"],',
       '+  yours: ["python", "react"],',
@@ -143,5 +145,19 @@ describe('headerLines / sectionLine', () => {
       { text: 'Read briefing.md', tone: 'plain' },
       { text: ' (+3 -2)', tone: 'dim' },
     ]);
+  });
+});
+
+describe('salaryFromText', () => {
+  it('reads the pay a JD states, and ignores funding and plain numbers', () => {
+    expect(salaryFromText('Compensation\n\nThe base salary range is $140,000 - $180,000 per year.')).toBe(
+      '$140,000 - $180,000',
+    );
+    expect(salaryFromText('• CTC: ₹25–35 LPA plus ESOPs')).toBe('₹25–35 LPA');
+    expect(salaryFromText('Salary: 18-24 LPA')).toBe('18-24 LPA');
+    expect(salaryFromText('Pay: €60k – €80k')).toBe('€60k – €80k');
+    expect(salaryFromText('• ₹28L – ₹40L base plus equity')).toBe('₹28L – ₹40L');
+    expect(salaryFromText('We raised a $25M Series B. Competitive salary.')).toBeNull();
+    expect(salaryFromText('3+ years building payments at scale.')).toBeNull();
   });
 });

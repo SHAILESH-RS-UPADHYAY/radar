@@ -100,7 +100,7 @@ type Hit = { start: number; end: number; tone: Tone; years?: number };
 
 const YEARS = /\b(\d{1,2})\s*\+?\s*(?:(?:-|–|to)\s*\d{1,2}\s*\+?\s*)?(?:years?|yrs?)\b/gi;
 const MONEY =
-  /[$€£₹]\s?\d[\d,.]*\s?(?:[kKmM]|L\b)?(?:\s?(?:-|–|to)\s?[$€£₹]?\s?\d[\d,.]*\s?(?:[kKmM]|L\b)?)?|\b\d[\d,.]*\s?[kK]?\s?(?:USD|EUR|GBP|INR|LPA)\b/g;
+  /[$€£₹]\s?\d[\d,.]*\s?(?:[kKmM]|L\b)?(?:\s?(?:-|–|to)\s?[$€£₹]?\s?\d[\d,.]*\s?(?:[kKmM]|L\b)?)?(?:\s?(?:LPA|lakhs?)\b)?|\b\d[\d,.]*\s?[kK]?(?:\s?(?:-|–|to)\s?\d[\d,.]*\s?[kK]?)?\s?(?:USD|EUR|GBP|INR|LPA)\b/g;
 const URL_RE = /https?:\/\/[^\s)]+/g;
 const QUOTED = /"[^"\n]{1,80}"|“[^”\n]{1,80}”/g;
 const NUMBER = /\b\d+(?:[.,]\d+)?(?:%|x|k|K|M|ms|s)?\b/g;
@@ -350,7 +350,9 @@ export interface JobFacts {
   /** e.g. "Series A · found on StartupMap" */
   companyNote: string | null;
   where: string;
-  pay: string | null;
+  /** From the ATS feed, else read out of the JD; null when the posting never says. */
+  salary: string | null;
+  salaryNote: string | null;
   score: number | null;
   /** Your skills the posting asks for, and the ones it asks for that you have not listed. */
   have: string[];
@@ -392,13 +394,27 @@ export function headerLines(f: JobFacts): TermLine[] {
     field('title', [str(f.title)]),
     field('company', [str(f.company)], f.companyNote),
     field('where', [str(f.where)]),
-    ...(f.pay ? [field('pay', [str(f.pay)])] : []),
+    field('salary', f.salary ? [str(f.salary)] : [{ text: 'null', tone: 'kw' }], f.salaryNote),
     ...(f.score === null ? [] : [field('match', [{ text: String(f.score), tone: 'num' }])]),
     ...(f.missing.length ? [field('gaps', list(f.missing), null, '-')] : []),
     ...(f.have.length ? [field('yours', list(f.have), null, '+')] : []),
     field('posting', [str(f.posting)], f.postingNote, f.posting === 'CLOSED' ? '-' : null),
     { kind: 'code', mark: null, segs: [{ text: '};', tone: 'plain' }] },
   ];
+}
+
+const PAY_WORDS =
+  /salary|compensation|\bpay\b|\bbase\b|\bctc\b|\blpa\b|range|per (?:year|annum|month|hour)|annual|\/y(?:ea)?r\b|p\.a\./i;
+
+/** The pay a JD states in its own words ("$140,000 – $180,000", "₹25–35 LPA"), or null. */
+export function salaryFromText(description: string): string | null {
+  for (const line of formatDescription(description).split('\n')) {
+    if (!PAY_WORDS.test(line)) continue;
+    const m = line.match(new RegExp(MONEY.source))?.[0];
+    // "$5M raised" is funding, not pay: a salary has three digits, a k or a lakh (L).
+    if (m && /\d{3}|\d[kl]\b|lakh|lpa/i.test(m) && !/\dm\b/i.test(m)) return m.trim().replace(/\s+/g, ' ');
+  }
+  return null;
 }
 
 /** A "⎿ …" line: what the terminal just did, with optional grey detail. */

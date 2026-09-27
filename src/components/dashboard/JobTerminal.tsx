@@ -3,7 +3,7 @@
 import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { Modal } from '@/components/hud/Modal';
-import { headerLines, jdLines, sectionLine, type JobFacts, type TermLine, type Tone } from '@/lib/jd';
+import { headerLines, jdLines, salaryFromText, sectionLine, type JobFacts, type TermLine, type Tone } from '@/lib/jd';
 import { drawWords } from '@/lib/status-words';
 import { useApi } from '@/lib/use-api';
 import { timeAgo, type MatchAction, type MatchedJob } from './types';
@@ -245,10 +245,19 @@ function buildLines(d: JobDetail, fallback: MatchedJob): TermLine[] {
   const { job, match, posting } = d;
   const have = match?.matching ?? fallback.matching_skills;
   const missing = match?.missing ?? fallback.missing_skills;
-  const pay =
+  const feedPay =
     job.salary.min || job.salary.max
-      ? [job.salary.currency, [job.salary.min, job.salary.max].filter(Boolean).join(' – ')].filter(Boolean).join(' ')
+      ? [
+          job.salary.currency,
+          [job.salary.min, job.salary.max]
+            .filter(Boolean)
+            .map((n) => n!.toLocaleString('en-US'))
+            .join(' – '),
+        ]
+          .filter(Boolean)
+          .join(' ')
       : null;
+  const jdPay = feedPay ? null : salaryFromText(job.description);
   const origin =
     job.source === 'startupmap' ? 'found on StartupMap' : job.source === 'import' ? 'from your import' : null;
   const state = posting.state === 'live' ? 'LIVE' : posting.state === 'closed' ? 'CLOSED' : 'UNVERIFIED';
@@ -273,7 +282,8 @@ function buildLines(d: JobDetail, fallback: MatchedJob): TermLine[] {
       ]
         .filter(Boolean)
         .join(' · ') || 'Not specified',
-    pay,
+    salary: feedPay || jdPay,
+    salaryNote: feedPay || jdPay ? null : 'not disclosed',
     score: match?.score ?? fallback.score,
     have,
     missing,
