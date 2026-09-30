@@ -5,6 +5,7 @@ import { resolveDreamCompanyIds } from '@/lib/dream-companies';
 import { normalizeSkill } from '@/lib/scraper/utils';
 import { loadSettingsProfile } from '@/lib/profile';
 import { isSchemaMissing } from '@/lib/supabase/errors';
+import { MAX_DREAM_COMPANIES } from '@/lib/validate';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,7 +97,7 @@ export async function PATCH(req: Request) {
     }
 
     if (dream) {
-      const ids = await resolveDreamCompanyIds(supabase, dream.slice(0, 20));
+      const ids = await resolveDreamCompanyIds(supabase, dream.slice(0, MAX_DREAM_COMPANIES));
       await supabase.from('user_dream_companies').delete().eq('user_id', userId);
       if (ids.length) {
         const { error } = await supabase

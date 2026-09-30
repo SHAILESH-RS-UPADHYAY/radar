@@ -249,7 +249,7 @@ export default function ArchitecturePage() {
               ],
               [
                 'INPUT',
-                'Validated at the edge: ids must be UUIDs, resumes must be PDFs under 5 MB, list fields are capped.',
+                'Validated at the edge: ids must be UUIDs, resumes must be PDFs under 4 MB, list fields are capped.',
               ],
             ]}
           />

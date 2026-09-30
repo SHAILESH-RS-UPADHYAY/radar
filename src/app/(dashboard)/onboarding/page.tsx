@@ -850,7 +850,7 @@ export default function OnboardingPage() {
                           <input
                             type="file"
                             className="hidden"
-                            accept=".pdf,.doc,.docx"
+                            accept="application/pdf,.pdf"
                             onChange={(e) => e.target.files && setResumeFile(e.target.files[0])}
                           />
                           <div
@@ -870,7 +870,7 @@ export default function OnboardingPage() {
                             <div className="text-center">
                               <p className="text-[#00FF41] font-bold text-lg mb-2">Drop your resume here</p>
                               <p className="text-sm" style={{ color: '#00aa00' }}>
-                                PDF, DOC, DOCX up to 5MB
+                                PDF up to 4 MB
                               </p>
                               <p className="text-xs mt-6" style={{ color: '#00FF41' }}>
                                 Required for AI Matching

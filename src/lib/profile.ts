@@ -1,5 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { SettingsProfile } from '@/types';
+import type { Portfolio, SettingsProfile } from '@/types';
 import { extractSkills } from '@/lib/scraper/utils';
 import { isSchemaMissing } from '@/lib/supabase/errors';
 
@@ -16,7 +16,17 @@ interface ProfileRow {
   last_matched_at: string | null;
   auto_overclock?: boolean;
   overclock_daily_cap?: number;
+  portfolio?: Partial<Portfolio> | null;
 }
+
+/** The stored portfolio JSON with every field present. */
+export const toPortfolio = (v: Partial<Portfolio> | null | undefined): Portfolio => ({
+  portfolio: v?.portfolio || '',
+  github: v?.github || '',
+  linkedin: v?.linkedin || '',
+  website: v?.website || '',
+  projects: Array.isArray(v?.projects) ? v.projects : [],
+});
 
 /** Comma-separated profile columns (location, current_role) → trimmed list. */
 export const splitList = (v: unknown): string[] =>
@@ -30,9 +40,14 @@ export async function loadSettingsProfile(supabase: SupabaseClient, userId: stri
   const base =
     'full_name, location, is_fresher, experience_years, skills, current_role, resume_text, vault_min_score, auto_vault, last_matched_at';
   const read = (columns: string) => supabase.from('user_profiles').select(columns).eq('id', userId).maybeSingle();
-  // Auto-OVERCLOCK columns arrive with migration 007; before it, load everything else.
-  let { data, error } = await read(base + ', auto_overclock, overclock_daily_cap');
-  if (isSchemaMissing(error)) ({ data, error } = await read(base));
+  // Newest schema first: portfolio (008), then auto-OVERCLOCK (007), then everything before them.
+  const tiers = [
+    base + ', auto_overclock, overclock_daily_cap, portfolio',
+    base + ', auto_overclock, overclock_daily_cap',
+    base,
+  ];
+  let { data, error } = await read(tiers[0]);
+  for (let i = 1; i < tiers.length && isSchemaMissing(error); i++) ({ data, error } = await read(tiers[i]));
   if (error) throw new Error(error.message);
   const p = data as unknown as ProfileRow | null;
   if (!p) return null;
@@ -50,5 +65,6 @@ export async function loadSettingsProfile(supabase: SupabaseClient, userId: stri
     auto_overclock: typeof p.auto_overclock === 'boolean' ? p.auto_overclock : null,
     overclock_daily_cap: p.overclock_daily_cap ?? 5,
     last_matched_at: p.last_matched_at,
+    portfolio: p.portfolio === undefined ? null : toPortfolio(p.portfolio),
   };
 }

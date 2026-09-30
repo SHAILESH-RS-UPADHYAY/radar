@@ -1,22 +1,16 @@
-import * as pdfParseModule from 'pdf-parse';
+// The worker import must come first: it registers pdf.js's worker file so the serverless bundle (Vercel's file
+// trace) ships it. Without it, parsing works locally but fails on Vercel, where that file is missing.
+import 'pdf-parse/worker';
+import { PDFParse } from 'pdf-parse';
 
-/** Plain text of an uploaded PDF resume (first 15k chars), or '' if it has no text layer. */
+/** Plain text of an uploaded PDF resume (first 15k chars); '' when the PDF has no text layer. Throws if unreadable. */
 export async function extractPdfText(resumeFile: File): Promise<string> {
-  const buffer = Buffer.from(await resumeFile.arrayBuffer());
-  const PDFParse = (pdfParseModule as unknown as { PDFParse?: unknown }).PDFParse || pdfParseModule;
-  if (typeof PDFParse === 'function') {
-    try {
-      const parser = new (
-        PDFParse as new (opts: { data: Uint8Array }) => { getText: () => Promise<{ text?: string }> }
-      )({
-        data: new Uint8Array(buffer),
-      });
-      const parsed = await parser.getText();
-      return parsed.text?.substring(0, 15000) || '';
-    } catch {
-      const parsed = await (PDFParse as (buf: Buffer) => Promise<{ text?: string }>)(buffer);
-      return parsed.text?.substring(0, 15000) || '';
-    }
+  const parser = new PDFParse({ data: new Uint8Array(await resumeFile.arrayBuffer()) });
+  try {
+    // No "-- 1 of 2 --" page markers: they would make a scanned PDF look like it has text.
+    const { text } = await parser.getText({ pageJoiner: '' });
+    return (text || '').substring(0, 15000);
+  } finally {
+    await parser.destroy().catch(() => {});
   }
-  return '';
 }

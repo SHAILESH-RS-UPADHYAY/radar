@@ -14,6 +14,7 @@ import { DiscoveryCard } from '@/components/dashboard/DiscoveryCard';
 import { VaultCard } from '@/components/dashboard/VaultCard';
 import { OverclockCard } from '@/components/dashboard/OverclockCard';
 import { RunPanel } from '@/components/dashboard/RunPanel';
+import { TodayPanel } from '@/components/dashboard/TodayPanel';
 import { TailorPreview } from '@/components/dashboard/TailorPreview';
 import { JobTerminal } from '@/components/dashboard/JobTerminal';
 import { Modal } from '@/components/hud/Modal';
@@ -27,6 +28,7 @@ import {
   OVERCLOCK_MIN,
   opsSignals,
   timeAgo,
+  todaysTen,
   type MatchAction,
   type MatchedJob,
   type TailoredSummary,
@@ -409,6 +411,7 @@ export default function DashboardPage() {
   const available = shown.filter((m) => m.status === 'new');
   // The Vault shows only postings that are still open; one the company took down simply drops out.
   const saved = shown.filter((m) => m.status === 'saved' && m.job.is_active).sort(byScore);
+  const today = todaysTen(saved);
   const applied = matches.filter((m) => m.status === 'applied').sort(byRecent);
   const archived = applied.filter((m) => CLOSED_STAGES.includes(m.stage || 'applied'));
   const activeOps = applied.filter((m) => !CLOSED_STAGES.includes(m.stage || 'applied'));
@@ -802,7 +805,7 @@ export default function DashboardPage() {
               exit={{ opacity: 0, y: -16 }}
               className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)] xl:gap-8"
             >
-              <aside className="space-y-5 lg:sticky lg:top-24">
+              <aside className="min-w-0 space-y-5 lg:sticky lg:top-24">
                 <HudPanel label="VAULT://STATUS" status={autoVault ? 'AUTO' : 'MANUAL'} bodyClassName="p-5">
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-5 font-mono">
                     {vaultStats.map(([k, v]) => (
@@ -819,6 +822,9 @@ export default function DashboardPage() {
                     {autoVault ? 'AUTO-SAVE ≥ ' + minScore + '%' : 'AUTO-VAULT OFF'} · CHANGE →
                   </Link>
                 </HudPanel>
+                {today.length > 1 && (
+                  <TodayPanel today={today} onOpen={setBriefingId} onHack={() => startHack(today.map((m) => m.id))} />
+                )}
                 <div className="hidden lg:block">{tunePanel}</div>
               </aside>
 

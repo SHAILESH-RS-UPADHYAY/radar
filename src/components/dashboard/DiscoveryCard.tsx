@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { Brackets } from '@/components/hud/Hud';
 import { BriefingButton, JobTitle, openOnClick, ScoreMeter, SkillChips } from './SkillChips';
-import { formatSalary, timeAgo, type MatchAction, type MatchedJob } from './types';
+import { formatSalary, postedTag, timeAgo, type MatchAction, type MatchedJob } from './types';
 
 export function DiscoveryCard({
   match,
@@ -48,6 +48,9 @@ export function DiscoveryCard({
               >
                 {job.work_type.toUpperCase()}
               </span>
+            )}
+            {postedTag(match) === 'NEW' && (
+              <span className="border border-hud-amber/50 px-2 py-1 text-hud-amber">NEW · APPLY EARLY</span>
             )}
             {job.company.source && <span className="text-dim">via {job.company.source}</span>}
           </div>

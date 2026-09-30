@@ -11,7 +11,7 @@ type Counts = Record<'pending' | 'linked' | 'no_feed' | 'failed', number>;
 interface DiscoveryStatus {
   ready: boolean;
   hint?: string;
-  totals?: { startupmap: Counts; import: Counts };
+  totals?: { startupmap: Counts; yc?: Counts; import: Counts };
   startupmap?: { syncedAt: string | null; pagesLeft: number; paused: boolean; lastError: string | null };
 }
 
@@ -70,15 +70,17 @@ export function TargetImport({ onNotice }: { onNotice: (n: Notice) => void }) {
   };
 
   const readFile = async (file: File) => {
-    if (file.size > 5 * 1024 * 1024) return onNotice({ tone: 'alert', text: 'That file is over 5 MB.' });
+    if (file.size > 4 * 1024 * 1024) return onNotice({ tone: 'alert', text: 'That file is over 4 MB.' });
     setText(await file.text());
     if (fileRef.current) fileRef.current.value = '';
   };
 
   const sm = status?.totals?.startupmap;
+  const yc = status?.totals?.yc;
   const imp = status?.totals?.import;
-  const found = sm ? sm.pending + sm.linked + sm.no_feed + sm.failed : 0;
-  const tracked = (sm?.linked ?? 0) + (imp?.linked ?? 0);
+  const all = (c?: Counts) => (c ? c.pending + c.linked + c.no_feed + c.failed : 0);
+  const found = all(sm) + all(yc);
+  const tracked = (sm?.linked ?? 0) + (yc?.linked ?? 0) + (imp?.linked ?? 0);
   const crawl = status?.startupmap;
 
   return (
@@ -90,9 +92,10 @@ export function TargetImport({ onNotice }: { onNotice: (n: Notice) => void }) {
       className="scroll-mt-24"
     >
       <p className="-mt-1 mb-5 text-sm leading-relaxed text-dim">
-        RADAR crawls StartupMap every 48h, politely, and reads each funded startup&apos;s own careers feed.
-        FundedStartupsDaily&apos;s terms forbid scraping and WorldStartupMap keeps its data behind a blocked API, so for
-        those you bring the list: FSD sells a CSV export licensed for your own use. Drop it here, or paste websites.
+        RADAR crawls StartupMap and YC&apos;s list of hiring companies every 48h, politely, and reads each
+        startup&apos;s own careers feed. FundedStartupsDaily&apos;s terms forbid scraping and WorldStartupMap keeps its
+        data behind a blocked API, so for those you bring the list: FSD sells a CSV export licensed for your own use.
+        Drop it here, or paste websites.
       </p>
 
       {status && !status.ready && <p className="mb-4 font-mono text-xs text-hud-amber">{status.hint}</p>}
@@ -107,6 +110,8 @@ export function TargetImport({ onNotice }: { onNotice: (n: Notice) => void }) {
               value={(
                 (sm?.pending ?? 0) +
                 (sm?.failed ?? 0) +
+                (yc?.pending ?? 0) +
+                (yc?.failed ?? 0) +
                 (imp?.pending ?? 0) +
                 (imp?.failed ?? 0)
               ).toLocaleString()}
@@ -117,9 +122,8 @@ export function TargetImport({ onNotice }: { onNotice: (n: Notice) => void }) {
             STARTUPMAP · last sync {timeAgo(crawl?.syncedAt ?? null) || 'pending first run'}
             {crawl?.pagesLeft ? ` · ${crawl.pagesLeft} hiring pages left this cycle` : ''}
             {crawl?.paused ? ' · paused (site asked to slow down)' : ''}
-            {imp && imp.pending + imp.linked + imp.no_feed + imp.failed > 0
-              ? ` · IMPORTS ${imp.linked} tracked / ${imp.no_feed} no feed`
-              : ''}
+            {all(yc) > 0 ? ` · YC ${yc!.linked} tracked / ${all(yc)} hiring` : ''}
+            {imp && all(imp) > 0 ? ` · IMPORTS ${imp.linked} tracked / ${imp.no_feed} no feed` : ''}
           </p>
           {crawl?.lastError && <p className="font-mono text-[10px] text-hud-red">! {crawl.lastError}</p>}
         </div>

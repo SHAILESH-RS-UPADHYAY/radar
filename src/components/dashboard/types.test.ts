@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { opsSignals, timeAgo, type MatchedJob } from './types';
+import { opsSignals, postedTag, timeAgo, todaysTen, type MatchedJob } from './types';
 
 describe('timeAgo', () => {
   const now = Date.parse('2026-09-26T12:00:00Z');
@@ -45,5 +45,40 @@ describe('opsSignals', () => {
   it('never nags about interviews or offers, and flags closed postings', () => {
     expect(labels(app({ stage: 'interview', stage_changed_at: daysAgo(30) }))).toEqual([]);
     expect(labels(app({}, false))).toEqual(['POSTING CLOSED']);
+  });
+});
+
+const at = Date.parse('2026-09-30T12:00:00Z');
+const job = (id: string, score: number, daysAgo: number | null) =>
+  ({
+    id,
+    score,
+    job: { posted_at: daysAgo === null ? null : new Date(at - daysAgo * 86_400_000).toISOString() },
+  }) as unknown as MatchedJob;
+
+describe('todaysTen', () => {
+  it('puts postings from the last 4 days first, then the last two weeks, each by score, and keeps 10', () => {
+    const vault = [
+      job('old-99', 99, 40),
+      job('fresh-81', 81, 2),
+      job('week-95', 95, 9),
+      job('fresh-90', 90, 0),
+      job('nodate-97', 97, null),
+    ];
+    expect(todaysTen(vault, at).map((m) => m.id)).toEqual(['fresh-90', 'fresh-81', 'week-95', 'old-99', 'nodate-97']);
+    expect(
+      todaysTen(
+        Array.from({ length: 14 }, (_, i) => job('j' + i, 80 + i, 1)),
+        at,
+      ),
+    ).toHaveLength(10);
+  });
+  it('tags how old a posting is', () => {
+    expect([job('a', 1, 1), job('b', 1, 6), job('c', 1, 30), job('d', 1, null)].map((m) => postedTag(m, at))).toEqual([
+      'NEW',
+      '6D',
+      '4W',
+      '',
+    ]);
   });
 });

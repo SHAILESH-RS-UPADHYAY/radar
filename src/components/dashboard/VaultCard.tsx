@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { Brackets } from '@/components/hud/Hud';
 import { BriefingButton, JobTitle, openOnClick, ScoreMeter, SkillChips } from './SkillChips';
-import { formatSalary, timeAgo, type MatchAction, type MatchedJob } from './types';
+import { formatSalary, postedTag, timeAgo, type MatchAction, type MatchedJob } from './types';
 
 const badge = 'border px-2 py-1 font-mono text-[10px] font-bold tracking-[0.2em]';
 
@@ -50,6 +50,9 @@ export function VaultCard({
             <span className={badge + ' border-phosphor/40 bg-phosphor/10 text-phosphor'}>
               {job.company.name.toUpperCase()}
             </span>
+            {postedTag(match) === 'NEW' && (
+              <span className={badge + ' border-hud-amber/50 text-hud-amber'}>NEW · APPLY EARLY</span>
+            )}
             {match.auto_saved && <span className={badge + ' border-hud-cyan/40 text-hud-cyan'}>AUTO-MATCHED</span>}
             {!job.is_active && <span className={badge + ' border-hud-red/40 text-hud-red'}>POSTING CLOSED</span>}
           </div>

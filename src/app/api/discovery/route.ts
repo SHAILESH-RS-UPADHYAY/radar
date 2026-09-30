@@ -6,7 +6,7 @@ import { MAX_TARGETS, siteDomain } from '@/lib/discovery/targets';
 
 export const dynamic = 'force-dynamic';
 
-const SOURCES = ['startupmap', 'import'] as const;
+const SOURCES = ['startupmap', 'yc', 'import'] as const;
 const STATUSES = ['pending', 'linked', 'no_feed', 'failed'] as const;
 const MIGRATION_HINT = 'Discovery needs migration 007. Run supabase/migrations/007_discovery_verify_autopilot.sql.';
 

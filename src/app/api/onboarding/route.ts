@@ -50,7 +50,15 @@ export async function POST(req: NextRequest) {
     if (resumeFile && resumeFile.size > 0) {
       const problem = resumeProblem(resumeFile);
       if (problem) return NextResponse.json({ error: problem }, { status: 400 });
-      resumeText = await extractPdfText(resumeFile);
+      try {
+        resumeText = await extractPdfText(resumeFile);
+      } catch (err) {
+        console.error('[ONBOARDING] PDF read failed:', err instanceof Error ? err.message : err);
+        return NextResponse.json(
+          { error: 'This PDF could not be read. Save it again as a PDF (File → Save as PDF) and retry.' },
+          { status: 422 },
+        );
+      }
     }
 
     if (manualSkillsRaw || manualProjects || manualBio) {

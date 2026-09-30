@@ -9,7 +9,7 @@ import type { SettingsProfile } from '@/types';
 import { RadarLogo } from '@/components/brand/RadarLogo';
 import { HudPanel, StatusLight } from '@/components/hud/Hud';
 import { Toast, type Notice } from '@/components/hud/Toast';
-import { resumeProblem } from '@/lib/validate';
+import { MAX_DREAM_COMPANIES, resumeProblem } from '@/lib/validate';
 import { useEscapeTo } from '@/lib/use-escape';
 import { GmailLink } from '@/components/settings/GmailLink';
 import { TargetImport } from '@/components/settings/TargetImport';
@@ -358,8 +358,11 @@ export default function SettingsPage() {
   const setCities = (next: string[]) =>
     update({ location: next.join(', ') }, { location: next.join(', ') }, 'Locations');
   const toggleDream = (company: string) => {
-    if (!dream.includes(company) && dream.length >= 20)
-      return setNotice({ tone: 'info', text: 'Up to 20 dream companies. Remove one to add another.' });
+    if (!dream.includes(company) && dream.length >= MAX_DREAM_COMPANIES)
+      return setNotice({
+        tone: 'info',
+        text: `Up to ${MAX_DREAM_COMPANIES} dream companies. Remove one to add another.`,
+      });
     const next = dream.includes(company) ? dream.filter((d) => d !== company) : [...dream, company];
     setDream(next);
     save({ dream_companies: next }, 'Dream companies');
@@ -656,7 +659,7 @@ export default function SettingsPage() {
                     {uploading ? 'PARSING RESUME…' : '[ UPLOAD NEW RESUME ]'}
                   </span>
                   <span className="font-mono text-[10px] tracking-wider text-dim">
-                    PDF · max 5 MB · drop it here or click
+                    PDF · max 4 MB · drop it here or click
                   </span>
                 </label>
               </Section>
@@ -851,7 +854,7 @@ export default function SettingsPage() {
                 id="companies"
                 n="07"
                 name="DREAM_COMPANIES"
-                status={dream.length + ' / 20'}
+                status={dream.length + ' / ' + MAX_DREAM_COMPANIES}
                 tone={dream.length ? 'ok' : 'idle'}
                 className="xl:col-span-2"
                 hint="Every open role at these companies is scored for you on each scan. ● = live jobs tracked · number = open roles now."

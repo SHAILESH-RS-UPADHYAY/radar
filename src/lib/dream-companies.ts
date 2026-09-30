@@ -5,8 +5,15 @@ import { COMPANY_SEEDS } from '@/lib/scraper/companies';
 export async function resolveDreamCompanyIds(supabase: SupabaseClient, names: string[]): Promise<string[]> {
   const ids: string[] = [];
   const unique = [...new Set(names.map((n) => n.trim()).filter(Boolean))];
+  // One query for the names spelled exactly as stored (nearly all of them: they come from the picker).
+  const { data: exact } = await supabase.from('companies').select('id, name').in('name', unique);
+  const byName = new Map((exact || []).map((c) => [c.name as string, c.id as string]));
 
   for (const name of unique) {
+    if (byName.has(name)) {
+      ids.push(byName.get(name)!);
+      continue;
+    }
     const { data: existing } = await supabase.from('companies').select('id').ilike('name', name).limit(1);
 
     if (existing?.[0]?.id) {

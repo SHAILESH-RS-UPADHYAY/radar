@@ -112,6 +112,23 @@ export interface SettingsProfile {
   auto_overclock: boolean | null;
   overclock_daily_cap: number;
   last_matched_at: string | null;
+  /** Links and built projects (migration 008); null until that migration has run. */
+  portfolio: Portfolio | null;
+}
+
+export interface PortfolioProject {
+  name: string;
+  url: string;
+  /** One line: what you built or did there. */
+  note: string;
+}
+
+export interface Portfolio {
+  portfolio: string;
+  github: string;
+  linkedin: string;
+  website: string;
+  projects: PortfolioProject[];
 }
 
 export interface MatchScore {

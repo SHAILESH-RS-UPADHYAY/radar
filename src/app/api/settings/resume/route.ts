@@ -22,7 +22,13 @@ export async function POST(req: NextRequest) {
   const problem = resumeProblem(file);
   if (problem) return fail(problem, 400);
 
-  const text = (await extractPdfText(file).catch(() => '')).trim();
+  let text = '';
+  try {
+    text = (await extractPdfText(file)).trim();
+  } catch (err) {
+    console.error('[RESUME] PDF read failed:', err instanceof Error ? err.message : err);
+    return fail('This PDF could not be read. Save it again as a PDF (File → Save as PDF) and retry.', 422);
+  }
   if (!text) return fail('No text found in this PDF. Export it as a text PDF (not a scanned image) and retry.', 422);
 
   try {

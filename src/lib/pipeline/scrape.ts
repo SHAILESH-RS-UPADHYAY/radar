@@ -42,6 +42,13 @@ interface CompanyRow {
 
 const CONCURRENCY = Number(process.env.RADAR_SCRAPE_CONCURRENCY || 4);
 const UPSERT_CHUNK = 50;
+/**
+ * Workday, Amazon and SmartRecruiters are read as a search window capped at RADAR_MAX_JOBS_PER_COMPANY, not as the
+ * full list: a job missing from one run's window is closed only after a week of not being seen.
+ */
+// ponytail: a fixed grace period; a per-posting link check if closures there must be exact.
+const WINDOWED = new Set(['workday', 'amazon', 'smartrecruiters']);
+const WINDOW_GRACE_MS = 7 * 24 * 3600_000;
 /** One slow company (a hung API, a huge board) must never hold the whole run. */
 const COMPANY_TIMEOUT_MS = Number(process.env.RADAR_COMPANY_TIMEOUT_MS || 60_000);
 
@@ -158,13 +165,14 @@ async function scrapeOne(
         }
       }
 
-      // Anything from this company we did not see in this run has been taken down.
+      // Anything from this company we did not see in this run has been taken down (windowed sources: for a week).
+      const windowed = WINDOWED.has(company.ats_provider);
       const { data: gone, error: staleErr } = await supabase
         .from('jobs')
         .update({ is_active: false })
         .eq('company_id', company.id)
         .eq('is_active', true)
-        .lt('scraped_at', runStartedAt)
+        .lt('scraped_at', windowed ? new Date(start - WINDOW_GRACE_MS).toISOString() : runStartedAt)
         .select('id');
       if (staleErr) console.error('[SCRAPE]', company.name, 'stale cleanup failed:', staleErr.message);
       deactivated = gone?.length || 0;
