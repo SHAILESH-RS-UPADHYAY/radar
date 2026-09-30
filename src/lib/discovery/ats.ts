@@ -143,6 +143,8 @@ export function boardUrl({ provider, identifier: id }: AtsRef): string {
     }
     case 'amazon':
       return 'https://www.amazon.jobs/';
+    case 'eightfold':
+      return 'https://' + id.split('|')[0] + '/careers';
   }
 }
 

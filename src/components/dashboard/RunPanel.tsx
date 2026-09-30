@@ -3,6 +3,7 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useApi } from '@/lib/use-api';
 import type { TailoredView } from '@/lib/overclock';
+import type { Portfolio } from '@/types';
 import { CopyButton } from '@/components/hud/CopyButton';
 import { scoreColor, type MatchedJob, type TailoredSummary } from './types';
 
@@ -74,6 +75,19 @@ export function RunPanel({
   const api = useApi();
   const [view, setView] = useState<TailoredView | null>(null);
   const [opened, setOpened] = useState(false);
+  const [links, setLinks] = useState<Portfolio | null>(null);
+
+  // Your portfolio links and built projects (Preferences → PORTFOLIO), ready to paste into the form.
+  useEffect(() => {
+    let cancelled = false;
+    api('/api/settings')
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => !cancelled && setLinks(d?.profile?.portfolio ?? null))
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [api]);
   const { job } = match;
 
   // Full tailored version (contact lines, headline, cover note) for the answers step.
@@ -148,6 +162,13 @@ export function RunPanel({
           <Field label="HEADLINE" value={shown?.resume.headline || ''} />
           <Field label="WHY THIS ROLE" value={shown?.cover_note || ''} />
           <Field label="MATCHING SKILLS" value={match.matching_skills.join(', ')} />
+          <Field label="PORTFOLIO" value={links?.portfolio || ''} />
+          <Field label="GITHUB" value={links?.github || ''} />
+          <Field label="LINKEDIN" value={links?.linkedin || ''} />
+          <Field label="WEBSITE" value={links?.website || ''} />
+          {links?.projects.map((p) => (
+            <Field key={p.url} label={'BUILT · ' + p.name.toUpperCase()} value={p.url} />
+          ))}
         </div>
         {!tailored && (
           <p className="mt-2 text-xs text-dim">Overclock the job to add a tailored headline and cover note here.</p>

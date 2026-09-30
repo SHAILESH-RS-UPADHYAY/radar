@@ -31,6 +31,7 @@ import {
   parseSalaryRange,
   searchTerms,
   toIso,
+  xmlTag,
   decodeEntities,
   type ScrapedJob,
 } from './utils';
@@ -80,6 +81,47 @@ export async function greenhousePay(
         currency: pay.currency_type || null,
       }
     : null;
+}
+
+// ---------- Eightfold ----------
+// Career sites on Eightfold expose /api/apply/v2 (their robots.txt allows it even where the rest is disallowed).
+// Checked 2026-09-30: Netflix answers; Microsoft, PayPal, Qualcomm and Starbucks refuse bots (403), so they are not used.
+// Identifier: "<careers host>|<company domain>", e.g. "explore.jobs.netflix.net|netflix.com".
+export async function scrapeEightfold(identifier: string): Promise<ScrapedJob[]> {
+  const [host, domain] = identifier.split('|');
+  if (!host || !domain) throw new Error('Eightfold identifier must be host|domain, got "' + identifier + '"');
+  const api = `https://${host}/api/apply/v2/jobs`;
+  const listed = new Map<string, any>();
+  for (const term of searchTerms()) {
+    for (let start = 0; start < 200 && listed.size < MAX_PER_COMPANY; start += 50) {
+      const page = await fetchJson<any>(
+        `${api}?domain=${encodeURIComponent(domain)}&start=${start}&num=50&query=${encodeURIComponent(term)}`,
+      );
+      const batch = page.positions || [];
+      for (const p of batch) if (p.id && isRelevantTitle(p.name || '')) listed.set(String(p.id), p);
+      if (batch.length < 50) break;
+    }
+  }
+  // The list leaves the description empty; each posting's own endpoint has it.
+  const postings = [...listed.values()].slice(0, MAX_PER_COMPANY);
+  const detailed = await mapLimit(postings, 3, (p: any) =>
+    fetchJson<any>(`${api}/${p.id}?domain=${encodeURIComponent(domain)}`).catch(() => p),
+  );
+  return detailed.map((p: any) =>
+    finalizeJob({
+      external_id: String(p.id),
+      title: p.name || p.posting_name || '',
+      description: htmlToText(p.job_description || ''),
+      location: (p.locations || [p.location]).filter(Boolean).join(' / '),
+      apply_url: p.canonicalPositionUrl || `https://${host}/careers/job/${p.id}`,
+      department: p.department || null,
+      salary_min: null,
+      salary_max: null,
+      salary_currency: null,
+      posted_at: toIso(p.t_create),
+      employer: null,
+    }),
+  );
 }
 
 // ---------- Lever ----------
@@ -252,10 +294,7 @@ export async function scrapeRecruitee(subdomain: string): Promise<ScrapedJob[]> 
 // ---------- Personio (XML feed) ----------
 export async function scrapePersonio(subdomain: string): Promise<ScrapedJob[]> {
   const xml = await fetchText('https://' + subdomain + '.jobs.personio.de/xml?language=en');
-  const tag = (block: string, name: string) => {
-    const m = block.match(new RegExp('<' + name + '>([\\s\\S]*?)</' + name + '>'));
-    return m ? decodeEntities(m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')).trim() : '';
-  };
+  const tag = xmlTag;
   const positions = xml.match(/<position>[\s\S]*?<\/position>/g) || [];
   return positions.map((block) => {
     const id = tag(block, 'id');
@@ -469,6 +508,9 @@ export async function scrapeCompany(provider: string | null, identifier: string 
       break;
     case 'amazon':
       jobs = await scrapeAmazon(identifier || 'IND');
+      break;
+    case 'eightfold':
+      jobs = await scrapeEightfold(identifier || '');
       break;
     default:
       if ((BOARD_PROVIDERS as readonly string[]).includes(provider)) {

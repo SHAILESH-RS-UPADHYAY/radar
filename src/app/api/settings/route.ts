@@ -5,7 +5,7 @@ import { resolveDreamCompanyIds } from '@/lib/dream-companies';
 import { normalizeSkill } from '@/lib/scraper/utils';
 import { loadSettingsProfile } from '@/lib/profile';
 import { isSchemaMissing } from '@/lib/supabase/errors';
-import { MAX_DREAM_COMPANIES } from '@/lib/validate';
+import { cleanPortfolio, MAX_DREAM_COMPANIES } from '@/lib/validate';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +41,7 @@ interface SettingsPatch {
   auto_overclock?: unknown;
   overclock_daily_cap?: unknown;
   dream_companies?: unknown;
+  portfolio?: unknown;
 }
 
 const strings = (v: unknown) =>
@@ -75,6 +76,11 @@ export async function PATCH(req: Request) {
   if (typeof body.auto_overclock === 'boolean') update.auto_overclock = body.auto_overclock;
   if (typeof body.overclock_daily_cap === 'number')
     update.overclock_daily_cap = Math.max(0, Math.min(20, Math.round(body.overclock_daily_cap)));
+  if (body.portfolio !== undefined) {
+    const portfolio = cleanPortfolio(body.portfolio);
+    if (typeof portfolio === 'string') return NextResponse.json({ error: portfolio }, { status: 400 });
+    update.portfolio = portfolio;
+  }
   const dream = strings(body.dream_companies);
 
   if (!Object.keys(update).length && !dream) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
@@ -90,7 +96,11 @@ export async function PATCH(req: Request) {
       const { error } = await supabase.from('user_profiles').update(update).eq('id', userId);
       if (isSchemaMissing(error))
         return NextResponse.json(
-          { error: 'This setting needs migration 007. Run supabase/migrations/007_discovery_verify_autopilot.sql.' },
+          {
+            error: update.portfolio
+              ? 'Portfolio needs migration 008. Run supabase/migrations/008_portfolio.sql.'
+              : 'This setting needs migration 007. Run supabase/migrations/007_discovery_verify_autopilot.sql.',
+          },
           { status: 503 },
         );
       if (error) return NextResponse.json({ error: error.message }, { status: 500 });

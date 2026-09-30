@@ -15,6 +15,8 @@ import { VaultCard } from '@/components/dashboard/VaultCard';
 import { OverclockCard } from '@/components/dashboard/OverclockCard';
 import { RunPanel } from '@/components/dashboard/RunPanel';
 import { TodayPanel } from '@/components/dashboard/TodayPanel';
+import { ApplyConfirm } from '@/components/dashboard/ApplyConfirm';
+import { ScanConsole, type ScanDone } from '@/components/dashboard/ScanConsole';
 import { TailorPreview } from '@/components/dashboard/TailorPreview';
 import { JobTerminal } from '@/components/dashboard/JobTerminal';
 import { Modal } from '@/components/hud/Modal';
@@ -337,34 +339,31 @@ export default function DashboardPage() {
     [api],
   );
 
-  const handleScan = useCallback(async () => {
+  // A scan runs inside SCAN://LIVE, which streams each backend stage; each run gets a fresh console.
+  const [scanRun, setScanRun] = useState(0);
+  const handleScan = useCallback(() => {
     setScanning(true);
     setScanNote('');
-    try {
-      const res = await api('/api/match', { method: 'POST' });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        const msg = data.error || 'Scan failed. Complete onboarding and make sure jobs have been scraped.';
-        setScanNote(msg);
-        setNotice({ tone: 'alert', text: msg });
-        return;
-      }
-      if (!data.total) setScanNote(data.message || 'No matching jobs yet. The next pipeline run will bring some in.');
-      else {
-        setNotice({
-          tone: 'ok',
-          text: `Scan complete · ${data.total} jobs scored · ${data.vaulted} new in your Vault.`,
-        });
-        if (data.vaulted > 0) setPrimaryTab('VAULT');
-      }
-      await fetchMatches();
-    } catch (err) {
-      console.warn('[SCAN] failed:', err);
-      setNotice({ tone: 'alert', text: 'Scan failed. Check your connection and try again.' });
-    } finally {
+    setScanRun((n) => n + 1);
+  }, []);
+  const onScanFinished = useCallback(
+    (done: ScanDone) => {
       setScanning(false);
-    }
-  }, [api, fetchMatches]);
+      if (!done.total) setScanNote(done.message || 'No matching jobs yet. The next pipeline run will bring some in.');
+      else if (done.vaulted > 0) setPrimaryTab('VAULT');
+      void fetchMatches();
+    },
+    [fetchMatches],
+  );
+  const onScanFailed = useCallback((error: string) => {
+    setScanning(false);
+    setScanNote(error);
+  }, []);
+  const closeScan = useCallback(() => {
+    setScanRun(0);
+    setScanning(false);
+    void fetchMatches();
+  }, [fetchMatches]);
 
   // First visit with an empty feed: scan once automatically.
   useEffect(() => {
@@ -373,7 +372,16 @@ export default function DashboardPage() {
     void handleScan();
   }, [loading, matches.length, handleScan]);
 
-  const onAction = (id: string, action: MatchAction) => void setStatus([id], ACTION_STATUS[action]);
+  // Opening an apply link is not applying: RADAR asks first (APPLY://CONFIRM), and only a yes moves it to C2 · OPS.
+  const [confirmId, setConfirmId] = useState<string | null>(null);
+  const onAction = (id: string, action: MatchAction) => {
+    if (action === 'APPLY') {
+      // The JD terminal sits above every dialog; close it so the question is seen.
+      setBriefingId(null);
+      return setConfirmId(id);
+    }
+    void setStatus([id], ACTION_STATUS[action]);
+  };
 
   const myCities = (vaultSettings?.location || '')
     .split(',')
@@ -407,6 +415,7 @@ export default function DashboardPage() {
   const placeLabel =
     place === 'global' ? 'GLOBAL' : place === 'remote' ? 'REMOTE' : place === 'mine' ? 'MY CITIES' : place.slice(5);
   const briefing = briefingId ? (matches.find((m) => m.id === briefingId) ?? null) : null;
+  const confirmMatch = confirmId ? matches.find((m) => m.id === confirmId) : undefined;
 
   const available = shown.filter((m) => m.status === 'new');
   // The Vault shows only postings that are still open; one the company took down simply drops out.
@@ -1119,6 +1128,20 @@ export default function DashboardPage() {
       <Modal open={!!preview} onClose={() => setPreview(null)} label="OVERCLOCK://REVIEW" wide>
         {preview && <TailorPreview key={preview} id={preview} />}
       </Modal>
+
+      {scanRun > 0 && (
+        <ScanConsole key={scanRun} onFinished={onScanFinished} onFailed={onScanFailed} onClose={closeScan} />
+      )}
+
+      {confirmMatch && (
+        <ApplyConfirm
+          key={confirmMatch.id}
+          match={confirmMatch}
+          onApplied={() => void setStatus([confirmMatch.id], 'applied')}
+          onKeep={() => void setStatus([confirmMatch.id], 'saved')}
+          onClose={() => setConfirmId(null)}
+        />
+      )}
 
       <JobTerminal
         match={briefing}

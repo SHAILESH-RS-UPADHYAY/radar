@@ -13,6 +13,8 @@
 //   themuse     themuse.com/api/public/jobs — public, 500 requests/hour without a key; link back to The Muse
 //   adzuna      api.adzuna.com — official API, needs ADZUNA_APP_ID + ADZUNA_APP_KEY; descriptions are snippets
 //   jooble      jooble.org/api — official API, needs JOOBLE_API_KEY; descriptions are snippets
+//   weworkremotely  weworkremotely.com category RSS (robots.txt allows it); link back to the WWR listing
+//   workingnomads   workingnomads.com/api/exposed_jobs (robots.txt allows everything); link back to Working Nomads
 
 import {
   decodeEntities,
@@ -24,6 +26,8 @@ import {
   searchTerms,
   splitEnvList,
   toIso,
+  xmlTag,
+  fetchText,
   type ScrapedJob,
 } from './utils';
 
@@ -49,9 +53,83 @@ export async function scrapeBoard(provider: string): Promise<ScrapedJob[]> {
       return scrapeAdzuna();
     case 'jooble':
       return scrapeJooble();
+    case 'weworkremotely':
+      return scrapeWeWorkRemotely();
+    case 'workingnomads':
+      return scrapeWorkingNomads();
     default:
       throw new Error('Unknown board: ' + provider);
   }
+}
+
+// ---------- We Work Remotely (RSS) ----------
+const WWR_FEEDS = ['remote-programming-jobs', 'remote-devops-sysadmin-jobs'];
+
+/** One RSS <item> → the fields RADAR keeps. Titles read "Company: Role". Pure, for tests. */
+export function parseWwrItem(block: string) {
+  const [employer, ...role] = xmlTag(block, 'title').split(': ');
+  const link = xmlTag(block, 'link');
+  return {
+    external_id: xmlTag(block, 'guid') || link,
+    employer: employer.trim(),
+    title: role.join(': ').trim() || employer.trim(),
+    region: xmlTag(block, 'region'),
+    description: htmlToText(xmlTag(block, 'description')),
+    link,
+    posted: xmlTag(block, 'pubDate'),
+  };
+}
+
+async function scrapeWeWorkRemotely(): Promise<ScrapedJob[]> {
+  const jobs = new Map<string, ScrapedJob>();
+  for (const feed of WWR_FEEDS) {
+    const xml = await fetchText(`https://weworkremotely.com/categories/${feed}.rss`);
+    for (const block of xml.match(/<item>[\s\S]*?<\/item>/g) || []) {
+      const item = parseWwrItem(block);
+      if (!item.link || !isRelevantTitle(item.title)) continue;
+      jobs.set(
+        item.external_id,
+        finalizeJob({
+          external_id: item.external_id,
+          title: item.title,
+          description: item.description + '\n\nSource: We Work Remotely',
+          location: 'Remote' + (item.region ? ' (' + item.region + ')' : ''),
+          apply_url: item.link,
+          department: null,
+          salary_min: null,
+          salary_max: null,
+          salary_currency: null,
+          // RSS dates read "Wed, 30 Sep 2026 10:00:00 +0000"; Date.parse understands them, toIso's cleanup would not.
+          posted_at: toIso(Date.parse(item.posted) || null),
+          employer: item.employer,
+        }),
+      );
+    }
+  }
+  return [...jobs.values()];
+}
+
+// ---------- Working Nomads ----------
+async function scrapeWorkingNomads(): Promise<ScrapedJob[]> {
+  const data = await fetchJson<any[]>('https://www.workingnomads.com/api/exposed_jobs/');
+  return (data || [])
+    .filter((job: any) => job.url && job.title && isRelevantTitle(job.title))
+    .map((job: any) =>
+      finalizeJob({
+        external_id: String(job.url.match(/\/(\d+)\/?$/)?.[1] || job.url),
+        title: decodeEntities(job.title),
+        description:
+          htmlToText(job.description || '') + (job.tags ? '\n\nTags: ' + job.tags : '') + '\nSource: Working Nomads',
+        location: job.location ? 'Remote (' + job.location + ')' : 'Remote',
+        apply_url: job.url,
+        department: job.category_name || null,
+        salary_min: null,
+        salary_max: null,
+        salary_currency: null,
+        posted_at: toIso(job.pub_date),
+        employer: job.company_name || null,
+      }),
+    );
 }
 
 // ---------- Hacker News: Who is hiring? ----------

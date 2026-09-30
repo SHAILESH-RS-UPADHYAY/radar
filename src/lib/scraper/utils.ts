@@ -53,6 +53,12 @@ export async function fetchJson<T = unknown>(
   throw lastErr;
 }
 
+/** The text of <name>…</name> inside an XML block (CDATA unwrapped, entities decoded), or ''. */
+export function xmlTag(block: string, name: string): string {
+  const m = block.match(new RegExp('<' + name + '>([\\s\\S]*?)</' + name + '>'));
+  return m ? decodeEntities(m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')).trim() : '';
+}
+
 export async function fetchText(url: string, timeoutMs = 20000): Promise<string> {
   const res = await fetch(url, {
     headers: { 'user-agent': USER_AGENT },

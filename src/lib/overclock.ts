@@ -6,6 +6,7 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isSchemaMissing } from '@/lib/supabase/errors';
+import { toPortfolio } from '@/lib/profile';
 import { projectScore, resumeToText, tailorResume, TailorError, type TailorOutput } from '@/lib/ai/tailor';
 import { OVERCLOCK_MAX, OVERCLOCK_MIN } from '@/components/dashboard/types';
 
@@ -114,10 +115,14 @@ export async function overclockMatch(
     .eq('company_id', job.company_id)
     .maybeSingle();
 
-  const { output, model } = await tailorResume(profile.resume_text, profile, {
-    ...job,
-    company: job.employer || company.name,
-  });
+  // Portfolio arrives with migration 008; before it the read fails quietly and tailoring goes on without it.
+  const { data: extra } = await supabase.from('user_profiles').select('portfolio').eq('id', userId).maybeSingle();
+  const { output, model } = await tailorResume(
+    profile.resume_text,
+    profile,
+    { ...job, company: job.employer || company.name },
+    extra?.portfolio ? toPortfolio(extra.portfolio) : null,
+  );
   // A failed projection must not throw away a tailoring that has already been paid for.
   const projected = await projectScore({
     currentScore: match.score,

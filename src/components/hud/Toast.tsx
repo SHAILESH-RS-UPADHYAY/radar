@@ -11,8 +11,19 @@ const TONE = {
   alert: { box: 'border-hud-red/70', tag: 'text-hud-red', label: 'ERR' },
 };
 
-/** Bottom-right status toast. Success/info fade out on their own; errors stay until dismissed. */
-export function Toast({ notice, onClose }: { notice: Notice | null; onClose: () => void }) {
+/**
+ * Bottom-right status toast. Success/info fade out on their own; errors stay until dismissed.
+ * `raised` lifts it above a bottom bar (the settings save bar).
+ */
+export function Toast({
+  notice,
+  onClose,
+  raised = false,
+}: {
+  notice: Notice | null;
+  onClose: () => void;
+  raised?: boolean;
+}) {
   useEffect(() => {
     if (!notice || notice.tone === 'alert') return;
     const t = setTimeout(onClose, 4000);
@@ -30,7 +41,8 @@ export function Toast({ notice, onClose }: { notice: Notice | null; onClose: () 
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 16 }}
           className={
-            'fixed bottom-5 left-4 right-4 z-[60] border bg-black/95 px-4 py-3 font-mono text-xs shadow-[0_0_30px_rgba(0,0,0,0.6)] backdrop-blur sm:left-auto sm:max-w-sm ' +
+            (raised ? 'bottom-36 sm:bottom-24 ' : 'bottom-5 ') +
+            'fixed left-4 right-4 z-[60] border bg-black/95 px-4 py-3 font-mono text-xs shadow-[0_0_30px_rgba(0,0,0,0.6)] backdrop-blur sm:left-auto sm:max-w-sm ' +
             tone.box
           }
         >

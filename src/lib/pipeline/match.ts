@@ -11,6 +11,10 @@ import { computeMatchScore, type MatchInput } from '@/lib/ai/matcher';
 import { extractSkills } from '@/lib/scraper/utils';
 import { splitList } from '@/lib/profile';
 import { gateForVault } from './verify';
+import type { ScanEvent } from '@/lib/scan-events';
+
+/** How many of the closest jobs the SCAN://LIVE console plots. */
+const SCOPE_SAMPLE = 160;
 
 export interface UserMatchSummary {
   userId: string;
@@ -83,15 +87,27 @@ export class MatchError extends Error {
   }
 }
 
-export async function matchUser(supabase: SupabaseClient, userId: string): Promise<UserMatchSummary> {
+export async function matchUser(
+  supabase: SupabaseClient,
+  userId: string,
+  /** Progress for the SCAN://LIVE console; the cron runs without it. */
+  report: (e: ScanEvent) => void = () => {},
+): Promise<UserMatchSummary> {
   const { data: profile, error: profileErr } = await supabase
     .from('user_profiles')
     .select('*')
     .eq('id', userId)
     .single();
   if (profileErr || !profile) throw new MatchError('Profile not found. Complete onboarding first.', 404);
+  report({
+    stage: 'profile',
+    skills: profileSkills(profile).length,
+    roles: splitList(profile.current_role).length,
+    cities: splitList(profile.location).length,
+  });
 
   let embedding = parseEmbedding(profile.resume_embedding);
+  const cached = !!embedding;
   if (!embedding) {
     const source =
       (profile.resume_text as string) || [profile.skills, profile.location].flat().filter(Boolean).join(' ');
@@ -102,6 +118,7 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
       .update({ resume_embedding: toVectorLiteral(embedding) })
       .eq('id', userId);
   }
+  report({ stage: 'vector', cached, dims: embedding.length });
 
   const { data: dreamRows } = await supabase.from('user_dream_companies').select('company_id').eq('user_id', userId);
   const dreamIds = new Set((dreamRows || []).map((d: { company_id: string }) => d.company_id));
@@ -111,6 +128,14 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
   if (vectorMatches.length === 0) return { ...empty, message: 'No jobs indexed yet. Run a scrape first.' };
 
   const simById = new Map(vectorMatches.map((m) => [m.id, m.score || 0]));
+  const sample = vectorMatches.slice(0, SCOPE_SAMPLE);
+  report({
+    stage: 'search',
+    candidates: vectorMatches.length,
+    min: Math.min(...simById.values()),
+    max: Math.max(...simById.values()),
+    sims: sample.map((m) => Math.round((m.score || 0) * 1000) / 1000),
+  });
   const ids = [...simById.keys()];
 
   // Dream-company jobs always get scored, even if they fell outside the vector top-K.
@@ -134,7 +159,7 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
     work_type: string | null;
     posted_at: string | null;
     company_id: string;
-    companies: { category: string } | { category: string }[];
+    companies: { category: string; name: string } | { category: string; name: string }[];
   };
   const jobs: JobRow[] = [];
   const allIds = [...ids, ...dreamJobIds];
@@ -142,7 +167,7 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
     const { data, error } = await supabase
       .from('jobs')
       .select(
-        'id, title, skills, experience_required, location, work_type, posted_at, company_id, companies!inner(category)',
+        'id, title, skills, experience_required, location, work_type, posted_at, company_id, companies!inner(category, name)',
       )
       .in('id', allIds.slice(i, i + 100))
       .eq('is_active', true);
@@ -150,6 +175,7 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
     jobs.push(...((data || []) as JobRow[]));
   }
   if (jobs.length === 0) return { ...empty, message: 'No active jobs found.' };
+  report({ stage: 'load', jobs: jobs.length, dream: dreamJobIds.length });
 
   // Jobs outside the vector top-K get the lowest similarity we saw as a conservative stand-in.
   const floorSim = Math.min(...vectorMatches.map((m) => m.score || 0));
@@ -176,6 +202,28 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
       section: result.section,
       computed_at: now,
     };
+  });
+
+  const bar = profile.vault_min_score ?? 80;
+  const scoreOf = new Map(rows.map((r) => [r.job_id, r.score]));
+  const nameOf = new Map(
+    jobs.map((j) => [j.id, (Array.isArray(j.companies) ? j.companies[0] : j.companies)?.name || '']),
+  );
+  const titleOf = new Map(jobs.map((j) => [j.id, j.title]));
+  report({
+    stage: 'score',
+    scored: rows.length,
+    bar,
+    bands: [
+      rows.filter((r) => r.score >= bar).length,
+      rows.filter((r) => r.score >= 50 && r.score < bar).length,
+      rows.filter((r) => r.score < 50).length,
+    ],
+    scores: sample.map((m) => scoreOf.get(m.id) ?? 0),
+    top: [...rows]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 3)
+      .map((r) => ({ company: nameOf.get(r.job_id) || '', title: titleOf.get(r.job_id) || '', score: r.score })),
   });
 
   // status / auto_saved / first_seen_at are not in the payload, so existing Vault state survives.
@@ -205,6 +253,12 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
     }
     const open = await gateForVault(supabase, waiting);
     const qualifying = waiting.filter((id) => open.has(id));
+    report({
+      stage: 'gate',
+      strong: strong.length,
+      waiting: waiting.length,
+      closed: waiting.length - qualifying.length,
+    });
     for (let i = 0; i < qualifying.length; i += 200) {
       const { data, error } = await supabase
         .from('match_scores')
@@ -218,6 +272,7 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
     }
   }
 
+  report({ stage: 'vault', vaulted });
   await supabase.from('user_profiles').update({ last_matched_at: now }).eq('id', userId);
 
   const sims = vectorMatches.map((m) => m.score || 0);

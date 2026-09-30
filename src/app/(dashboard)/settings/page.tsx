@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { UserButton, useUser } from '@clerk/nextjs';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useApi } from '@/lib/use-api';
 import type { SettingsProfile } from '@/types';
 import { RadarLogo } from '@/components/brand/RadarLogo';
@@ -13,6 +14,8 @@ import { MAX_DREAM_COMPANIES, resumeProblem } from '@/lib/validate';
 import { useEscapeTo } from '@/lib/use-escape';
 import { GmailLink } from '@/components/settings/GmailLink';
 import { TargetImport } from '@/components/settings/TargetImport';
+import { PortfolioSection } from '@/components/settings/PortfolioSection';
+import { ScanConsole, type ScanDone } from '@/components/dashboard/ScanConsole';
 
 interface CityCompany {
   name: string;
@@ -200,7 +203,7 @@ function Section({
       label={`CONFIG://${n} · ${name}`}
       status={status}
       tone={tone}
-      className={'scroll-mt-24 ' + className}
+      className={'min-w-0 scroll-mt-24 ' + className}
     >
       {hint && <p className="-mt-1 mb-5 text-sm leading-relaxed text-dim">{hint}</p>}
       {children}
@@ -223,6 +226,7 @@ const INDEX = [
   ['roles', 'TARGET_ROLES'],
   ['skills', 'SKILLS'],
   ['resume', 'RESUME'],
+  ['portfolio', 'PORTFOLIO'],
   ['experience', 'EXPERIENCE'],
   ['locations', 'LOCATIONS'],
   ['auto-vault', 'AUTOPILOT'],
@@ -246,6 +250,9 @@ export default function SettingsPage() {
   const [pending, setPending] = useState(0);
   const [failed, setFailed] = useState(false);
   const [changed, setChanged] = useState(false);
+  /** What changed since the last SAVE or rescan, for the save bar. */
+  const [dirty, setDirty] = useState<string[]>([]);
+  const [savedAt, setSavedAt] = useState<number | null>(null);
   const [uploading, setUploading] = useState(false);
   const [dragging, setDragging] = useState(false);
   const [rescanning, setRescanning] = useState(false);
@@ -254,6 +261,11 @@ export default function SettingsPage() {
   const [companyFilter, setCompanyFilter] = useState('');
 
   const queue = useRef<Promise<void>>(Promise.resolve());
+  const failedRef = useRef(false);
+  const markSaved = useCallback((label: string) => {
+    setSavedAt(Date.now());
+    setDirty((d) => (d.includes(label) ? d : [...d, label]));
+  }, []);
   const inFlight = useRef(0);
   const fileRef = useRef<HTMLInputElement>(null);
   const closeNotice = useCallback(() => setNotice(null), []);
@@ -296,11 +308,14 @@ export default function SettingsPage() {
           const d = await res.json().catch(() => ({}));
           if (!res.ok) throw new Error(d.error || 'HTTP ' + res.status);
           setFailed(false);
+          failedRef.current = false;
           setChanged(true);
+          markSaved(label);
           // Take the server's copy only once nothing newer is queued behind this save.
           if (inFlight.current === 1 && d.profile) setProfile(d.profile);
         } catch (err) {
           setFailed(true);
+          failedRef.current = true;
           setNotice({
             tone: 'alert',
             text: `${label} not saved (${err instanceof Error ? err.message : 'network error'}). Showing what is stored.`,
@@ -313,7 +328,7 @@ export default function SettingsPage() {
         }
       });
     },
-    [api, load],
+    [api, load, markSaved],
   );
 
   useEffect(() => {
@@ -381,6 +396,7 @@ export default function SettingsPage() {
       if (!res.ok) throw new Error(d.error || 'HTTP ' + res.status);
       setProfile(d.profile);
       setChanged(true);
+      markSaved('Resume');
       setNotice({
         tone: 'ok',
         text: `Resume updated · ${d.profile.resume_skills.length} skills detected and merged into your profile.`,
@@ -393,27 +409,42 @@ export default function SettingsPage() {
     }
   };
 
+  // RESCAN opens SCAN://LIVE once every queued save has landed, so the scan uses the newest profile.
+  const [scanRun, setScanRun] = useState(0);
   const rescan = async () => {
     setRescanning(true);
-    try {
-      await queue.current;
-      const res = await api('/api/match', { method: 'POST' });
-      const d = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(d.error || 'HTTP ' + res.status);
-      setChanged(false);
-      setNotice({
-        tone: 'ok',
-        text: d.total
-          ? `Rescored ${d.total} jobs · ${d.vaulted} new in your Vault.`
-          : d.message || 'No jobs indexed yet.',
-        action: { label: 'OPEN DASHBOARD', run: () => router.push('/dashboard') },
-      });
-    } catch (err) {
-      setNotice({ tone: 'alert', text: 'Rescan failed: ' + (err instanceof Error ? err.message : String(err)) });
-    } finally {
-      setRescanning(false);
-    }
+    await queue.current;
+    setScanRun((n) => n + 1);
   };
+  const onScanFinished = (done: ScanDone) => {
+    setRescanning(false);
+    setChanged(false);
+    setDirty([]);
+    setNotice({
+      tone: 'ok',
+      text: done.total
+        ? `Rescored ${done.total} jobs · ${done.vaulted} new in your Vault.`
+        : done.message || 'No jobs indexed yet.',
+      action: { label: 'OPEN DASHBOARD', run: () => router.push('/dashboard') },
+    });
+  };
+  const onScanFailed = (error: string) => {
+    setRescanning(false);
+    setNotice({ tone: 'alert', text: 'Rescan failed: ' + error });
+  };
+
+  /** SAVE: every change is already on its way; wait for the last write, then confirm it landed. */
+  const confirmSave = async () => {
+    await queue.current;
+    if (failedRef.current) return;
+    setDirty([]);
+    setNotice({
+      tone: 'ok',
+      text: 'Preferences saved. Rescan to rescore every open job with them.',
+      action: { label: 'RESCAN', run: () => void rescan() },
+    });
+  };
+  const showBar = pending > 0 || failed || dirty.length > 0;
 
   const syncState =
     pending > 0 ? (
@@ -481,7 +512,9 @@ export default function SettingsPage() {
         </div>
       </header>
 
-      <main className="relative mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
+      <main
+        className={'relative mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10' + (showBar ? ' pb-40 sm:pb-28' : '')}
+      >
         <div>
           <p className="font-mono text-[11px] tracking-[0.35em] text-phosphor/70">{'// PREFERENCES'}</p>
           <h1 className="mt-2 font-mono text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
@@ -664,9 +697,14 @@ export default function SettingsPage() {
                 </label>
               </Section>
 
+              <PortfolioSection
+                portfolio={profile.portfolio}
+                onSave={(next) => update({ portfolio: next }, { portfolio: next }, 'Portfolio')}
+              />
+
               <Section
                 id="experience"
-                n="04"
+                n="05"
                 name="EXPERIENCE"
                 hint="Used to keep senior-only roles from crowding your feed."
               >
@@ -718,7 +756,7 @@ export default function SettingsPage() {
 
               <Section
                 id="locations"
-                n="05"
+                n="06"
                 name="LOCATIONS"
                 status={cities.length ? cities.length + ' CITIES' : 'NONE'}
                 tone={cities.length ? 'ok' : 'alert'}
@@ -735,7 +773,7 @@ export default function SettingsPage() {
 
               <Section
                 id="auto-vault"
-                n="06"
+                n="07"
                 name="AUTOPILOT"
                 status={profile.auto_vault ? (profile.auto_overclock ? 'ARMED · OVERCLOCK' : 'ARMED') : 'OFF'}
                 tone={profile.auto_vault ? 'ok' : 'idle'}
@@ -852,7 +890,7 @@ export default function SettingsPage() {
 
               <Section
                 id="companies"
-                n="07"
+                n="08"
                 name="DREAM_COMPANIES"
                 status={dream.length + ' / ' + MAX_DREAM_COMPANIES}
                 tone={dream.length ? 'ok' : 'idle'}
@@ -918,7 +956,7 @@ export default function SettingsPage() {
                 </div>
               </Section>
 
-              <Section id="identity" n="08" name="IDENTITY" className="xl:col-span-2">
+              <Section id="identity" n="09" name="IDENTITY" className="xl:col-span-2">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <p className="mb-2 font-mono text-[10px] tracking-[0.3em] text-dim">EMAIL</p>
@@ -956,7 +994,83 @@ export default function SettingsPage() {
         )}
       </main>
 
-      <Toast notice={notice} onClose={closeNotice} />
+      {/* COMMIT://CONFIG — every change saves as you make it; this bar shows that, and SAVE confirms it landed. */}
+      <AnimatePresence>
+        {showBar && profile && (
+          <motion.div
+            initial={{ y: 90, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 90, opacity: 0 }}
+            transition={{ type: 'spring', stiffness: 380, damping: 34 }}
+            className="fixed inset-x-0 bottom-0 z-40 border-t border-phosphor/30 bg-black/90 shadow-[0_-12px_40px_rgba(0,0,0,0.6)] backdrop-blur-md"
+          >
+            <div
+              className={
+                'absolute inset-x-0 top-0 h-px ' + (pending > 0 ? 'hud-flow' : failed ? 'bg-hud-red' : 'bg-phosphor/60')
+              }
+            />
+            <div className="mx-auto flex max-w-[1440px] flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-6 lg:px-10">
+              <div className="min-w-0">
+                <p className="font-mono text-[10px] tracking-[0.35em] text-dim">COMMIT://CONFIG</p>
+                <div className="mt-1 flex min-w-0 items-center gap-3">
+                  {pending > 0 ? (
+                    <StatusLight tone="warn">
+                      WRITING {pending} CHANGE{pending > 1 ? 'S' : ''}
+                    </StatusLight>
+                  ) : failed ? (
+                    <StatusLight tone="alert">LAST CHANGE NOT SAVED · USE RETRY</StatusLight>
+                  ) : (
+                    <StatusLight tone="ok" pulse={false}>
+                      SAVED
+                      {savedAt ? ' · ' + new Date(savedAt).toLocaleTimeString([], { hour12: false }) : ''}
+                    </StatusLight>
+                  )}
+                  {dirty.length > 0 && (
+                    <span className="truncate font-mono text-[11px] text-phosphor/70">
+                      {dirty.join(' · ').toUpperCase()}
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="flex shrink-0 gap-2">
+                <button
+                  type="button"
+                  onClick={() => void confirmSave()}
+                  disabled={pending > 0 || uploading}
+                  className="flex-1 border border-phosphor/50 px-5 py-2.5 font-mono text-[11px] font-bold tracking-[0.25em] text-phosphor transition-colors hover:bg-phosphor/10 disabled:cursor-wait disabled:opacity-50 sm:flex-none"
+                >
+                  [ SAVE ]
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void rescan()}
+                  disabled={rescanning || uploading}
+                  className="flex flex-1 items-center justify-center gap-2 bg-phosphor px-5 py-2.5 font-mono text-[11px] font-bold tracking-[0.25em] text-black shadow-[0_0_20px_rgba(0,255,65,0.3)] transition-colors hover:bg-[#33FF66] disabled:cursor-wait disabled:bg-phosphor/40 sm:flex-none"
+                >
+                  {rescanning && (
+                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-black/30 border-t-black" />
+                  )}
+                  {rescanning ? 'RESCANNING' : 'SAVE & RESCAN'}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {scanRun > 0 && (
+        <ScanConsole
+          key={scanRun}
+          onFinished={onScanFinished}
+          onFailed={onScanFailed}
+          onClose={() => {
+            setScanRun(0);
+            setRescanning(false);
+          }}
+        />
+      )}
+
+      <Toast notice={notice} onClose={closeNotice} raised={showBar} />
     </div>
   );
 }

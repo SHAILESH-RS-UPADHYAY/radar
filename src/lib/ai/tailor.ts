@@ -7,6 +7,7 @@
 // AI_PROVIDER; every other provider with a key set is a fallback when the first is down or rate limited.
 
 import Anthropic from '@anthropic-ai/sdk';
+import type { Portfolio } from '@/types';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod';
 import { embedText, fetchJobVector } from '@/lib/ai/embeddings';
@@ -251,6 +252,7 @@ export async function tailorResume(
   resumeText: string,
   profile: ScoringProfile,
   job: TailorJob,
+  portfolio?: Portfolio | null,
 ): Promise<{ output: TailorOutput; model: string }> {
   const providers = aiProviders();
   if (!providers.length)
@@ -270,6 +272,13 @@ export async function tailorResume(
     profile.current_role ? 'TARGET ROLES: ' + profile.current_role : '',
     'EXPERIENCE: ' + (profile.is_fresher ? 'fresher / intern' : (profile.experience_years ?? 0) + ' years'),
     profile.skills?.length ? 'CONFIRMED SKILLS: ' + profile.skills.join(', ') : '',
+    // Links and built projects from Preferences are facts from the profile: usable in contact lines and projects.
+    ...(['portfolio', 'github', 'linkedin', 'website'] as const)
+      .filter((k) => portfolio?.[k])
+      .map((k) => k.toUpperCase() + ': ' + portfolio![k]),
+    ...(portfolio?.projects || []).map(
+      (p) => 'PROJECT YOU BUILT: ' + p.name + ' (' + p.url + ')' + (p.note ? ' - ' + p.note : ''),
+    ),
   ]
     .filter(Boolean)
     .join('\n');

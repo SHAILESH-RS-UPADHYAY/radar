@@ -13,7 +13,8 @@ export type AtsProvider =
   | 'breezy'
   | 'teamtailor'
   | 'workday'
-  | 'amazon';
+  | 'amazon'
+  | 'eightfold';
 /** Sources that list many employers each; the real employer is stored on the job. */
 export const BOARD_PROVIDERS = [
   'hackernews',
@@ -25,6 +26,8 @@ export const BOARD_PROVIDERS = [
   'themuse',
   'adzuna',
   'jooble',
+  'weworkremotely',
+  'workingnomads',
 ] as const;
 export type BoardProvider = (typeof BOARD_PROVIDERS)[number];
 export type Provider = AtsProvider | BoardProvider | 'custom';
