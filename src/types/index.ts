@@ -117,6 +117,28 @@ export interface SettingsProfile {
   last_matched_at: string | null;
   /** Links and built projects (migration 008); null until that migration has run. */
   portfolio: Portfolio | null;
+  /** What application forms ask (migration 009); null until that migration has run. */
+  application_kit: ApplicationKit | null;
+}
+
+/** Answers application forms ask for again and again, saved once. Every value is plain text; '' = not set. */
+export interface ApplicationKit {
+  phone: string;
+  current_company: string;
+  current_title: string;
+  notice_period: string;
+  current_ctc: string;
+  expected_ctc: string;
+  currency: string;
+  work_authorization: string;
+  needs_sponsorship: '' | 'yes' | 'no';
+  willing_to_relocate: '' | 'yes' | 'no';
+  gender: string;
+  pronouns: string;
+  veteran_status: string;
+  disability_status: string;
+  /** Facts and phrasing in the candidate's own words, for AI-drafted answers. */
+  voice_notes: string;
 }
 
 export interface PortfolioProject {

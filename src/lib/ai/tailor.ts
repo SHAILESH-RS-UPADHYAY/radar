@@ -155,13 +155,14 @@ async function post(provider: AiProvider, url: string, headers: Record<string, s
 // Gemini's top model is a preview: when it is retired, rate limited or cut short, the newest stable Flash writes.
 const GEMINI_FALLBACK = 'gemini-3.8-flash';
 
-async function callGemini(model: string, user: string): Promise<TailorOutput> {
+/** One Gemini JSON reply as text (refusals, cut-offs and HTTP errors become TailorErrors). */
+async function geminiText(model: string, system: string, user: string): Promise<string> {
   const data = (await post(
     'gemini',
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
     { 'x-goog-api-key': readEnv('GEMINI_API_KEY')! },
     {
-      systemInstruction: { parts: [{ text: SYSTEM + JSON_RULE }] },
+      systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: 'user', parts: [{ text: user }] }],
       // Thinking tokens count toward the output limit, so leave the reasoning room on top of the resume.
       generationConfig: { responseMimeType: 'application/json', maxOutputTokens: 32768 },
@@ -173,8 +174,76 @@ async function callGemini(model: string, user: string): Promise<TailorOutput> {
   const candidate = data.candidates?.[0];
   if (data.promptFeedback?.blockReason || candidate?.finishReason === 'SAFETY')
     throw new TailorError('The AI declined to tailor this resume.', 422);
-  if (candidate?.finishReason === 'MAX_TOKENS') throw new TailorError('The tailored resume came back incomplete.', 502);
-  return parseTailored((candidate?.content?.parts || []).map((p) => p.text || '').join(''));
+  if (candidate?.finishReason === 'MAX_TOKENS') throw new TailorError('The AI reply came back incomplete.', 502);
+  return (candidate?.content?.parts || []).map((p) => p.text || '').join('');
+}
+
+const callGemini = async (model: string, user: string): Promise<TailorOutput> =>
+  parseTailored(await geminiText(model, SYSTEM + JSON_RULE, user));
+
+/**
+ * One JSON reply for any prompt from the configured AI: AI_PROVIDER first, then the others, like tailoring.
+ * The caller checks the JSON. Used for application-form answers.
+ */
+export async function completeJson(system: string, user: string): Promise<{ text: string; model: string }> {
+  const providers = aiProviders();
+  if (!providers.length)
+    throw new TailorError(
+      'AI is not configured. Set ANTHROPIC_API_KEY, GEMINI_API_KEY or XAI_API_KEY on the server.',
+      503,
+    );
+  let last: TailorError | null = null;
+  for (const provider of providers) {
+    try {
+      if (provider === 'gemini') {
+        for (const model of [...new Set([MODEL.gemini(), GEMINI_FALLBACK])]) {
+          try {
+            return { text: await geminiText(model, system, user), model: 'gemini:' + model };
+          } catch (err) {
+            if (!(err instanceof TailorError) || err.status === 422 || err.status === 503) throw err;
+            last = err;
+          }
+        }
+        throw last!;
+      }
+      if (provider === 'grok') {
+        const data = (await post(
+          'grok',
+          'https://api.x.ai/v1/chat/completions',
+          { authorization: 'Bearer ' + readEnv('XAI_API_KEY') },
+          {
+            model: MODEL.grok(),
+            messages: [
+              { role: 'system', content: system },
+              { role: 'user', content: user },
+            ],
+            response_format: { type: 'json_object' },
+          },
+        )) as { choices?: { message?: { content?: string } }[] };
+        return { text: data.choices?.[0]?.message?.content || '', model: 'grok:' + MODEL.grok() };
+      }
+      const client = new Anthropic({ apiKey: readEnv('ANTHROPIC_API_KEY')! });
+      const response = await client.messages
+        .create({
+          model: MODEL.anthropic(),
+          max_tokens: 8000,
+          system: system + '\n\nReply with a single JSON object and nothing else.',
+          messages: [{ role: 'user', content: user }],
+        })
+        .catch((err) => {
+          if (err instanceof Anthropic.APIError && typeof err.status === 'number')
+            throw httpError('anthropic', err.status, err.message);
+          throw new TailorError('Could not reach Anthropic. Try again.', 502);
+        });
+      const text = response.content.map((b) => (b.type === 'text' ? b.text : '')).join('');
+      return { text, model: 'anthropic:' + (response.model || MODEL.anthropic()) };
+    } catch (err) {
+      last = err instanceof TailorError ? err : new TailorError('AI error: ' + (err as Error).message, 502);
+      if (last.status === 422) throw last;
+      console.warn('[AI]', provider, 'failed:', last.message, providers.length > 1 ? '→ next provider' : '');
+    }
+  }
+  throw last!;
 }
 
 // Each provider returns the tailoring and the model that actually wrote it.

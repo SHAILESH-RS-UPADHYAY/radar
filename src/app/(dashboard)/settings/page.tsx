@@ -15,6 +15,7 @@ import { useEscapeTo } from '@/lib/use-escape';
 import { GmailLink } from '@/components/settings/GmailLink';
 import { TargetImport } from '@/components/settings/TargetImport';
 import { PortfolioSection } from '@/components/settings/PortfolioSection';
+import { ApplicationKitSection } from '@/components/settings/ApplicationKitSection';
 import { ScanConsole, type ScanDone } from '@/components/dashboard/ScanConsole';
 
 interface CityCompany {
@@ -227,6 +228,7 @@ const INDEX = [
   ['skills', 'SKILLS'],
   ['resume', 'RESUME'],
   ['portfolio', 'PORTFOLIO'],
+  ['kit', 'APPLICATION_KIT'],
   ['experience', 'EXPERIENCE'],
   ['locations', 'LOCATIONS'],
   ['auto-vault', 'AUTOPILOT'],
@@ -702,9 +704,14 @@ export default function SettingsPage() {
                 onSave={(next) => update({ portfolio: next }, { portfolio: next }, 'Portfolio')}
               />
 
+              <ApplicationKitSection
+                kit={profile.application_kit}
+                onSave={(next) => update({ application_kit: next }, { application_kit: next }, 'Application Kit')}
+              />
+
               <Section
                 id="experience"
-                n="05"
+                n="06"
                 name="EXPERIENCE"
                 hint="Used to keep senior-only roles from crowding your feed."
               >
@@ -756,7 +763,7 @@ export default function SettingsPage() {
 
               <Section
                 id="locations"
-                n="06"
+                n="07"
                 name="LOCATIONS"
                 status={cities.length ? cities.length + ' CITIES' : 'NONE'}
                 tone={cities.length ? 'ok' : 'alert'}
@@ -773,7 +780,7 @@ export default function SettingsPage() {
 
               <Section
                 id="auto-vault"
-                n="07"
+                n="08"
                 name="AUTOPILOT"
                 status={profile.auto_vault ? (profile.auto_overclock ? 'ARMED · OVERCLOCK' : 'ARMED') : 'OFF'}
                 tone={profile.auto_vault ? 'ok' : 'idle'}
@@ -890,7 +897,7 @@ export default function SettingsPage() {
 
               <Section
                 id="companies"
-                n="08"
+                n="09"
                 name="DREAM_COMPANIES"
                 status={dream.length + ' / ' + MAX_DREAM_COMPANIES}
                 tone={dream.length ? 'ok' : 'idle'}
@@ -956,7 +963,7 @@ export default function SettingsPage() {
                 </div>
               </Section>
 
-              <Section id="identity" n="09" name="IDENTITY" className="xl:col-span-2">
+              <Section id="identity" n="10" name="IDENTITY" className="xl:col-span-2">
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
                     <p className="mb-2 font-mono text-[10px] tracking-[0.3em] text-dim">EMAIL</p>

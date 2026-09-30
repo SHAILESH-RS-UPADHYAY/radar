@@ -85,7 +85,7 @@ export function GmailLink({ onNotice }: { onNotice: (n: Notice) => void }) {
           : ['OFF', 'idle'];
 
   return (
-    <HudPanel id="gmail" label="CONFIG://10 · GMAIL_LINK" status={label} tone={tone} className="scroll-mt-24">
+    <HudPanel id="gmail" label="CONFIG://11 · GMAIL_LINK" status={label} tone={tone} className="scroll-mt-24">
       <p className="-mt-1 mb-5 text-sm leading-relaxed text-dim">
         Read-only. Once a day RADAR reads the subject and preview of recruiter replies, then moves your applications in
         C2 · OPS: rejection, assessment, interview or offer. It never sends, deletes or stores email bodies.

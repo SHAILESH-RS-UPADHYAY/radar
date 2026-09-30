@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
-import type { Portfolio, SettingsProfile } from '@/types';
+import type { ApplicationKit, Portfolio, SettingsProfile } from '@/types';
+import { cleanKit } from '@/lib/validate';
 import { extractSkills } from '@/lib/scraper/utils';
 import { isSchemaMissing } from '@/lib/supabase/errors';
 
@@ -17,6 +18,7 @@ interface ProfileRow {
   auto_overclock?: boolean;
   overclock_daily_cap?: number;
   portfolio?: Partial<Portfolio> | null;
+  application_kit?: Partial<ApplicationKit> | null;
 }
 
 /** The stored portfolio JSON with every field present. */
@@ -40,8 +42,9 @@ export async function loadSettingsProfile(supabase: SupabaseClient, userId: stri
   const base =
     'full_name, location, is_fresher, experience_years, skills, current_role, resume_text, vault_min_score, auto_vault, last_matched_at';
   const read = (columns: string) => supabase.from('user_profiles').select(columns).eq('id', userId).maybeSingle();
-  // Newest schema first: portfolio (008), then auto-OVERCLOCK (007), then everything before them.
+  // Newest schema first: Application Kit (009), portfolio (008), auto-OVERCLOCK (007), then everything before them.
   const tiers = [
+    base + ', auto_overclock, overclock_daily_cap, portfolio, application_kit',
     base + ', auto_overclock, overclock_daily_cap, portfolio',
     base + ', auto_overclock, overclock_daily_cap',
     base,
@@ -66,5 +69,6 @@ export async function loadSettingsProfile(supabase: SupabaseClient, userId: stri
     overclock_daily_cap: p.overclock_daily_cap ?? 5,
     last_matched_at: p.last_matched_at,
     portfolio: p.portfolio === undefined ? null : toPortfolio(p.portfolio),
+    application_kit: p.application_kit === undefined ? null : cleanKit(p.application_kit),
   };
 }

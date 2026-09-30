@@ -6,6 +6,7 @@ import type { TailoredView } from '@/lib/overclock';
 import type { Portfolio } from '@/types';
 import { CopyButton } from '@/components/hud/CopyButton';
 import { scoreColor, type MatchedJob, type TailoredSummary } from './types';
+import { FormIntercept } from './FormIntercept';
 
 const primary =
   'inline-flex items-center justify-center gap-2 bg-phosphor px-5 py-3 font-mono text-xs font-bold tracking-[0.22em] text-black shadow-[0_0_22px_rgba(0,255,65,0.35)] transition-colors hover:bg-[#33FF66] disabled:cursor-not-allowed disabled:bg-phosphor/30';
@@ -151,6 +152,12 @@ export function RunPanel({
       </Step>
 
       <Step n="02" title="ANSWERS, READY TO PASTE">
+        <FormIntercept
+          key={match.id}
+          matchId={match.id}
+          company={job.company.name}
+          fileName={`${shown?.resume.name || fullName || 'Resume'} - ${job.company.name}.pdf`.replace(/[^\w\s.-]/g, '')}
+        />
         <div className="border border-phosphor/15 bg-black/50 px-4">
           <Field label="FULL NAME" value={shown?.resume.name || fullName} />
           <Field label="EMAIL" value={email} />
@@ -186,7 +193,9 @@ export function RunPanel({
         >
           OPEN APPLICATION ↗
         </button>
-        <p className="mt-2 text-xs text-dim">Opens the employer’s own form in a new tab. Paste, attach, submit.</p>
+        <p className="mt-2 text-xs text-dim">
+          Opens the employer’s own form in a new tab. Click RADAR FILL there (or paste), check it, submit.
+        </p>
       </Step>
 
       <Step n="04" title="CONFIRM">

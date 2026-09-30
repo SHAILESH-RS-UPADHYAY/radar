@@ -1,6 +1,6 @@
 // Input rules shared by API routes and the browser. No server-only imports, so pages can use it too.
 
-import type { Portfolio } from '@/types';
+import type { ApplicationKit, Portfolio } from '@/types';
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 export const isUuid = (v: unknown): v is string => typeof v === 'string' && UUID_RE.test(v);
@@ -40,6 +40,38 @@ export function cleanPortfolio(input: unknown): Portfolio | string {
     out.projects.push({ name: name || new URL(url!).hostname, url: url!, note });
   }
   return out;
+}
+
+export const EMPTY_KIT: ApplicationKit = {
+  phone: '',
+  current_company: '',
+  current_title: '',
+  notice_period: '',
+  current_ctc: '',
+  expected_ctc: '',
+  currency: '',
+  work_authorization: '',
+  needs_sponsorship: '',
+  willing_to_relocate: '',
+  gender: '',
+  pronouns: '',
+  veteran_status: '',
+  disability_status: '',
+  voice_notes: '',
+};
+
+/** An Application Kit from the browser (or the database) → every field present, trimmed and capped. */
+export function cleanKit(input: unknown): ApplicationKit {
+  const o = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
+  const text = (k: keyof ApplicationKit, max = 120) =>
+    typeof o[k] === 'string' ? (o[k] as string).trim().slice(0, max) : '';
+  const yesNo = (k: 'needs_sponsorship' | 'willing_to_relocate') => (o[k] === 'yes' || o[k] === 'no' ? o[k] : '');
+  const kit = { ...EMPTY_KIT };
+  for (const k of Object.keys(EMPTY_KIT) as (keyof ApplicationKit)[]) {
+    if (k === 'needs_sponsorship' || k === 'willing_to_relocate') kit[k] = yesNo(k);
+    else kit[k] = text(k, k === 'voice_notes' ? 1500 : k === 'work_authorization' ? 200 : 120);
+  }
+  return kit;
 }
 
 /** Dream companies a profile can pick; every open role at them is scored on each scan. */

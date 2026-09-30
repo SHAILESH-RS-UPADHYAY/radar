@@ -17,7 +17,7 @@
 RADAR is a job-intelligence engine that runs 24/7. It does everything except the final click.
 
 ```diff
-+ finds jobs from 20 feeds and every funded startup it can discover on StartupMap
++ finds jobs from 23 feeds and every funded startup it can discover on StartupMap and YC's hiring list
 + checks every posting is real before it reaches you
 + scores each job against your resume, 0–100
 + saves every 80%+ match to your Vault automatically

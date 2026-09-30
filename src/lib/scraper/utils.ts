@@ -59,6 +59,21 @@ export function xmlTag(block: string, name: string): string {
   return m ? decodeEntities(m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')).trim() : '';
 }
 
+/**
+ * One job across sources: employer + title, lower-cased, punctuation and company suffixes dropped.
+ * "Acme, Inc." + "Senior Engineer (Remote)" and "ACME" + "Senior Engineer - Remote" give the same key.
+ */
+export function jobKey(employer: string, title: string): string {
+  const norm = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, ' ')
+      .replace(/\b(inc|llc|ltd|limited|gmbh|pvt|private|corp|corporation|co)\b/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  return norm(employer) + '|' + norm(title);
+}
+
 export async function fetchText(url: string, timeoutMs = 20000): Promise<string> {
   const res = await fetch(url, {
     headers: { 'user-agent': USER_AGENT },

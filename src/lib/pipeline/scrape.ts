@@ -8,7 +8,8 @@
 import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { scrapeCompany, type ScrapedJob } from '@/lib/scraper/adapters';
-import { mapLimit } from '@/lib/scraper/utils';
+import { jobKey, mapLimit } from '@/lib/scraper/utils';
+import { BOARD_PROVIDERS } from '@/types';
 import { ensureCompaniesSeeded } from '@/lib/scraper/seed';
 import { deleteJobVectors, upsertJobVectors } from '@/lib/ai/embeddings';
 
@@ -76,10 +77,40 @@ async function existingHashes(supabase: SupabaseClient, companyId: string): Prom
   return map;
 }
 
+/**
+ * Keys of the jobs open right now on companies' own ATS feeds. A job board listing the same employer + title is a
+ * copy: RADAR keeps the company's own posting and drops the board's (no second vector, no second card).
+ */
+async function atsJobKeys(supabase: SupabaseClient): Promise<Set<string>> {
+  const keys = new Set<string>();
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('title, companies!inner(name, ats_provider)')
+      .eq('is_active', true)
+      .is('employer', null)
+      .range(from, from + 999);
+    if (error) {
+      console.warn('[SCRAPE] dedupe keys skipped:', error.message);
+      return keys;
+    }
+    for (const row of (data || []) as unknown as {
+      title: string;
+      companies: { name: string } | { name: string }[];
+    }[]) {
+      const c = Array.isArray(row.companies) ? row.companies[0] : row.companies;
+      if (c) keys.add(jobKey(c.name, row.title));
+    }
+    if (!data || data.length < 1000) break;
+  }
+  return keys;
+}
+
 async function scrapeOne(
   supabase: SupabaseClient,
   company: CompanyRow,
   embedBudget: { left: number; until: number },
+  atsKeys: () => Promise<Set<string>>,
 ): Promise<CompanyScrapeResult> {
   const start = Date.now();
   const runStartedAt = new Date(start).toISOString();
@@ -87,7 +118,11 @@ async function scrapeOne(
 
   try {
     const scraped = await scrapeCompany(company.ats_provider, company.ats_identifier);
-    const unique = [...new Map(scraped.map((j) => [j.external_id, j])).values()];
+    let unique = [...new Map(scraped.map((j) => [j.external_id, j])).values()];
+    if ((BOARD_PROVIDERS as readonly string[]).includes(company.ats_provider)) {
+      const own = await atsKeys();
+      unique = unique.filter((j) => !own.has(jobKey(j.employer || '', j.title)));
+    }
 
     let embedded = 0;
     let deactivated = 0;
@@ -214,6 +249,7 @@ async function scrapeWithin(
   supabase: SupabaseClient,
   company: CompanyRow,
   embedBudget: { left: number; until: number },
+  atsKeys: () => Promise<Set<string>>,
 ): Promise<CompanyScrapeResult> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timedOut = new Promise<CompanyScrapeResult>((resolve) => {
@@ -241,7 +277,7 @@ async function scrapeWithin(
     }, COMPANY_TIMEOUT_MS);
   });
   try {
-    return await Promise.race([scrapeOne(supabase, company, embedBudget), timedOut]);
+    return await Promise.race([scrapeOne(supabase, company, embedBudget, atsKeys), timedOut]);
   } finally {
     clearTimeout(timer);
   }
@@ -267,6 +303,9 @@ export async function runScrape(
   if (error || !companies) throw new Error('Failed to load companies: ' + (error?.message || 'no data'));
 
   const embedBudget = { left: Number(process.env.RADAR_MAX_EMBEDS_PER_RUN || 2000), until: deadline - 25_000 };
+  // Read once per run, and only when a job board is scraped in it.
+  let keys: Promise<Set<string>> | null = null;
+  const atsKeys = () => (keys ??= atsJobKeys(supabase));
   const results = await mapLimit(companies as CompanyRow[], CONCURRENCY, async (company) => {
     // Leave ~25s for the in-flight companies to finish before the function limit.
     if (Date.now() > deadline - 25_000) {
@@ -280,7 +319,7 @@ export async function runScrape(
         status: 'skipped' as const,
       };
     }
-    return scrapeWithin(supabase, company, embedBudget);
+    return scrapeWithin(supabase, company, embedBudget, atsKeys);
   });
 
   return {

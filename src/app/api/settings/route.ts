@@ -5,7 +5,7 @@ import { resolveDreamCompanyIds } from '@/lib/dream-companies';
 import { normalizeSkill } from '@/lib/scraper/utils';
 import { loadSettingsProfile } from '@/lib/profile';
 import { isSchemaMissing } from '@/lib/supabase/errors';
-import { cleanPortfolio, MAX_DREAM_COMPANIES } from '@/lib/validate';
+import { cleanKit, cleanPortfolio, MAX_DREAM_COMPANIES } from '@/lib/validate';
 
 export const dynamic = 'force-dynamic';
 
@@ -42,6 +42,7 @@ interface SettingsPatch {
   overclock_daily_cap?: unknown;
   dream_companies?: unknown;
   portfolio?: unknown;
+  application_kit?: unknown;
 }
 
 const strings = (v: unknown) =>
@@ -81,6 +82,7 @@ export async function PATCH(req: Request) {
     if (typeof portfolio === 'string') return NextResponse.json({ error: portfolio }, { status: 400 });
     update.portfolio = portfolio;
   }
+  if (body.application_kit !== undefined) update.application_kit = cleanKit(body.application_kit);
   const dream = strings(body.dream_companies);
 
   if (!Object.keys(update).length && !dream) return NextResponse.json({ error: 'Nothing to update' }, { status: 400 });
@@ -97,9 +99,11 @@ export async function PATCH(req: Request) {
       if (isSchemaMissing(error))
         return NextResponse.json(
           {
-            error: update.portfolio
-              ? 'Portfolio needs migration 008. Run supabase/migrations/008_portfolio.sql.'
-              : 'This setting needs migration 007. Run supabase/migrations/007_discovery_verify_autopilot.sql.',
+            error: update.application_kit
+              ? 'The Application Kit needs migration 009. Run supabase/migrations/009_sources_apply_kit.sql.'
+              : update.portfolio
+                ? 'Portfolio needs migration 008. Run supabase/migrations/008_portfolio.sql.'
+                : 'This setting needs migration 007. Run supabase/migrations/007_discovery_verify_autopilot.sql.',
           },
           { status: 503 },
         );

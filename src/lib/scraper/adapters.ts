@@ -32,7 +32,6 @@ import {
   searchTerms,
   toIso,
   xmlTag,
-  decodeEntities,
   type ScrapedJob,
 } from './utils';
 import { scrapeBoard, BOARD_PROVIDERS } from './boards';

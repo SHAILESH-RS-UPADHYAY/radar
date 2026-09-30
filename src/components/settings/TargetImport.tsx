@@ -27,7 +27,7 @@ function Stat({ label, value, tone = 'text-phosphor' }: { label: string; value: 
   );
 }
 
-/** CONFIG://11 — startup discovery status, and importing companies RADAR should track. */
+/** CONFIG://12 — startup discovery status, and importing companies RADAR should track. */
 export function TargetImport({ onNotice }: { onNotice: (n: Notice) => void }) {
   const api = useApi();
   const [status, setStatus] = useState<DiscoveryStatus | null>(null);
@@ -86,7 +86,7 @@ export function TargetImport({ onNotice }: { onNotice: (n: Notice) => void }) {
   return (
     <HudPanel
       id="targets"
-      label="CONFIG://11 · TARGETS"
+      label="CONFIG://12 · TARGETS"
       status={!status ? 'CHECKING' : !status.ready ? 'NEEDS MIGRATION' : tracked + ' TRACKED'}
       tone={!status ? 'idle' : !status.ready ? 'warn' : 'ok'}
       className="scroll-mt-24"

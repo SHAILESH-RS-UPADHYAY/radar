@@ -5,6 +5,7 @@ import {
   inferExperience,
   inferWorkType,
   isRelevantTitle,
+  jobKey,
   normalizeSkill,
   parseSalaryRange,
   toIso,
@@ -144,5 +145,13 @@ describe('isRelevantTitle', () => {
     process.env.RADAR_TITLE_KEYWORDS = 'designer';
     expect(isRelevantTitle('Product Designer')).toBe(true);
     expect(isRelevantTitle('Software Engineer')).toBe(false);
+  });
+});
+
+describe('jobKey', () => {
+  it('matches one job across sources despite punctuation, case and company suffixes', () => {
+    expect(jobKey('Acme, Inc.', 'Senior Engineer (Remote)')).toBe(jobKey('ACME', 'Senior Engineer - Remote'));
+    expect(jobKey('Acme Pvt Ltd', 'Backend Engineer')).toBe('acme|backend engineer');
+    expect(jobKey('Acme', 'Backend Engineer')).not.toBe(jobKey('Acme', 'Frontend Engineer'));
   });
 });
