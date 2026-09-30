@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mockFetch } from '@/test/mock-fetch';
-import { parseHnPost, scrapeBoard } from './boards';
+import { parseHnPost, parseWwrItem, scrapeBoard } from './boards';
 
 describe('parseHnPost', () => {
   it('parses the standard "Company | Role | Location | Salary | url" header', () => {
@@ -114,5 +114,24 @@ describe('keyed job APIs', () => {
       work_type: 'remote',
       employer: 'Acme',
     });
+  });
+});
+
+describe('parseWwrItem', () => {
+  it('splits "Company: Role", keeps the region and turns the escaped HTML into text', () => {
+    const item = parseWwrItem(
+      '<item><title>Samsara: Staff Software Engineer: Platform</title><region>Anywhere in the World</region>' +
+        '<description>&lt;p&gt;Build &lt;strong&gt;fleet&lt;/strong&gt; APIs&lt;/p&gt;</description>' +
+        '<pubDate>Wed, 30 Sep 2026 10:00:00 +0000</pubDate><guid>https://weworkremotely.com/remote-jobs/samsara-1</guid>' +
+        '<link>https://weworkremotely.com/remote-jobs/samsara-1</link></item>',
+    );
+    expect(item).toMatchObject({
+      employer: 'Samsara',
+      title: 'Staff Software Engineer: Platform',
+      region: 'Anywhere in the World',
+      description: 'Build fleet APIs',
+      link: 'https://weworkremotely.com/remote-jobs/samsara-1',
+    });
+    expect(new Date(Date.parse(item.posted)).toISOString()).toBe('2026-09-30T10:00:00.000Z');
   });
 });

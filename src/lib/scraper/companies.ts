@@ -69,7 +69,14 @@ export const COMPANY_SEEDS: CompanySeed[] = [
   c('Microsoft', 'https://careers.microsoft.com/', 'custom', null, 'MNC', 'Hyderabad'),
   c('Meta', 'https://www.metacareers.com/', 'custom', null, 'MNC', 'Gurugram'),
   c('Apple', 'https://jobs.apple.com/', 'custom', null, 'MNC', 'Hyderabad'),
-  c('Netflix', 'https://jobs.netflix.com/', 'custom', null, 'MNC', 'Mumbai'),
+  c(
+    'Netflix',
+    'https://explore.jobs.netflix.net/careers',
+    'eightfold',
+    'explore.jobs.netflix.net|netflix.com',
+    'MNC',
+    'Mumbai',
+  ),
   c('Uber', 'https://www.uber.com/careers/', 'custom', null, 'MNC', 'Bangalore'),
   c('Oracle', 'https://www.oracle.com/careers/', 'custom', null, 'MNC', 'Bangalore'),
   c('Goldman Sachs', 'https://www.goldmansachs.com/careers/', 'custom', null, 'MNC', 'Bangalore'),
@@ -189,4 +196,6 @@ export const COMPANY_SEEDS: CompanySeed[] = [
   c('The Muse', 'https://www.themuse.com/', 'themuse', null, 'Board', null, 'Global'),
   c('Adzuna', 'https://www.adzuna.com/', 'adzuna', null, 'Board', null, 'Global'),
   c('Jooble', 'https://jooble.org/', 'jooble', null, 'Board', null, 'Global'),
+  c('We Work Remotely', 'https://weworkremotely.com/', 'weworkremotely', null, 'Board', 'Remote', 'Global'),
+  c('Working Nomads', 'https://www.workingnomads.com/', 'workingnomads', null, 'Board', 'Remote', 'Global'),
 ];
