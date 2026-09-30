@@ -12,6 +12,8 @@ export interface MatchResult {
   matchingSkills: string[];
   missingSkills: string[];
   section: 'dream' | 'recommended' | 'startup';
+  /** The role asks for clearly more experience than you have; never auto-vaulted. */
+  tooSenior: boolean;
 }
 
 // multilingual-e5-large cosine scores are compressed: unrelated text still lands around 0.7,
@@ -41,6 +43,9 @@ export interface MatchInput {
   /** Roles the user is aiming for, e.g. ["AI Engineer", "Software Engineer"]. */
   targetRoles?: string[];
   jobTitle?: string | null;
+  /** When the posting went up (ISO); unknown = no freshness adjustment. */
+  postedAt?: string | null;
+  now?: number;
 }
 
 const SENIORITY_WORDS = new Set(['senior', 'sr', 'junior', 'jr', 'lead', 'staff', 'principal', 'i', 'ii', 'iii', 'iv']);
@@ -77,6 +82,20 @@ function locationFit(input: MatchInput): { delta: number; note: string } {
   }
 }
 
+/**
+ * Early applicants get read: postings in their first 96 hours get a small lift, stale ones fade.
+ * (TalentWorks: applying within 96h made an interview up to 8x more likely.)
+ */
+export function freshness(postedAt: string | null | undefined, now = Date.now()): { delta: number; note: string } {
+  const posted = postedAt ? Date.parse(postedAt) : NaN;
+  if (Number.isNaN(posted)) return { delta: 0, note: '' };
+  const days = Math.max(0, Math.floor((now - posted) / 86_400_000));
+  if (days <= 4) return { delta: 5, note: days === 0 ? 'Posted today' : 'Posted ' + days + 'd ago' };
+  if (days > 90) return { delta: -10, note: 'Posted 90+ days ago' };
+  if (days > 45) return { delta: -5, note: 'Posted 45+ days ago' };
+  return { delta: 0, note: '' };
+}
+
 export function computeMatchScore(input: MatchInput): MatchResult {
   const userSkills = new Set(input.userSkills.map(normalizeSkill));
   const jobSkills = [...new Set(input.jobSkills.map(normalizeSkill))];
@@ -110,6 +129,9 @@ export function computeMatchScore(input: MatchInput): MatchResult {
   const loc = locationFit(input);
   score += loc.delta;
 
+  const fresh = freshness(input.postedAt, input.now);
+  score += fresh.delta;
+
   const finalScore = Math.round(Math.max(0, Math.min(100, score)));
 
   const section: MatchResult['section'] = input.isDreamCompany
@@ -127,6 +149,7 @@ export function computeMatchScore(input: MatchInput): MatchResult {
   else parts.push('Weak resume-JD alignment');
   if (seniorityNote) parts.push(seniorityNote);
   if (loc.note) parts.push(loc.note);
+  if (fresh.note) parts.push(fresh.note);
 
   return {
     score: finalScore,
@@ -134,5 +157,6 @@ export function computeMatchScore(input: MatchInput): MatchResult {
     matchingSkills,
     missingSkills,
     section,
+    tooSenior: seniorityNote === 'Senior role (5+ yrs)' || seniorityNote === 'Asks for 3-5 yrs',
   };
 }

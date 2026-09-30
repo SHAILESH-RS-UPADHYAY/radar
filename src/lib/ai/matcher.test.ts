@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { computeMatchScore, matchedRole, vectorToScore, type MatchInput } from './matcher';
+import { computeMatchScore, freshness, matchedRole, vectorToScore, type MatchInput } from './matcher';
 
 const base: MatchInput = {
   userSkills: ['React', 'TypeScript', 'node'],
@@ -90,5 +90,28 @@ describe('computeMatchScore', () => {
     expect(computeMatchScore({ ...base, isDreamCompany: true }).section).toBe('dream');
     expect(computeMatchScore({ ...base, companyCategory: 'Startup' }).section).toBe('startup');
     expect(computeMatchScore(base).section).toBe('recommended');
+  });
+
+  it('lifts fresh postings, fades stale ones, and ignores unknown dates', () => {
+    const now = Date.parse('2026-09-30T12:00:00Z');
+    const at = (days: number) => new Date(now - days * 86_400_000).toISOString();
+    const open = computeMatchScore(base).score;
+    expect(computeMatchScore({ ...base, postedAt: at(2), now }).score).toBe(open + 5);
+    expect(computeMatchScore({ ...base, postedAt: at(20), now }).score).toBe(open);
+    expect(computeMatchScore({ ...base, postedAt: at(60), now }).score).toBe(open - 5);
+    expect(computeMatchScore({ ...base, postedAt: at(120), now }).score).toBe(open - 10);
+    expect(computeMatchScore({ ...base, postedAt: 'not a date', now }).score).toBe(open);
+    expect(freshness(at(0), now).note).toBe('Posted today');
+    expect(computeMatchScore({ ...base, postedAt: at(3), now }).reasoning).toContain('Posted 3d ago');
+  });
+
+  it('flags roles that ask for clearly more experience, so they are never auto-vaulted', () => {
+    expect(
+      computeMatchScore({ ...base, jobExperience: '5+', userIsFresher: false, userExperienceYears: 3 }).tooSenior,
+    ).toBe(true);
+    expect(
+      computeMatchScore({ ...base, jobExperience: '3-5', userIsFresher: false, userExperienceYears: 3 }).tooSenior,
+    ).toBe(false);
+    expect(computeMatchScore({ ...base, jobExperience: '1-3' }).tooSenior).toBe(false);
   });
 });

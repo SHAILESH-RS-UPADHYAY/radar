@@ -44,6 +44,14 @@ export const COMPANY_SEEDS: CompanySeed[] = [
   ),
   c('Adobe', 'https://www.adobe.com/careers.html', 'workday', 'adobe/wd5/external_experienced', 'MNC', 'Noida'),
   c(
+    'Cadence',
+    'https://www.cadence.com/en_US/home/company/careers.html',
+    'workday',
+    'cadence/wd1/External_Careers',
+    'MNC',
+    'Bangalore',
+  ),
+  c(
     'NVIDIA',
     'https://www.nvidia.com/en-us/about-nvidia/careers/',
     'workday',
@@ -83,7 +91,8 @@ export const COMPANY_SEEDS: CompanySeed[] = [
   c('Zerodha', 'https://zerodha.com/careers', 'custom', null, 'Growth', 'Bangalore'),
   c('Swiggy', 'https://careers.swiggy.com/', 'smartrecruiters', 'swiggy', 'Growth', 'Bangalore'),
   c('Zomato', 'https://www.zomato.com/careers', 'custom', null, 'Growth', 'Gurugram'),
-  c('PhonePe', 'https://www.phonepe.com/careers/', 'custom', null, 'Growth', 'Bangalore'),
+  c('PhonePe', 'https://www.phonepe.com/careers/', 'smartrecruiters', 'PhonePeLimited', 'Growth', 'Bangalore'),
+  c('InMobi', 'https://www.inmobi.com/company/careers', 'greenhouse', 'inmobi', 'Growth', 'Bangalore'),
   c('Lenskart', 'https://lenskart.com/careers', 'custom', null, 'Growth', 'Delhi'),
   c('Urban Company', 'https://www.urbancompany.com/careers', 'custom', null, 'Growth', 'Gurugram'),
   c('Dream11', 'https://www.dreamsports.group/careers', 'custom', null, 'Growth', 'Mumbai'),
@@ -106,7 +115,8 @@ export const COMPANY_SEEDS: CompanySeed[] = [
   c('Chargebee', 'https://www.chargebee.com/company/careers/', 'custom', null, 'Startup', 'Chennai'),
   c('CleverTap', 'https://clevertap.com/careers/', 'custom', null, 'Startup', 'Mumbai'),
   c('Krutrim', 'https://olakrutrim.com/careers', 'custom', null, 'Startup', 'Bangalore'),
-  c('Polygon', 'https://polygon.technology/careers', 'custom', null, 'Startup', 'Bangalore'),
+  c('Polygon', 'https://polygon.technology/careers', 'ashby', 'polygon-labs', 'Startup', 'Bangalore'),
+  c('Fi Money', 'https://fi.money/careers', 'lever', 'epifi', 'Startup', 'Bangalore'),
   c('Navi', 'https://navi.com/careers', 'custom', null, 'Startup', 'Bangalore'),
 
   // ---------- Europe & global: companies hiring through Welcome to the Jungle, read at their own ATS ----------

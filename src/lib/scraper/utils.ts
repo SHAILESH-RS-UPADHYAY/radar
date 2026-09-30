@@ -261,7 +261,10 @@ const SKILL_PATTERNS = Object.entries(SKILL_ALIASES).map(
     // "-to-" / " to market" keep "Go-to-market" (sales JDs) from reading as the Go language.
     [
       canonical,
-      new RegExp('(^|[^a-z0-9+#.])(' + aliases.map(escapeRe).join('|') + ')(?![a-z0-9+#]|-to-| to market)', 'i'),
+      canonical === 'go'
+        ? // The language is written "Go" or "golang"; lowercase "go" is the English verb ("needs to go next").
+          /(^|[^A-Za-z0-9+#.])([Gg]olang|GoLang|GOLANG|Go)(?![A-Za-z0-9+#]|-to-| to market| (?:to|beyond|live|further|ahead|back|out|get)\b)/
+        : new RegExp('(^|[^a-z0-9+#.])(' + aliases.map(escapeRe).join('|') + ')(?![a-z0-9+#]|-to-| to market)', 'i'),
     ] as const,
 );
 
@@ -384,10 +387,39 @@ function titleKeywords(): string[] {
   return DEFAULT_TITLE_KEYWORDS;
 }
 
+// A tech keyword alone lets in "Account Executive, AI" or "Senior Manager, Data Science". Checked on the live
+// data (2026-09-30): these words drop 209 of 1,462 open jobs and none of the jobs applied to.
+const DEFAULT_TITLE_EXCLUDE = [
+  'manager',
+  'account executive',
+  'sales',
+  'marketing',
+  'recruiter',
+  'recruiting',
+  'talent',
+  'counsel',
+  'legal',
+  'business development',
+  'customer success',
+  'director',
+  'vice president',
+  'vp',
+  'head of',
+  'chief',
+  'executive assistant',
+  'partnerships',
+];
+
+const hasWord = (lower: string, words: string[]) =>
+  words.some((k) => new RegExp('[^a-z]' + escapeRe(k) + '[^a-z]').test(lower));
+
 export function isRelevantTitle(title: string): boolean {
   if (process.env.RADAR_TITLE_FILTER === 'off') return true;
   const lower = ' ' + title.toLowerCase() + ' ';
-  return titleKeywords().some((k) => new RegExp('[^a-z]' + escapeRe(k) + '[^a-z]').test(lower));
+  const exclude = process.env.RADAR_TITLE_EXCLUDE?.trim()
+    ? splitEnvList(process.env.RADAR_TITLE_EXCLUDE.toLowerCase())
+    : DEFAULT_TITLE_EXCLUDE;
+  return hasWord(lower, titleKeywords()) && !hasWord(lower, exclude);
 }
 
 /** Fill the derived fields every adapter would otherwise compute by hand. */

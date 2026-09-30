@@ -43,19 +43,27 @@ export function parseEmbedding(value: unknown): number[] | null {
   return null;
 }
 
+/**
+ * e5-large passage embeddings. Many new jobs at once can hit Pinecone's tokens-per-minute limit, which the SDK
+ * reports as an unexpected error: wait and try again (8s, then 16s) before giving up. A rejected key fails at once.
+ */
+async function embedPassages(inputs: string[]) {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      return await getPinecone().inference.embed({
+        model: 'multilingual-e5-large',
+        inputs,
+        parameters: { inputType: 'passage', truncate: 'END' },
+      });
+    } catch (err) {
+      if (attempt >= 2 || explainVectorError(err)) throw err;
+      await new Promise((resolve) => setTimeout(resolve, 8_000 * 2 ** attempt));
+    }
+  }
+}
+
 export async function embedText(text: string): Promise<number[]> {
-  const pc = getPinecone();
-  const cleanText = text.replace(/\s+/g, ' ').trim().substring(0, 8000);
-
-  const response = await pc.inference.embed({
-    model: 'multilingual-e5-large',
-    inputs: [cleanText],
-    parameters: {
-      inputType: 'passage',
-      truncate: 'END',
-    },
-  });
-
+  const response = await embedPassages([text.replace(/\s+/g, ' ').trim().substring(0, 8000)]);
   const values = (response.data[0] as { values: number[] }).values;
   if (!values?.length) throw new Error('Pinecone returned an empty embedding');
   return Array.from(values);
@@ -98,14 +106,7 @@ export async function upsertJobVectors(
       return parts.join(' | ');
     });
 
-    const embeddings = await pc.inference.embed({
-      model: 'multilingual-e5-large',
-      inputs: texts,
-      parameters: {
-        inputType: 'passage',
-        truncate: 'END',
-      },
-    });
+    const embeddings = await embedPassages(texts);
 
     const vectors = batch.map((j, idx) => ({
       id: j.id,

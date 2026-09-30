@@ -39,6 +39,7 @@ export interface ScoringJob {
   experience_required: string | null;
   location: string | null;
   work_type: string | null;
+  posted_at?: string | null;
 }
 
 /** Skills the user confirmed win; until they add some, fall back to what the resume mentions. */
@@ -69,6 +70,7 @@ export function matchInput(
     jobWorkType: job.work_type,
     targetRoles: splitList(profile.current_role),
     jobTitle: job.title,
+    postedAt: job.posted_at,
   };
 }
 
@@ -130,6 +132,7 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
     experience_required: string | null;
     location: string | null;
     work_type: string | null;
+    posted_at: string | null;
     company_id: string;
     companies: { category: string } | { category: string }[];
   };
@@ -138,7 +141,9 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
   for (let i = 0; i < allIds.length; i += 100) {
     const { data, error } = await supabase
       .from('jobs')
-      .select('id, title, skills, experience_required, location, work_type, company_id, companies!inner(category)')
+      .select(
+        'id, title, skills, experience_required, location, work_type, posted_at, company_id, companies!inner(category)',
+      )
       .in('id', allIds.slice(i, i + 100))
       .eq('is_active', true);
     if (error) throw new MatchError('Loading jobs failed: ' + error.message, 500);
@@ -150,6 +155,7 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
   const floorSim = Math.min(...vectorMatches.map((m) => m.score || 0));
   const userSkills = profileSkills(profile);
   const now = new Date().toISOString();
+  const tooSenior = new Set<string>();
   const rows = jobs.map((job) => {
     const company = Array.isArray(job.companies) ? job.companies[0] : job.companies;
     const result = computeMatchScore(
@@ -159,6 +165,7 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
         userSkills,
       }),
     );
+    if (result.tooSenior) tooSenior.add(job.id);
     return {
       user_id: userId,
       job_id: job.id,
@@ -182,7 +189,8 @@ export async function matchUser(supabase: SupabaseClient, userId: string): Promi
   let vaulted = 0;
   if (profile.auto_vault !== false) {
     const minScore = profile.vault_min_score ?? 80;
-    const strong = rows.filter((r) => r.score >= minScore).map((r) => r.job_id);
+    // A role that asks for clearly more years than you have stays in Discovery, however well it reads.
+    const strong = rows.filter((r) => r.score >= minScore && !tooSenior.has(r.job_id)).map((r) => r.job_id);
     // Only jobs still waiting in Discovery, and only postings that are not known to be closed:
     // board jobs have their apply link opened first, and a closed one never reaches the Vault.
     const waiting: string[] = [];

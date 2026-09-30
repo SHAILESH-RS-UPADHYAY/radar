@@ -67,6 +67,8 @@ export interface DiscoverySummary {
   /** False until migration 007 has been run. */
   ready: boolean;
   startupmap: { synced: boolean; pagesRead: number; pausedUntil?: string; error?: string };
+  /** YC companies hiring now, queued this run (0 between 48h syncs). */
+  yc: { queued: number; error?: string };
   processed: number;
   linked: number;
   noFeed: number;
@@ -84,6 +86,7 @@ export async function runDiscovery(supabase: SupabaseClient, deadline: number): 
   const summary: DiscoverySummary = {
     ready: true,
     startupmap: { synced: false, pagesRead: 0 },
+    yc: { queued: 0 },
     processed: 0,
     linked: 0,
     noFeed: 0,
@@ -126,6 +129,12 @@ export async function runDiscovery(supabase: SupabaseClient, deadline: number): 
     await supabase
       .from('source_state')
       .upsert({ source: 'startupmap', notes, ...(syncedAt ? { synced_at: syncedAt } : {}) });
+  }
+
+  try {
+    summary.yc.queued = await syncYc(supabase);
+  } catch (err) {
+    summary.yc.error = (err as Error).message.slice(0, 300);
   }
 
   if (await workQueue(supabase, http, deadline, summary, startupMapOpen)) {
@@ -196,6 +205,56 @@ async function markHiring(supabase: SupabaseClient, slugs: string[], priority: n
     .in('source_ref', slugs)
     .eq('status', 'no_feed')
     .lt('checked_at', new Date(Date.now() - REOPEN_HIRING_MS).toISOString());
+}
+
+// ---- 1b. YC companies hiring now ----
+
+// The open yc-oss dataset: one static JSON file rebuilt from YC's public directory. No robots.txt, no API key.
+const YC_HIRING = 'https://yc-oss.github.io/api/companies/hiring.json';
+
+export interface YcCompany {
+  slug: string;
+  name: string;
+  website: string | null;
+  all_locations: string | null;
+  status: string | null;
+}
+
+/** Active YC companies with a website → queue rows (checked like imports: website → careers page → ATS). */
+export function ycRows(list: YcCompany[], cities: string[]) {
+  const mine = cities.map((c) => c.toLowerCase()).filter(Boolean);
+  return list
+    .filter((c) => c.slug && c.website && (c.status ?? 'Active') === 'Active')
+    .map((c) => {
+      const where = (c.all_locations || '').toLowerCase();
+      return {
+        source: 'yc',
+        source_ref: c.slug,
+        name: c.name,
+        website: c.website,
+        // Your cities (or "remote" when you asked for it) first, then India, then everyone else.
+        priority: mine.some((m) => where.includes(m)) ? 2 : where.includes('india') ? 1 : 0,
+      };
+    });
+}
+
+/** Every 48h: queue YC companies that are hiring. Returns how many were queued (existing ones are kept). */
+async function syncYc(supabase: SupabaseClient): Promise<number> {
+  const { data: state } = await supabase.from('source_state').select('synced_at').eq('source', 'yc').maybeSingle();
+  if (state?.synced_at && Date.now() - Date.parse(state.synced_at) < CYCLE_MS) return 0;
+  const { data: profiles } = await supabase.from('user_profiles').select('location').not('location', 'is', null);
+  const rows = ycRows(
+    await fetchJson<YcCompany[]>(YC_HIRING, { timeoutMs: 20_000 }),
+    (profiles || []).flatMap((p) => splitList(p.location)),
+  );
+  for (let i = 0; i < rows.length; i += 500) {
+    const { error } = await supabase
+      .from('discovered_companies')
+      .upsert(rows.slice(i, i + 500), { onConflict: 'source,source_ref', ignoreDuplicates: true });
+    if (error) throw new Error('Queueing YC companies failed: ' + error.message);
+  }
+  await supabase.from('source_state').upsert({ source: 'yc', synced_at: now() });
+  return rows.length;
 }
 
 // ---- 2. Queue ----
@@ -369,7 +428,7 @@ async function linkCompany(
     .limit(1);
   if (same?.[0]) return same[0].id;
 
-  const name = (info.name || ref.identifier).slice(0, 120);
+  const name = (info.name || row.name || ref.identifier).slice(0, 120);
   const found = {
     careers_url: boardUrl(ref),
     ats_provider: ref.provider,

@@ -44,6 +44,16 @@ describe('extractSkills', () => {
     expect(extractSkills('Own the Go-to-market plan and go to market fast')).not.toContain('go');
     expect(extractSkills('Services in Go and Python')).toEqual(expect.arrayContaining(['go', 'python']));
   });
+  it('does not read the English verb "go" as the Go language', () => {
+    for (const text of [
+      'where our AI roadmap needs to go next',
+      "You're happy to actually go use v0 to build things",
+      'Go beyond the obvious. Ready to go live?',
+    ])
+      expect(extractSkills(text)).not.toContain('go');
+    for (const text of ['Golang microservices', 'exceptional coding skills in Java or Go.', 'Go, Rust or C++'])
+      expect(extractSkills(text)).toContain('go');
+  });
   it('recognises AI engineering skills', () => {
     expect(extractSkills('Built RAG agents with LangChain, OpenAI and Pinecone; fine-tuning via LoRA')).toEqual(
       expect.arrayContaining(['rag', 'langchain', 'openai', 'vector database', 'fine-tuning']),
@@ -102,6 +112,7 @@ describe('isRelevantTitle', () => {
   afterEach(() => {
     delete process.env.RADAR_TITLE_FILTER;
     delete process.env.RADAR_TITLE_KEYWORDS;
+    delete process.env.RADAR_TITLE_EXCLUDE;
   });
   it('keeps tech roles and drops non-tech ones', () => {
     expect(isRelevantTitle('Senior Software Engineer')).toBe(true);
@@ -109,6 +120,22 @@ describe('isRelevantTitle', () => {
     expect(isRelevantTitle('Copywriting Intern')).toBe(false);
     expect(isRelevantTitle('Video Editor Intern')).toBe(false);
     expect(isRelevantTitle('Account Executive')).toBe(false);
+  });
+  it('drops sales, management and leadership titles that only mention a tech word', () => {
+    for (const title of [
+      'Account Executive, AI Sales',
+      'Senior Manager - Data Science',
+      'Product Manager - Data Platform',
+      'Customer Success Engineer',
+      'Director, Engineering - AI Studio',
+    ])
+      expect(isRelevantTitle(title)).toBe(false);
+    for (const title of ['Forward-Deployed AI Engineer', 'Payments Analyst', 'Staff Software Engineer'])
+      expect(isRelevantTitle(title)).toBe(true);
+    process.env.RADAR_TITLE_EXCLUDE = 'intern';
+    expect(isRelevantTitle('Product Manager - Data Platform')).toBe(true);
+    expect(isRelevantTitle('Data Intern')).toBe(false);
+    delete process.env.RADAR_TITLE_EXCLUDE;
   });
   it('can be turned off or customised by env', () => {
     process.env.RADAR_TITLE_FILTER = 'off';

@@ -9,16 +9,17 @@ import { politeFetcher } from '@/lib/discovery/polite';
 import { checkPosting, needsLinkCheck, recordChecks, type PostingState } from '@/lib/pipeline/verify';
 import { sourceName } from '@/lib/scraper/catalog';
 import { formatDescription } from '@/lib/jd';
+import { greenhousePay } from '@/lib/scraper/adapters';
 
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
 
 const BASE =
-  'id, title, description, location, work_type, department, apply_url, is_active, posted_at, scraped_at, salary_min, salary_max, salary_currency, experience_required, employer,';
+  'id, external_id, title, description, location, work_type, department, apply_url, is_active, posted_at, scraped_at, salary_min, salary_max, salary_currency, experience_required, employer,';
 // Newest schema first (migration 007 adds verified_at and company provenance), then the one before it.
 const TIERS = [
-  BASE + ' verified_at, companies!inner(name, category, ats_provider, funding_stage, source)',
-  BASE + ' companies!inner(name, category, ats_provider)',
+  BASE + ' verified_at, companies!inner(name, category, ats_provider, ats_identifier, funding_stage, source)',
+  BASE + ' companies!inner(name, category, ats_provider, ats_identifier)',
 ];
 const RECHECK_MS = 6 * 3600_000;
 
@@ -82,6 +83,12 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     };
   } else posting = { state: 'unknown', checkedAt: job.verified_at ?? null, via: 'link' };
 
+  const salary = { min: job.salary_min, max: job.salary_max, currency: job.salary_currency };
+  if (company.ats_provider === 'greenhouse' && company.ats_identifier && salary.min == null && salary.max == null) {
+    const pay = await greenhousePay(company.ats_identifier, job.external_id);
+    if (pay) Object.assign(salary, pay);
+  }
+
   return NextResponse.json({
     job: {
       id: job.id,
@@ -97,7 +104,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       workType: job.work_type,
       department: job.department,
       experience: job.experience_required,
-      salary: { min: job.salary_min, max: job.salary_max, currency: job.salary_currency },
+      salary,
       postedAt: job.posted_at,
       applyUrl: job.apply_url,
       // Older scrapes stored escaped HTML or one flattened line; this restores paragraphs and sections.

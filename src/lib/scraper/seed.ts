@@ -37,23 +37,25 @@ export async function ensureCompaniesSeeded(supabase: SupabaseClient) {
   for (const row of existing) if (!byName.has(row.name.toLowerCase())) byName.set(row.name.toLowerCase(), row);
   const toInsert = COMPANY_SEEDS.filter((s) => !byName.has(s.name.toLowerCase()));
 
-  if (toInsert.length) {
-    const { error: insertErr } = await supabase.from('companies').insert(
-      toInsert.map((s) => ({
-        name: s.name,
-        logo_url: s.logo_url,
-        careers_url: s.careers_url,
-        ats_provider: s.ats_provider,
-        ats_identifier: s.ats_identifier,
-        category: s.category,
-        country: s.country,
-        city: s.city,
-        is_active: true,
-      })),
-    );
-    if (insertErr) console.error('[SEED] Insert failed:', insertErr.message);
-    else console.log('[SEED] Inserted', toInsert.length, 'companies');
+  // One row at a time: a seed whose provider needs a newer migration is rejected alone instead of
+  // taking every other new seed down with it (a batch insert is all-or-nothing).
+  let inserted = 0;
+  for (const s of toInsert) {
+    const { error: insertErr } = await supabase.from('companies').insert({
+      name: s.name,
+      logo_url: s.logo_url,
+      careers_url: s.careers_url,
+      ats_provider: s.ats_provider,
+      ats_identifier: s.ats_identifier,
+      category: s.category,
+      country: s.country,
+      city: s.city,
+      is_active: true,
+    });
+    if (insertErr) console.error('[SEED] Insert failed for', s.name + ':', insertErr.message);
+    else inserted++;
   }
+  if (inserted) console.log('[SEED] Inserted', inserted, 'companies');
 
   for (const s of COMPANY_SEEDS) {
     const row = byName.get(s.name.toLowerCase());

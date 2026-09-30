@@ -5,7 +5,7 @@
 Paste the company's website (or a CSV with a `Website` column) into **Preferences → CONFIG://10 · TARGETS**.
 The next discovery run (`/api/cron/discover`) reads its homepage and careers page, finds the ATS board from the
 job links (verifying guessed Greenhouse tokens and Teamtailor feeds), and adds the company. Startups listed on
-StartupMap are found the same way automatically, every 48h.
+StartupMap and YC companies that are hiring are found the same way automatically, every 48h.
 
 ## A company on a supported ATS, by hand
 

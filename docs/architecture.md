@@ -18,7 +18,8 @@ Three routes, each time-boxed and resumable, all behind `Bearer CRON_SECRET`. Ve
 /api/cron/discover                  src/lib/discovery/run.ts
 │  StartupMap every 48h: robots.txt → sitemap → /jobs/<city>/engineering (your cities first, cursor)
 │  queue (discovered_companies): startup page → job links → ATS board (gh_jid / Teamtailor verified)
-│  your imports (Preferences → TARGETS): homepage → careers page → ATS board
+│  YC every 48h: yc-oss hiring.json (one static file) → queue, your cities / remote first, then India
+│  your imports and YC companies: homepage → careers page → ATS board
 └─ new companies → companies table   (then scraped like any other)
 ```
 
@@ -74,6 +75,9 @@ new ──save/auto-vault──▶ saved ──apply──▶ applied
   appears in the job title, ignoring seniority words
 - **seniority**: −30 for 5+ yr roles below 4 yrs of experience, −15 for 3–5 yr roles below 2, +5 for entry-level roles
 - **location**: +5 in one of your cities, +3 remote when you asked for remote, −10 remote otherwise, −25 elsewhere
+- **freshness**: +5 for postings from the last 4 days, −5 after 45 days, −10 after 90; no date, no change
+- **auto-vault gate**: a role the seniority rule marks down (5+ yrs below 4, 3–5 yrs below 2) never enters the Vault
+  by itself, however high it scores
 
 ## Resilience
 

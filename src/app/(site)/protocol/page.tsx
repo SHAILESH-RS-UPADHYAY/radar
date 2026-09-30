@@ -29,6 +29,7 @@ score -= 15   role asks 3-5 years and you have fewer than 2
 score +=  5   entry-level role and you have 2 years or less
 score +=  5   in one of your cities   |  +3 remote, and you want remote
 score -= 10   remote you did not ask for   |  -25 anywhere else
+score +=  5   posted in the last 4 days   |  -5 after 45 days  |  -10 after 90
 score  = round(clamp(score, 0, 100))`;
 
 const LIFECYCLE = `  NEW ──save / auto-vault──▶ SAVED ──apply──▶ APPLIED
@@ -82,6 +83,7 @@ export default function ProtocolPage() {
               ['target role', 'Preferences → Target roles', '+10'],
               ['seniority', 'Job title first, then "N+ years" in the description', '-30 to +5'],
               ['location', 'Your cities vs the job location, with aliases (Bengaluru = Bangalore)', '-25 to +5'],
+              ['freshness', 'When the posting went up: early applicants get read', '-10 to +5'],
             ]}
           />
           <p>

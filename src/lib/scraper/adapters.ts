@@ -46,7 +46,6 @@ export async function scrapeGreenhouse(token: string): Promise<ScrapedJob[]> {
   const data = await fetchJson<any>('https://boards-api.greenhouse.io/v1/boards/' + token + '/jobs?content=true');
   return (data.jobs || []).map((job: any) => {
     const description = htmlToText(job.content);
-    const pay = job.pay_input_ranges?.[0];
     return finalizeJob({
       external_id: String(job.id),
       title: job.title || '',
@@ -54,13 +53,33 @@ export async function scrapeGreenhouse(token: string): Promise<ScrapedJob[]> {
       location: job.location?.name || '',
       apply_url: job.absolute_url || '',
       department: job.departments?.[0]?.name || null,
-      salary_min: pay ? Math.round(pay.min_cents / 100) : null,
-      salary_max: pay ? Math.round(pay.max_cents / 100) : null,
-      salary_currency: pay?.currency_type || null,
+      // The list feed never carries pay; greenhousePay() reads it per job when the JD is opened.
+      salary_min: null,
+      salary_max: null,
+      salary_currency: null,
       posted_at: toIso(job.first_published || job.updated_at),
       employer: null,
     });
   });
+}
+
+/** One posting's pay range from Greenhouse's per-job API (`pay_transparency`), or null. */
+export async function greenhousePay(
+  token: string,
+  jobId: string,
+): Promise<{ min: number; max: number; currency: string | null } | null> {
+  const job = await fetchJson<any>(
+    `https://boards-api.greenhouse.io/v1/boards/${encodeURIComponent(token)}/jobs/${encodeURIComponent(jobId)}?pay_transparency=true`,
+    { retries: 0, timeoutMs: 5_000 },
+  ).catch(() => null);
+  const pay = job?.pay_input_ranges?.[0];
+  return pay
+    ? {
+        min: Math.round(pay.min_cents / 100),
+        max: Math.round(pay.max_cents / 100),
+        currency: pay.currency_type || null,
+      }
+    : null;
 }
 
 // ---------- Lever ----------

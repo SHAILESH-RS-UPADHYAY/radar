@@ -98,7 +98,9 @@ score -= 15   the role asks 3–5 years and you have fewer than 2
 score +=  5   entry-level role and you have 2 years or less
 score +=  5   in one of your cities   |   +3 remote, and you want remote
 score -= 10   remote you did not ask for   |   −25 anywhere else
+score +=  5   posted in the last 4 days   |   −5 after 45 days   |   −10 after 90
 score  = round(clamp(score, 0, 100))              # ≥ 80 → Vault · 50–79 → OVERCLOCK
+                                                  # a role that asks clearly more years never auto-vaults
 ```
 
 ---
@@ -160,6 +162,7 @@ through **C2 · OPS**. Only the verdict is stored, and the token is sealed with 
 flowchart LR
   subgraph D["/api/cron/discover · 01:30"]
     SM["StartupMap"] --> Q[("discovery queue")]
+    YC["YC hiring list"] --> Q
     IM["your imports"] --> Q
     Q --> FB{"ATS board<br/>verified?"}
   end
