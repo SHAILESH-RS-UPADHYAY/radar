@@ -7,7 +7,7 @@
 // Only cities in this file get a KNOWN list; any other city still works through LIVE evidence.
 
 /** Spellings that refer to the same city, used to match free-text job locations. */
-export const CITY_ALIASES: Record<string, string[]> = {
+const CITY_ALIASES: Record<string, string[]> = {
   Bangalore: ['bangalore', 'bengaluru'],
   Mumbai: ['mumbai', 'bombay', 'navi mumbai', 'thane'],
   Delhi: ['delhi', 'new delhi', 'ncr'],

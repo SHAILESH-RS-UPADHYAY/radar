@@ -1,0 +1,18 @@
+{
+  "manifest_version": 3,
+  "name": "RADAR · Auto-Fill",
+  "short_name": "RADAR",
+  "version": "1.1.0",
+  "description": "One click in RADAR opens a job's application form already filled: your answers, links and tailored resume. You review and press Submit; RADAR logs it.",
+  "icons": { "16": "icons/16.png", "32": "icons/32.png", "48": "icons/48.png", "128": "icons/128.png" },
+  "background": { "service_worker": "background.js" },
+  "permissions": ["storage", "scripting", "webNavigation"],
+  "host_permissions": ["<all_urls>"],
+  "content_scripts": [
+    {
+      "matches": ["http://localhost:3000/*", "http://localhost:3100/*", "https://radar-neon-theta.vercel.app/*"],
+      "js": ["radar-bridge.js"],
+      "run_at": "document_start"
+    }
+  ]
+}

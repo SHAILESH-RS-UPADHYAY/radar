@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { parseGreenhouseForm, parseLeverForm } from './form';
+import { applicationFormUrl, parseGreenhouseForm, parseLeverForm } from './form';
 import { fillFromProfile, YOUR_CALL, type Candidate } from './answers';
 
 // Shapes copied from live postings (Greenhouse ?questions=true, a Lever apply page), cut down.
@@ -161,5 +161,31 @@ describe('fillFromProfile', () => {
     expect(YOUR_CALL.test('Please double-check the information above and confirm it is accurate')).toBe(true);
     expect(fillFromProfile(field('location', 'Current location'), me, '')?.value).toBe('Bengaluru');
     expect(fillFromProfile(field('q', 'What is your preferred work location?'), me, '')).toBeNull();
+  });
+});
+
+describe('applicationFormUrl', () => {
+  const job = (provider: string, applyUrl: string, identifier = 'acme') => ({
+    provider,
+    identifier,
+    externalId: '123',
+    applyUrl,
+  });
+  it('opens the form itself on each ATS', () => {
+    expect(applicationFormUrl(job('greenhouse', 'https://stripe.com/jobs/search?gh_jid=123', 'stripe'))).toBe(
+      'https://job-boards.greenhouse.io/embed/job_app?for=stripe&token=123',
+    );
+    expect(applicationFormUrl(job('greenhouse', 'https://job-boards.eu.greenhouse.io/groww/jobs/123', 'groww'))).toBe(
+      'https://job-boards.eu.greenhouse.io/embed/job_app?for=groww&token=123',
+    );
+    expect(applicationFormUrl(job('lever', 'https://jobs.lever.co/acme/186b763a-2a61-4563-8813-ff6b40c9c8a7'))).toBe(
+      'https://jobs.lever.co/acme/186b763a-2a61-4563-8813-ff6b40c9c8a7/apply',
+    );
+    expect(applicationFormUrl(job('ashby', 'https://jobs.ashbyhq.com/acme/13cdde35-6d8c-49a0-9f22-b9771c95f715'))).toBe(
+      'https://jobs.ashbyhq.com/acme/13cdde35-6d8c-49a0-9f22-b9771c95f715/application',
+    );
+    expect(applicationFormUrl(job('workday', 'https://x.wd5.myworkdayjobs.com/a/job/1'))).toBe(
+      'https://x.wd5.myworkdayjobs.com/a/job/1',
+    );
   });
 });

@@ -11,7 +11,8 @@ import type { FilledField } from './answers';
 export interface FillPacket {
   radar: 1;
   job: string;
-  fields: { name: string; value: string | string[]; submit?: string }[];
+  /** label and type let the extension find a field by its label when the name is unknown, and pick from comboboxes. */
+  fields: { name: string; label: string; type: string; value: string | string[]; submit?: string }[];
   resume?: { name: string; data: string };
 }
 
@@ -24,7 +25,13 @@ export function fillPacket(job: string, fields: FilledField[], resume?: FillPack
       .filter((f) => f.type !== 'file' && (Array.isArray(f.value) ? f.value.length : f.value))
       .map((f) => {
         const i = f.type === 'select' && typeof f.value === 'string' ? (f.options || []).indexOf(f.value) : -1;
-        return { name: f.name, value: f.value, ...(i >= 0 && f.values?.[i] ? { submit: f.values[i] } : {}) };
+        return {
+          name: f.name,
+          label: f.label,
+          type: f.type,
+          value: f.value,
+          ...(i >= 0 && f.values?.[i] ? { submit: f.values[i] } : {}),
+        };
       }),
     ...(resume ? { resume } : {}),
   };
@@ -52,5 +59,3 @@ say('RADAR FILL: '+n+' fields filled for '+p.job+'. Check them, then press Submi
 
 /** The bookmark to drag to the bookmarks bar. */
 export const BRIDGE_HREF = 'javascript:' + encodeURIComponent(SOURCE.replace(/\n/g, ''));
-/** The same code, for tests and for running it on a page. */
-export const BRIDGE_SOURCE = SOURCE;

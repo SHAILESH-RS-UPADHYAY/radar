@@ -4,16 +4,8 @@ import { useState } from 'react';
 import { useApi } from '@/lib/use-api';
 import { CopyButton } from '@/components/hud/CopyButton';
 import type { FilledField } from '@/lib/apply/answers';
-import { fillPacket } from '@/lib/apply/bridge';
-
-interface Prepared {
-  source: 'greenhouse' | 'lever' | 'standard';
-  fields: FilledField[];
-  model: string | null;
-  aiError: string | null;
-  tailoredId: string | null;
-  kitReady: boolean;
-}
+import type { FillPacket } from '@/lib/apply/bridge';
+import { packForm, prepareForm, type Prepared } from '@/lib/apply/client';
 
 const BY = {
   profile: { tag: 'PROFILE', tone: 'border-phosphor/50 text-phosphor' },
@@ -23,18 +15,12 @@ const BY = {
 const SOURCE = { greenhouse: 'GREENHOUSE FORM', lever: 'LEVER FORM', standard: 'STANDARD FIELDS' } as const;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-const toBase64 = (buf: ArrayBuffer) => {
-  const bytes = new Uint8Array(buf);
-  let bin = '';
-  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-  return btoa(bin);
-};
-
 /**
- * FORM://INTERCEPT inside HACK: read this posting's real application form, fill it from your profile and Application
- * Kit, draft the rest with the AI, let you edit, then copy a fill packet for the RADAR FILL bookmark.
+ * FORM://INTERCEPT state for one job: read the posting's real application form, fill it from your profile and
+ * Application Kit, draft the rest with the AI, keep your edits, and build the fill packet (answers + tailored PDF)
+ * for the RADAR extension or the RADAR FILL bookmark. HACK's steps 02 and 03 share it.
  */
-export function FormIntercept({ matchId, company, fileName }: { matchId: string; company: string; fileName: string }) {
+export function useFormIntercept(matchId: string, company: string) {
   const api = useApi();
   const [phase, setPhase] = useState<'idle' | 'running' | 'done' | 'error'>('idle');
   const [log, setLog] = useState<{ tag: string; text: string; tone: string }[]>([]);
@@ -44,7 +30,7 @@ export function FormIntercept({ matchId, company, fileName }: { matchId: string;
 
   const line = (tag: string, text: string, tone = 'text-phosphor') => setLog((l) => [...l, { tag, text, tone }]);
 
-  const intercept = async () => {
+  const intercept = async (): Promise<Prepared | null> => {
     setPhase('running');
     setLog([]);
     setData(null);
@@ -52,13 +38,7 @@ export function FormIntercept({ matchId, company, fileName }: { matchId: string;
     setPacket('');
     line('SYS', `probing ${company}'s application form…`, 'text-dim');
     try {
-      const res = await api('/api/apply/prepare', {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ matchId }),
-      });
-      const d = (await res.json().catch(() => ({}))) as Prepared & { error?: string };
-      if (!res.ok) throw new Error(d.error || 'HTTP ' + res.status);
+      const d = await prepareForm(api, matchId);
       const count = (by: FilledField['by']) => d.fields.filter((f) => f.by === by).length;
       const steps: [string, string, string][] = [
         ['OK', `${SOURCE[d.source]} · ${d.fields.length} fields intercepted`, 'text-phosphor'],
@@ -70,6 +50,21 @@ export function FormIntercept({ matchId, company, fileName }: { matchId: string;
         d.aiError
           ? ['AI', 'draft failed: ' + d.aiError, 'text-hud-red']
           : ['AI', `${count('ai')} answers drafted in your voice${d.model ? ' · ' + d.model : ''}`, 'text-hud-cyan'],
+        ...(d.humanized
+          ? [
+              d.humanized.clean
+                ? ([
+                    'HUMAN',
+                    `validator: nothing reads AI-written · ${d.humanized.rounds} review rounds · ${d.humanized.fixed} rewrites`,
+                    'text-phosphor',
+                  ] as [string, string, string])
+                : ([
+                    'HUMAN',
+                    `${d.humanized.rounds} review rounds · ${d.humanized.fixed} rewrites · the validator still had notes: read the AI answers once`,
+                    'text-hud-amber',
+                  ] as [string, string, string]),
+            ]
+          : []),
         ['YOU', `${count('you')} left for you: consents, and what your materials do not say`, 'text-hud-amber'],
         d.tailoredId
           ? ['PDF', 'tailored resume armed for the upload field', 'text-phosphor']
@@ -81,33 +76,40 @@ export function FormIntercept({ matchId, company, fileName }: { matchId: string;
       }
       setData(d);
       setPhase('done');
+      return d;
     } catch (err) {
       line('ERR', err instanceof Error ? err.message : String(err), 'text-hud-red');
       setPhase('error');
+      return null;
     }
   };
 
   const valueOf = (f: FilledField) => (f.name in edits ? edits[f.name] : f.value);
-  const shown = (v: FilledField['value']) => (Array.isArray(v) ? v.join(', ') : v);
+
+  /** Your answers (with your edits) and the tailored PDF, ready for the form. */
+  const buildPacket = async (d: Prepared | null = data): Promise<FillPacket | null> =>
+    d ? packForm(api, d, company, valueOf) : null;
 
   const copyPacket = async () => {
     if (!data) return;
     setPacket('arming…');
     try {
-      let resume: { name: string; data: string } | undefined;
-      if (data.tailoredId) {
-        const pdf = await api(`/api/overclock/${data.tailoredId}/pdf`);
-        if (pdf.ok) resume = { name: fileName, data: toBase64(await pdf.arrayBuffer()) };
-      }
-      const fields = data.fields.map((f) => ({ ...f, value: valueOf(f) }));
-      const p = fillPacket(company, fields, resume);
+      const p = (await buildPacket())!;
       await navigator.clipboard.writeText(JSON.stringify(p));
-      setPacket(`copied · ${p.fields.length} answers${resume ? ' + PDF' : ''}. Open the form, click RADAR FILL.`);
+      setPacket(`copied · ${p.fields.length} answers${p.resume ? ' + PDF' : ''}. Open the form, click RADAR FILL.`);
     } catch {
       setPacket('the browser blocked the clipboard: copy the answers one by one below.');
     }
   };
 
+  return { phase, log, data, edits, setEdits, packet, intercept, buildPacket, copyPacket, valueOf };
+}
+
+const shown = (v: FilledField['value']) => (Array.isArray(v) ? v.join(', ') : v);
+
+/** HACK step 02: the intercept log, every field with its answer, and the buttons. */
+export function FormIntercept({ form }: { form: ReturnType<typeof useFormIntercept> }) {
+  const { phase, log, data, setEdits, packet, intercept, copyPacket, valueOf } = form;
   return (
     <div className="mb-4 border border-phosphor/25 bg-black/60">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-phosphor/15 px-4 py-2.5">
@@ -128,7 +130,7 @@ export function FormIntercept({ matchId, company, fileName }: { matchId: string;
             disabled={phase === 'running'}
             className="border border-phosphor/50 px-3 py-1.5 font-mono text-[10px] font-bold tracking-[0.2em] text-phosphor transition-colors hover:bg-phosphor/10 disabled:cursor-wait disabled:opacity-60"
           >
-            {phase === 'running' ? 'INTERCEPTING…' : phase === 'idle' ? '⚡ INTERCEPT FORM' : 'RE-INTERCEPT'}
+            {phase === 'running' ? 'INTERCEPTING…' : phase === 'idle' ? '↯ INTERCEPT FORM' : 'RE-INTERCEPT'}
           </button>
         </div>
       </div>
@@ -136,7 +138,8 @@ export function FormIntercept({ matchId, company, fileName }: { matchId: string;
       {phase === 'idle' && (
         <p className="px-4 py-3 text-sm leading-relaxed text-dim">
           Reads this job&apos;s real application questions, answers them from your profile and Application Kit, and
-          drafts the rest in your voice. You review, then RADAR FILL puts them in the form.
+          drafts the rest in your voice. You review; the RADAR extension (or the RADAR FILL bookmark) puts them in the
+          form.
         </p>
       )}
 

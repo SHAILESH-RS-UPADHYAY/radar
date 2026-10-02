@@ -2,9 +2,12 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { UserButton, useUser } from '@clerk/nextjs';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useApi } from '@/lib/use-api';
+import { armInExtension, launchInExtension, onExtension, useExtension } from '@/lib/extension';
+import { packForm, prepareForm } from '@/lib/apply/client';
 import type { MatchStatus, Stage } from '@/types';
 import { RadarLogo } from '@/components/brand/RadarLogo';
 import { HudPanel, StatusLight } from '@/components/hud/Hud';
@@ -232,11 +235,19 @@ export default function DashboardPage() {
 
   // Lets the RETRY button call the latest fetchMatches without fetchMatches referencing itself.
   const retryLoad = useRef<() => void>(() => {});
+  const router = useRouter();
+  const [noProfile, setNoProfile] = useState(false);
   const fetchMatches = useCallback(async () => {
     try {
       const res = await api('/api/dashboard');
       if (!res.ok) throw new Error('HTTP ' + res.status);
       const data = await res.json();
+      // Signed in but never onboarded: nothing to scan yet, so go and build the profile first.
+      if (data.hasProfile === false) {
+        setNoProfile(true);
+        router.replace('/onboarding');
+        return;
+      }
       setMatches(data.matches || []);
       setVaultSettings(data.settings || null);
       setOpsReady(data.opsReady !== false);
@@ -252,7 +263,7 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [api]);
+  }, [api, router]);
 
   useEffect(() => {
     retryLoad.current = () => void fetchMatches();
@@ -367,10 +378,10 @@ export default function DashboardPage() {
 
   // First visit with an empty feed: scan once automatically.
   useEffect(() => {
-    if (loading || autoScanned.current || matches.length > 0) return;
+    if (loading || noProfile || autoScanned.current || matches.length > 0) return;
     autoScanned.current = true;
     void handleScan();
-  }, [loading, matches.length, handleScan]);
+  }, [loading, noProfile, matches.length, handleScan]);
 
   // Opening an apply link is not applying: RADAR asks first (APPLY://CONFIRM), and only a yes moves it to C2 · OPS.
   const [confirmId, setConfirmId] = useState<string | null>(null);
@@ -465,6 +476,51 @@ export default function DashboardPage() {
     });
     nextHack();
   };
+
+  // ONE-CLICK APPLY (RADAR extension): the form opens in a new tab at once while RADAR reads it and drafts the
+  // answers; the extension fills it as soon as they arrive. You review it there and press the employer's Submit.
+  const extension = useExtension();
+  const quickApply = async (id: string) => {
+    const m = matches.find((x) => x.id === id);
+    if (!m) return;
+    const company = m.job.company.name;
+    launchInExtension({ url: m.job.form_url || m.job.apply_url, matchId: id, tailoredId: null });
+    setNotice({
+      tone: 'info',
+      text: `${company}'s form is opening in a new tab · drafting and humanizing your answers…`,
+    });
+    try {
+      const prepared = await prepareForm(api, id);
+      const packet = await packForm(api, prepared, company);
+      armInExtension({ matchId: id, tailoredId: prepared.tailoredId, packet });
+    } catch (err) {
+      const why = err instanceof Error ? err.message : String(err);
+      armInExtension({ matchId: id, error: 'RADAR could not draft the answers: ' + why });
+      setNotice({ tone: 'alert', text: `Could not draft ${company}'s answers: ${why}. HACK ▸ shows each step.` });
+    }
+  };
+
+  // What the extension reports from the form tab: filled, then applied (the employer confirmed, or you pressed
+  // "I submitted it" in its panel). HACK's own panel shows the fill for its job, so the toast skips that one.
+  const onExtensionEvent = useRef<Parameters<typeof onExtension>[0]>(() => {});
+  useEffect(() => {
+    onExtensionEvent.current = (e) => {
+      if (!e.matchId) return;
+      if (e.type === 'launched' && !e.ok)
+        setNotice({ tone: 'alert', text: 'The extension could not open the form: ' + e.error });
+      if (e.type === 'filled' && hackMatch?.id !== e.matchId)
+        setNotice({
+          tone: e.needs ? 'info' : 'ok',
+          text: `Form filled · ${e.filled} fields${e.needs ? ` · ${e.needs} required left for you` : ''}. Review it in that tab and press Submit.`,
+        });
+      if (e.type === 'applied') {
+        void setStatus([e.matchId], 'applied', e.tailoredId ?? null);
+        setNotice({ tone: 'ok', text: 'Application confirmed · logged in C2 · OPS.' });
+        if (hackMatch?.id === e.matchId) nextHack();
+      }
+    };
+  });
+  useEffect(() => onExtension((e) => onExtensionEvent.current(e)), []);
 
   const TABS: { key: PrimaryTab; label: string; short: string; count: number }[] = [
     { key: 'DISCOVERY', label: 'DISCOVERY', short: 'DISCOVER', count: available.length },
@@ -797,7 +853,13 @@ export default function DashboardPage() {
                   <div className="space-y-4">
                     <AnimatePresence>
                       {discovery.map((m) => (
-                        <DiscoveryCard key={m.id} match={m} onAction={onAction} onOpen={setBriefingId} />
+                        <DiscoveryCard
+                          key={m.id}
+                          match={m}
+                          onAction={onAction}
+                          onOpen={setBriefingId}
+                          onQuickApply={extension ? (id) => void quickApply(id) : undefined}
+                        />
                       ))}
                     </AnimatePresence>
                   </div>
@@ -871,6 +933,7 @@ export default function DashboardPage() {
                           onAction={onAction}
                           onRun={(id) => startHack([id])}
                           onOpen={setBriefingId}
+                          onQuickApply={extension ? (id) => void quickApply(id) : undefined}
                         />
                       ))}
                     </AnimatePresence>

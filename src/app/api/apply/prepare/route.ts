@@ -5,17 +5,20 @@ import { auth, currentUser } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/client';
 import { isUuid } from '@/lib/validate';
 import { loadSettingsProfile, splitList } from '@/lib/profile';
-import { readApplicationForm } from '@/lib/apply/form';
+import { applicationFormUrl, readApplicationForm } from '@/lib/apply/form';
 import { answerForm, type Candidate } from '@/lib/apply/answers';
 import { resumeToText, type TailorOutput } from '@/lib/ai/tailor';
 
-export const maxDuration = 60;
+// Drafting plus HUMANIZE's validate → fix rounds on a slow model can take a few minutes.
+export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
 // POST { matchId } — FORM://INTERCEPT for one of your matches: read the posting's application form, fill what your
-// profile and Application Kit say, and draft the rest with the AI in your voice. Nothing is sent to the employer:
-// HACK shows the answers and the autofill bridge fills the form in your own browser; you press submit.
+// profile and Application Kit say, draft the rest with the AI in your voice, then HUMANIZE it (validate → fix until
+// nothing reads AI-written). Nothing is sent to the employer: HACK shows the answers and the extension (or the
+// RADAR FILL bookmark) fills the form in your own browser; you press submit.
 export async function POST(req: NextRequest) {
+  const startedAt = Date.now();
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const body = (await req.json().catch(() => null)) as { matchId?: unknown } | null;
@@ -101,11 +104,19 @@ export async function POST(req: NextRequest) {
     },
     resumeText: resume?.resume_text || '',
     tailoredText,
+    // Leaves a margin under maxDuration; the form tab waits for the answers meanwhile.
+    deadline: startedAt + 240_000,
   });
 
   return NextResponse.json({
     source: form.source,
     applyUrl: job.apply_url,
+    formUrl: applicationFormUrl({
+      provider: company.ats_provider,
+      identifier: company.ats_identifier,
+      externalId: job.external_id,
+      applyUrl: job.apply_url,
+    }),
     tailoredId: tailored?.id ?? null,
     kitReady: !!kit,
     ...result,

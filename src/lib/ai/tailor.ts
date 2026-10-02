@@ -106,15 +106,18 @@ export interface TailorJob extends ScoringJob {
   company: string;
 }
 
-/** A model's JSON reply → the checked tailoring, or a 502 the caller can retry on another provider. */
-export function parseTailored(text: string): TailorOutput {
-  const body = text
+/** A model's JSON reply without the ```json fence some models wrap it in. */
+export const unfence = (text: string) =>
+  text
     .trim()
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```$/, '');
+
+/** A model's JSON reply → the checked tailoring, or a 502 the caller can retry on another provider. */
+export function parseTailored(text: string): TailorOutput {
   let json: unknown;
   try {
-    json = JSON.parse(body);
+    json = JSON.parse(unfence(text));
   } catch {
     throw new TailorError('The AI returned an unreadable resume. Try again.', 502);
   }

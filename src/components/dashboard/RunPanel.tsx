@@ -6,7 +6,8 @@ import type { TailoredView } from '@/lib/overclock';
 import type { Portfolio } from '@/types';
 import { CopyButton } from '@/components/hud/CopyButton';
 import { scoreColor, type MatchedJob, type TailoredSummary } from './types';
-import { FormIntercept } from './FormIntercept';
+import { FormIntercept, useFormIntercept } from './FormIntercept';
+import { armInExtension, launchInExtension, onExtension, useExtension } from '@/lib/extension';
 
 const primary =
   'inline-flex items-center justify-center gap-2 bg-phosphor px-5 py-3 font-mono text-xs font-bold tracking-[0.22em] text-black shadow-[0_0_22px_rgba(0,255,65,0.35)] transition-colors hover:bg-[#33FF66] disabled:cursor-not-allowed disabled:bg-phosphor/30';
@@ -106,6 +107,47 @@ export function RunPanel({
 
   const shown = tailored && view?.id === tailored.id ? view : null;
   const projected = tailored?.projected_score ?? null;
+  const form = useFormIntercept(match.id, job.company.name);
+
+  // With the RADAR extension the form opens already filled; it reports back what it filled.
+  const extension = useExtension();
+  const [launch, setLaunch] = useState<{ tone: 'dim' | 'ok' | 'warn' | 'alert'; text: string } | null>(null);
+  useEffect(
+    () =>
+      onExtension((e) => {
+        if (e.matchId !== match.id) return;
+        if (e.type === 'launched' && !e.ok)
+          setLaunch({ tone: 'alert', text: 'The extension could not open it: ' + e.error });
+        if (e.type === 'filled')
+          setLaunch({
+            tone: e.needs ? 'warn' : 'ok',
+            text: `Form filled in the new tab · ${e.filled} fields${e.needs ? ` · ${e.needs} required left for you` : ''}. Review and submit there.`,
+          });
+      }),
+    [match.id],
+  );
+  // The tab opens at once; the answers (your step-02 edits included) follow as soon as they are ready.
+  const launchFilled = async () => {
+    const ready = form.data ? await form.buildPacket(form.data) : null;
+    launchInExtension({
+      url: job.form_url || job.apply_url,
+      matchId: match.id,
+      tailoredId: form.data?.tailoredId ?? null,
+      ...(ready ? { packet: ready } : {}),
+    });
+    setOpened(true);
+    if (ready) return setLaunch({ tone: 'dim', text: 'Opening the form in a new tab…' });
+    setLaunch({ tone: 'dim', text: 'Form opening in a new tab · drafting and humanizing its answers…' });
+    const prepared = await form.intercept();
+    const packet = prepared && (await form.buildPacket(prepared).catch(() => null));
+    armInExtension(
+      packet
+        ? { matchId: match.id, tailoredId: prepared.tailoredId, packet }
+        : { matchId: match.id, error: 'RADAR could not read this form or draft its answers. See HACK step 02.' },
+    );
+    if (!packet) setLaunch({ tone: 'alert', text: 'Could not draft the answers. See step 02.' });
+  };
+  const LAUNCH_TONE = { dim: 'text-dim', ok: 'text-phosphor', warn: 'text-hud-amber', alert: 'text-hud-red' } as const;
 
   return (
     <div>
@@ -152,12 +194,7 @@ export function RunPanel({
       </Step>
 
       <Step n="02" title="ANSWERS, READY TO PASTE">
-        <FormIntercept
-          key={match.id}
-          matchId={match.id}
-          company={job.company.name}
-          fileName={`${shown?.resume.name || fullName || 'Resume'} - ${job.company.name}.pdf`.replace(/[^\w\s.-]/g, '')}
-        />
+        <FormIntercept form={form} />
         <div className="border border-phosphor/15 bg-black/50 px-4">
           <Field label="FULL NAME" value={shown?.resume.name || fullName} />
           <Field label="EMAIL" value={email} />
@@ -183,19 +220,51 @@ export function RunPanel({
       </Step>
 
       <Step n="03" title="LAUNCH" done={opened}>
-        <button
-          type="button"
-          onClick={() => {
-            window.open(job.apply_url, '_blank', 'noopener,noreferrer');
-            setOpened(true);
-          }}
-          className={primary}
-        >
-          OPEN APPLICATION ↗
-        </button>
-        <p className="mt-2 text-xs text-dim">
-          Opens the employer’s own form in a new tab. Click RADAR FILL there (or paste), check it, submit.
-        </p>
+        {extension ? (
+          <>
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => void launchFilled()}
+                disabled={form.phase === 'running'}
+                className={primary}
+              >
+                ↯ LAUNCH + AUTO-FILL
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  window.open(job.apply_url, '_blank', 'noopener,noreferrer');
+                  setOpened(true);
+                }}
+                className="font-mono text-[10px] tracking-[0.2em] text-dim transition-colors hover:text-phosphor"
+              >
+                open without filling ↗
+              </button>
+            </div>
+            <p className={'mt-2 font-mono text-[11px] ' + (launch ? LAUNCH_TONE[launch.tone] : 'text-dim')}>
+              {launch?.text ||
+                `RADAR extension v${extension} connected: the form opens filled with the answers above and your PDF. You review and press Submit; RADAR logs it.`}
+            </p>
+          </>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => {
+                window.open(job.apply_url, '_blank', 'noopener,noreferrer');
+                setOpened(true);
+              }}
+              className={primary}
+            >
+              OPEN APPLICATION ↗
+            </button>
+            <p className="mt-2 text-xs text-dim">
+              Opens the employer’s own form in a new tab. Click RADAR FILL there (or paste), check it, submit. With the
+              RADAR extension (repo folder extension/) the form opens already filled.
+            </p>
+          </>
+        )}
       </Step>
 
       <Step n="04" title="CONFIRM">

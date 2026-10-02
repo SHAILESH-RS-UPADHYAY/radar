@@ -138,7 +138,7 @@ type SkillPattern = ReturnType<typeof skillPattern>;
  * One line of text → coloured segments. `yearsHave` turns "3+ years" into a verdict: 'have' when you have
  * that much experience, 'gap' when you do not. Earlier patterns win where two overlap.
  */
-export function highlight(
+function highlight(
   text: string,
   skills: SkillPattern,
   yearsHave: number | null = null,

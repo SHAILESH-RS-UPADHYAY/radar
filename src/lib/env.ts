@@ -11,7 +11,7 @@ const WHERE: Record<string, string> = {
   PINECONE_API_KEY: 'app.pinecone.io → API Keys',
 };
 
-export class MissingEnvError extends Error {
+class MissingEnvError extends Error {
   constructor(public readonly names: string[]) {
     super(
       'Missing environment variable' +

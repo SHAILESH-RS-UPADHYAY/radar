@@ -28,7 +28,7 @@ export interface ApplicationForm {
 }
 
 /** The fields almost every application asks for, used where a form cannot be read. */
-export const STANDARD_FIELDS: FormField[] = [
+const STANDARD_FIELDS: FormField[] = [
   { name: 'name', label: 'Full name', type: 'text', required: true },
   { name: 'email', label: 'Email', type: 'email', required: true },
   { name: 'phone', label: 'Phone', type: 'tel', required: false },
@@ -122,6 +122,27 @@ export function parseLeverForm(html: string): FormField[] {
   if (/name="comments"/.test(html))
     out.push({ name: 'comments', label: 'Additional information', type: 'textarea', required: false });
   return out;
+}
+
+/**
+ * The page where the application form itself is, so the extension lands on the form. Checked live (2026-10-02):
+ * Greenhouse's embed form works for every board, also where the hosted page redirects to the company's own site
+ * (Stripe, Datadog, Coinbase); Lever's form is `…/apply`, Ashby's `…/application`. Anything else: the apply link.
+ */
+export function applicationFormUrl(job: {
+  provider: string | null;
+  identifier: string | null;
+  externalId: string;
+  applyUrl: string;
+}): string {
+  if (job.provider === 'greenhouse' && job.identifier) {
+    const host = /\.eu\.greenhouse\.io/.test(job.applyUrl) ? 'job-boards.eu.greenhouse.io' : 'job-boards.greenhouse.io';
+    return `https://${host}/embed/job_app?for=${encodeURIComponent(job.identifier)}&token=${encodeURIComponent(job.externalId)}`;
+  }
+  if (job.provider === 'lever') return leverApplyUrl(job.applyUrl) || job.applyUrl;
+  const ashby = job.applyUrl.match(/^https:\/\/jobs\.ashbyhq\.com\/[^/?#]+\/[0-9a-f-]{36}/i);
+  if (job.provider === 'ashby' && ashby) return ashby[0] + '/application';
+  return job.applyUrl;
 }
 
 /** "https://jobs.lever.co/acme/1234-…" (or its /apply page) → the apply page URL. */

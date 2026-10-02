@@ -6,14 +6,15 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServerClient } from '@/lib/supabase/client';
 import { isSchemaMissing } from '@/lib/supabase/errors';
 import type { OpsEvent } from '@/components/dashboard/types';
+import { applicationFormUrl } from '@/lib/apply/form';
 
 export const dynamic = 'force-dynamic';
 
 const JOB = `
   jobs!inner (
-    id, title, location, work_type, skills, apply_url, department, employer, posted_at, is_active,
+    id, external_id, title, location, work_type, skills, apply_url, department, employer, posted_at, is_active,
     experience_required, salary_min, salary_max, salary_currency,
-    companies!inner ( name, category, ats_provider )
+    companies!inner ( name, category, ats_provider, ats_identifier )
   )`;
 const BASE =
   'id, score, reasoning, matching_skills, missing_skills, section, status, auto_saved, status_changed_at, first_seen_at,';
@@ -97,6 +98,12 @@ export async function GET() {
       work_type: m.jobs.work_type,
       skills: m.jobs.skills || [],
       apply_url: m.jobs.apply_url,
+      form_url: applicationFormUrl({
+        provider: m.jobs.companies.ats_provider,
+        identifier: m.jobs.companies.ats_identifier,
+        externalId: m.jobs.external_id,
+        applyUrl: m.jobs.apply_url,
+      }),
       department: m.jobs.department,
       posted_at: m.jobs.posted_at,
       is_active: m.jobs.is_active,
@@ -141,6 +148,8 @@ export async function GET() {
 
   const { data: settings } = await profile;
   return NextResponse.json({
+    // No profile row = onboarding never finished: the page sends you there instead of scanning.
+    hasProfile: !!settings,
     pipelineRunAt: lastRun?.finished_at ?? null,
     matches: formatted,
     total: formatted.length,

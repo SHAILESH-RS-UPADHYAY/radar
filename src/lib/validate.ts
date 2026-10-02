@@ -42,7 +42,7 @@ export function cleanPortfolio(input: unknown): Portfolio | string {
   return out;
 }
 
-export const EMPTY_KIT: ApplicationKit = {
+const EMPTY_KIT: ApplicationKit = {
   phone: '',
   current_company: '',
   current_title: '',

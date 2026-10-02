@@ -79,7 +79,7 @@ const now = () => new Date().toISOString();
 const escLike = (s: string) => s.replace(/[\\%_]/g, '\\$&');
 const SEED_NAMES = new Set(COMPANY_SEEDS.map((s) => s.name.toLowerCase()));
 
-export const categoryFor = (stage: string | null | undefined): CompanyCategory =>
+const categoryFor = (stage: string | null | undefined): CompanyCategory =>
   stage && /series [c-z]|growth|late|ipo|public|acquired/i.test(stage) ? 'Growth' : 'Startup';
 
 export async function runDiscovery(supabase: SupabaseClient, deadline: number): Promise<DiscoverySummary> {
@@ -342,11 +342,7 @@ const answers = (url: string) =>
   );
 
 /** The ATS board behind a set of job links, verifying anything that had to be guessed. */
-export async function feedFromLinks(
-  links: string[],
-  name: string | null,
-  website: string | null,
-): Promise<AtsRef | null> {
+async function feedFromLinks(links: string[], name: string | null, website: string | null): Promise<AtsRef | null> {
   const direct = detectAts(links);
   if (direct) return direct;
   // Greenhouse embedded on the company's own domain (?gh_jid=): the job id proves which board token is right.

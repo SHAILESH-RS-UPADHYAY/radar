@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { HudPanel } from '@/components/hud/Hud';
 import type { ApplicationKit } from '@/types';
 import { BRIDGE_HREF } from '@/lib/apply/bridge';
+import { useExtension } from '@/lib/extension';
 
 type TextKey = Exclude<keyof ApplicationKit, 'needs_sponsorship' | 'willing_to_relocate' | 'voice_notes'>;
 
@@ -54,6 +55,7 @@ export function ApplicationKitSection({
   onSave: (next: ApplicationKit) => void;
 }) {
   const set = kit ? Object.values(kit).filter(Boolean).length : 0;
+  const extension = useExtension();
   // React refuses javascript: links in JSX; the bookmark's href is set on the element directly.
   const bridge = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
@@ -140,9 +142,30 @@ export function ApplicationKitSection({
             />
           </label>
 
+          <div
+            className={
+              'border p-4 ' +
+              (extension ? 'border-phosphor/50 bg-phosphor/[0.04]' : 'border-dashed border-hud-amber/40')
+            }
+          >
+            <p className="font-mono text-[10px] tracking-[0.35em] text-phosphor/80">
+              EXTENSION://RADAR-AUTO-FILL ·{' '}
+              <span className={extension ? 'text-phosphor' : 'text-hud-amber'}>
+                {extension ? 'CONNECTED v' + extension : 'NOT INSTALLED'}
+              </span>
+            </p>
+            <p className="mt-1 text-sm leading-relaxed text-dim">
+              {extension
+                ? 'HACK → ↯ LAUNCH + AUTO-FILL opens each form already filled with your answers and PDF. You press Submit; RADAR logs it.'
+                : 'Chrome → chrome://extensions → turn on Developer mode → Load unpacked → pick the extension folder of this repo. Then HACK opens every form already filled.'}
+            </p>
+          </div>
+
           <div className="flex flex-col gap-3 border border-dashed border-phosphor/30 p-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <p className="font-mono text-[10px] tracking-[0.35em] text-phosphor/80">BRIDGE://RADAR-FILL</p>
+              <p className="font-mono text-[10px] tracking-[0.35em] text-phosphor/80">
+                BRIDGE://RADAR-FILL · NO EXTENSION NEEDED
+              </p>
               <p className="mt-1 text-sm leading-relaxed text-dim">
                 Drag this to your bookmarks bar once. On an application page: HACK → COPY FILL PACKET, then click it. It
                 fills the form and marks Submit; it never presses it.
@@ -155,7 +178,7 @@ export function ApplicationKitSection({
               title="Drag me to your bookmarks bar"
               className="shrink-0 cursor-grab border border-phosphor bg-phosphor/10 px-5 py-2.5 text-center font-mono text-xs font-bold tracking-[0.25em] text-phosphor shadow-[0_0_20px_rgba(0,255,65,0.25)] active:cursor-grabbing"
             >
-              ⚡ RADAR FILL
+              ↯ RADAR FILL
             </a>
           </div>
         </div>

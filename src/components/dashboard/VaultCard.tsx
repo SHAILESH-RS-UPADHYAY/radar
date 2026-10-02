@@ -12,6 +12,7 @@ export function VaultCard({
   onAction,
   onRun,
   onOpen,
+  onQuickApply,
 }: {
   match: MatchedJob;
   onAction: (id: string, action: MatchAction) => void;
@@ -19,6 +20,8 @@ export function VaultCard({
   onRun: (id: string) => void;
   /** Opens the JD terminal for this match. */
   onOpen?: (id: string) => void;
+  /** With the RADAR extension: open the form already filled (one click here, one Submit there). */
+  onQuickApply?: (id: string) => void;
 }) {
   const { job } = match;
   const open = onOpen ? () => onOpen(match.id) : undefined;
@@ -78,15 +81,26 @@ export function VaultCard({
               HACK ▸
             </span>
           </button>
-          <a
-            href={job.apply_url}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={() => onAction(match.id, 'APPLY')}
-            className="text-center font-mono text-[10px] tracking-[0.2em] text-dim transition-colors hover:text-phosphor"
-          >
-            direct apply ↗
-          </a>
+          {onQuickApply ? (
+            <button
+              type="button"
+              onClick={() => onQuickApply(match.id)}
+              title="Opens the form filled with your answers and tailored PDF. You review it and press Submit."
+              className="border border-phosphor/40 py-2 font-mono text-[10px] font-bold tracking-[0.2em] text-phosphor transition-colors hover:bg-phosphor/10"
+            >
+              ↯ ONE-CLICK APPLY
+            </button>
+          ) : (
+            <a
+              href={job.apply_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={() => onAction(match.id, 'APPLY')}
+              className="text-center font-mono text-[10px] tracking-[0.2em] text-dim transition-colors hover:text-phosphor"
+            >
+              direct apply ↗
+            </a>
+          )}
           <button
             onClick={() => onAction(match.id, 'REMOVE_SAVE')}
             title="Remove from Vault (it will not come back)"

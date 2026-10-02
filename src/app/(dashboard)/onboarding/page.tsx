@@ -887,7 +887,7 @@ export default function OnboardingPage() {
                             onClick={() => setShowManualEntry(true)}
                             className="px-6 py-2.5 border-2 border-[#00FF41] text-[#00FF41] rounded-none text-sm font-bold hover:bg-[#00FF41] hover:text-[#00FF41] transition-all shadow-[0_0_15px_rgba(0,255,65,0.15)]"
                           >
-                            Build Profile Manually ⚡
+                            Build Profile Manually ↯
                           </button>
                         </div>
                       </motion.div>
@@ -907,7 +907,7 @@ export default function OnboardingPage() {
                         </button>
 
                         <h2 className="text-xl font-bold text-[#00FF41] mb-6 flex items-center gap-2">
-                          <span className="text-[#00FF41]">⚡</span> The Builder Console
+                          <span className="text-[#00FF41]">↯</span> The Builder Console
                         </h2>
 
                         {/* Skills */}

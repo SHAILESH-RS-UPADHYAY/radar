@@ -86,7 +86,7 @@ export async function greenhousePay(
 // Career sites on Eightfold expose /api/apply/v2 (their robots.txt allows it even where the rest is disallowed).
 // Checked 2026-09-30: Netflix answers; Microsoft, PayPal, Qualcomm and Starbucks refuse bots (403), so they are not used.
 // Identifier: "<careers host>|<company domain>", e.g. "explore.jobs.netflix.net|netflix.com".
-export async function scrapeEightfold(identifier: string): Promise<ScrapedJob[]> {
+async function scrapeEightfold(identifier: string): Promise<ScrapedJob[]> {
   const [host, domain] = identifier.split('|');
   if (!host || !domain) throw new Error('Eightfold identifier must be host|domain, got "' + identifier + '"');
   const api = `https://${host}/api/apply/v2/jobs`;
@@ -203,7 +203,7 @@ export async function scrapeAshby(board: string): Promise<ScrapedJob[]> {
 }
 
 // ---------- Workable ----------
-export async function scrapeWorkable(account: string): Promise<ScrapedJob[]> {
+async function scrapeWorkable(account: string): Promise<ScrapedJob[]> {
   const data = await fetchJson<any>('https://apply.workable.com/api/v1/widget/accounts/' + account + '?details=true');
   return (data.jobs || []).map((job: any) => {
     const location = [job.city, job.state, job.country].filter(Boolean).join(', ');
@@ -226,7 +226,7 @@ export async function scrapeWorkable(account: string): Promise<ScrapedJob[]> {
 
 // ---------- SmartRecruiters ----------
 // The list endpoint has no description, so we fetch details for relevant postings only.
-export async function scrapeSmartRecruiters(company: string): Promise<ScrapedJob[]> {
+async function scrapeSmartRecruiters(company: string): Promise<ScrapedJob[]> {
   const base = 'https://api.smartrecruiters.com/v1/companies/' + company + '/postings';
   const listings: any[] = [];
   for (let offset = 0; offset < 1000; offset += 100) {
@@ -270,7 +270,7 @@ export async function scrapeSmartRecruiters(company: string): Promise<ScrapedJob
 }
 
 // ---------- Recruitee ----------
-export async function scrapeRecruitee(subdomain: string): Promise<ScrapedJob[]> {
+async function scrapeRecruitee(subdomain: string): Promise<ScrapedJob[]> {
   const data = await fetchJson<any>('https://' + subdomain + '.recruitee.com/api/offers/');
   return (data.offers || []).map((job: any) =>
     finalizeJob({
@@ -318,7 +318,7 @@ export async function scrapePersonio(subdomain: string): Promise<ScrapedJob[]> {
 }
 
 // ---------- Breezy HR ----------
-export async function scrapeBreezy(subdomain: string): Promise<ScrapedJob[]> {
+async function scrapeBreezy(subdomain: string): Promise<ScrapedJob[]> {
   const data = await fetchJson<any[]>('https://' + subdomain + '.breezy.hr/json');
   return (data || []).map((job: any) => {
     const pay = parseSalaryRange(job.salary);
@@ -370,7 +370,7 @@ export async function scrapeTeamtailor(host: string): Promise<ScrapedJob[]> {
 // ---------- Workday ----------
 // Uses the JSON endpoints behind every *.myworkdayjobs.com careers site. Large tenants have
 // thousands of roles, so we search with RADAR_SEARCH_TERMS and cap the result.
-export async function scrapeWorkday(identifier: string): Promise<ScrapedJob[]> {
+async function scrapeWorkday(identifier: string): Promise<ScrapedJob[]> {
   const [tenant, wd, site] = identifier.split('/');
   if (!tenant || !wd || !site) throw new Error('Workday identifier must be tenant/wdN/site, got "' + identifier + '"');
   const host = 'https://' + tenant + '.' + wd + '.myworkdayjobs.com';
@@ -418,7 +418,7 @@ export async function scrapeWorkday(identifier: string): Promise<ScrapedJob[]> {
 }
 
 // ---------- Amazon (amazon.jobs search API) ----------
-export async function scrapeAmazon(countryCode: string): Promise<ScrapedJob[]> {
+async function scrapeAmazon(countryCode: string): Promise<ScrapedJob[]> {
   const seen = new Map<string, any>();
   for (const term of searchTerms()) {
     for (let offset = 0; offset < 200 && seen.size < MAX_PER_COMPANY; offset += 100) {
@@ -457,19 +457,6 @@ export async function scrapeAmazon(countryCode: string): Promise<ScrapedJob[]> {
 }
 
 // ---------- Dispatcher ----------
-export const ATS_PROVIDERS = [
-  'greenhouse',
-  'lever',
-  'ashby',
-  'workable',
-  'smartrecruiters',
-  'recruitee',
-  'personio',
-  'breezy',
-  'teamtailor',
-  'workday',
-  'amazon',
-] as const;
 
 export async function scrapeCompany(provider: string | null, identifier: string | null): Promise<ScrapedJob[]> {
   if (!provider) return [];

@@ -19,7 +19,7 @@ const TICKS = Array.from({ length: 60 }, (_, i) => {
   return { x1, y1, x2, y2, major };
 });
 
-export function RadarMark({ className = 'h-9 w-9', animated = true }: { className?: string; animated?: boolean }) {
+function RadarMark({ className = 'h-9 w-9', animated = true }: { className?: string; animated?: boolean }) {
   // useId can contain characters that break url(#id) references, so keep only safe ones.
   const clip = 'radar-clip-' + useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const a = (cls: string) => (animated ? cls : undefined);

@@ -10,7 +10,7 @@ import { toPortfolio } from '@/lib/profile';
 import { projectScore, resumeToText, tailorResume, TailorError, type TailorOutput } from '@/lib/ai/tailor';
 import { OVERCLOCK_MAX, OVERCLOCK_MIN } from '@/components/dashboard/types';
 
-export const TAILORED_COLUMNS = 'id, job_id, content, base_score, projected_score, model, created_at';
+const TAILORED_COLUMNS = 'id, job_id, content, base_score, projected_score, model, created_at';
 
 interface TailoredRow {
   id: string;

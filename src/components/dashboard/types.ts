@@ -28,6 +28,8 @@ export interface MatchedJob {
     work_type: string | null;
     skills: string[];
     apply_url: string;
+    /** Where the application form itself is (Greenhouse embed, Lever /apply…): what one-click apply opens. */
+    form_url: string;
     department: string | null;
     posted_at: string | null;
     is_active: boolean;
@@ -131,8 +133,8 @@ export const STAGE_META: Record<Stage, { label: string; tone: Tone }> = {
 export const ACTIVE_STAGES: Stage[] = ['applied', 'screening', 'interview', 'offer'];
 export const CLOSED_STAGES: Stage[] = ['rejected', 'withdrawn'];
 
-export const FOLLOW_UP_DAYS = 7;
-export const GHOST_DAYS = 14;
+const FOLLOW_UP_DAYS = 7;
+const GHOST_DAYS = 14;
 
 export interface OpsSignal {
   tone: Tone;

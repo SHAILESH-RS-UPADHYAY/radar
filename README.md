@@ -75,6 +75,8 @@ src/lib/pipeline/scrape.ts    least recently scraped first · upsert · embed ch
 + 005      more boards, C2 · OPS stages, tailored_resumes (OVERCLOCK)
 + 006      resume version per application, gmail_links, ops_events
 + 007      Teamtailor, discovery queue, jobs.verified_at, Vault bar 80, auto-OVERCLOCK
++ 008      portfolio: your links and the projects you built
++ 009      Eightfold, We Work Remotely, Working Nomads; the Application Kit (answers forms ask for)
 ```
 
 Run them **in order** in the Supabase SQL editor. Each is safe to re-run, and a feature whose migration is missing
@@ -138,8 +140,14 @@ XAI_API_KEY=…                 # optional XAI_MODEL       (default grok-4.7)
 
 <img src="docs/readme/07-hack.svg" width="100%" alt="HACK: tailored CV, answers, real link, then you submit" />
 
-Tailored CV, copy-ready answers and the real apply link, one job after another. **HACK ALL** walks the whole Vault.
-The final submit is always yours. → `RunPanel.tsx`
+Tailored CV, then **FORM://INTERCEPT**: RADAR reads the posting's real application form (Greenhouse questions, Lever
+cards, standard fields elsewhere), fills it from your profile and Application Kit and drafts the rest with the AI in
+your voice. **HACK ALL** walks the whole Vault. → `RunPanel.tsx` · `src/lib/apply/`
+
+With the **RADAR · Auto-Fill** extension ([`extension/`](extension/README.md)), **↯ ONE-CLICK APPLY** on any card opens
+the form already filled, PDF attached and Submit marked. You review it and press Submit; the employer's confirmation
+logs it in C2 · OPS. Without it, the RADAR FILL bookmark does the same from the clipboard. The final submit is always
+yours.
 
 ---
 
@@ -211,7 +219,7 @@ curl -X POST http://localhost:3000/api/cron/discover     # first fill (locally n
 curl -X POST http://localhost:3000/api/cron
 ```
 
-Then run migrations **001 → 007** in Supabase and create a Pinecone index `radar-jobs` (1024-d, cosine). Sign up,
+Then run migrations **001 → 009** in Supabase and create a Pinecone index `radar-jobs` (1024-d, cosine). Sign up,
 upload your resume, pick roles and cities, and press **SCAN NOW**.
 
 ## `▌DEPLOY` (Vercel)
@@ -244,18 +252,21 @@ src/
     page.tsx                landing (+ a live JD-terminal demo)
     (site)/                 /system · /protocol · /architecture · /privacy · /terms
     (dashboard)/            DISCOVERY · VAULT · OVERCLOCK · C2 · OPS, onboarding, settings
-    api/                    match · dashboard · jobs/:id · vault · ops · overclock · gmail · discovery · settings
-                            cron/discover · cron · cron/autopilot · health · webhook/clerk
+    api/                    match · dashboard · jobs/:id · vault · ops · overclock · apply/prepare · gmail
+                            discovery · settings · cron/discover · cron · cron/autopilot · health · webhook/clerk
   lib/
     discovery/              polite crawler, StartupMap, ATS detection, imports, orchestrator
     scraper/                ATS + board adapters, seeds, htmlToText, skills
     pipeline/               scrape, match, verify, cron auth
     ai/                     embeddings, matcher, tailoring (Anthropic · Gemini · Grok)
+    apply/                  read a posting's form, answer it, the fill packet, the RADAR FILL bookmark
+    extension.ts            the page side of the RADAR · Auto-Fill extension
     jd.ts                   job description → coloured terminal lines
     gmail.ts · crypto.ts    Gmail sync, AES-256-GCM
     overclock.ts            OVERCLOCK core + auto-OVERCLOCK
   components/               dashboard (cards, JobTerminal, RunPanel), hud, site, settings
-supabase/migrations/        001 … 007
+extension/                  RADAR · Auto-Fill (Chrome, Manifest V3): one-click apply, filled forms
+supabase/migrations/        001 … 009
 docs/                       architecture · database · adding a source · readme/ (these panels)
 ```
 

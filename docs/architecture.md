@@ -2,12 +2,13 @@
 
 ## Components
 
-| Piece                   | Role                                                                                                                       |
-| ----------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| Next.js app (`src/app`) | UI pages and API route handlers, deployed on Vercel                                                                        |
-| Clerk                   | Authentication. API routes call `auth()`; the browser sends a fresh session token on every API call (`src/lib/use-api.ts`) |
-| Supabase Postgres       | Companies, jobs, user profiles, match scores (the Vault), logs. Accessed server-side with the service-role key             |
-| Pinecone                | Creates embeddings (`multilingual-e5-large`, 1024-d) and stores one vector per job for similarity search                   |
+| Piece                   | Role                                                                                                                                                     |
+| ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Next.js app (`src/app`) | UI pages and API route handlers, deployed on Vercel                                                                                                      |
+| Clerk                   | Authentication. API routes call `auth()`; the browser sends a fresh session token on every API call (`src/lib/use-api.ts`)                               |
+| Supabase Postgres       | Companies, jobs, user profiles, match scores (the Vault), logs. Accessed server-side with the service-role key                                           |
+| Pinecone                | Creates embeddings (`multilingual-e5-large`, 1024-d) and stores one vector per job for similarity search                                                 |
+| RADAR · Auto-Fill       | Chrome extension (`extension/`): opens a match's application form filled with the answers from `POST /api/apply/prepare`; marks Submit, never presses it |
 
 ## Pipeline
 

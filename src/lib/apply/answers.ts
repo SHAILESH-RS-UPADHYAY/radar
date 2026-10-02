@@ -3,12 +3,14 @@
 // ============================
 // Profile facts fill what they can, exactly (name, email, links, notice period, pay, work authorization, EEO from
 // your Application Kit). The AI drafts the rest in your voice from your resume, kit and projects, and must pick a
-// listed option where the form lists them. Legal consents (agreements, arbitration, policies) are never answered
-// for you, and neither is anything your materials do not say: those stay empty for you to decide.
+// listed option where the form lists them; every written answer then goes through HUMANIZE (validate → fix, until
+// nothing reads AI-written). Legal consents (agreements, arbitration, policies) are never answered for you, and
+// neither is anything your materials do not say: those stay empty for you to decide.
 
 import { z } from 'zod';
-import { completeJson } from '@/lib/ai/tailor';
+import { completeJson, unfence } from '@/lib/ai/tailor';
 import type { FormField } from './form';
+import { humanize, STOCK_PHRASES, type HumanizeReport } from './humanize';
 
 export interface Candidate {
   fullName: string;
@@ -132,12 +134,14 @@ const Answers = z.object({
 const SYSTEM = `You fill in one job application for the candidate, in the candidate's own voice.
 
 Rules:
-- Write in first person ("I", "my") as a sharp engineer writing their own application: plain words, specific systems, real numbers from the materials.
-- Use only facts from the resume, profile, Application Kit and projects given. Never invent employers, titles, dates, numbers, schools, visas or links.
+- Read everything given first: the job, the resume (and the one tailored for this job), the profile, the Application Kit, the projects and the candidate's own words. Answer from all of it.
+- Write in first person as a sharp engineer typing their own application: plain words, contractions where natural, short and longer sentences mixed, specific systems and real numbers from the materials. One concrete detail beats three adjectives. No summary line at the end.
+- A light, dry touch of humour is welcome only where a question invites personality (something about you, a fun fact). Never on factual, legal, visa or salary questions.
+- Use only facts from the materials given. Never invent employers, titles, dates, numbers, schools, visas or links.
 - If the materials do not answer a question, return "" for it. The candidate will answer it.
 - Short text fields: a few words. "Why this company / role": 2 to 4 sentences, under 80 words, tied to what the company builds and what the candidate has built. Other long answers: under 120 words.
 - A field that lists options: the value must be exactly one of the options (multi-select: an array of them).
-- Never write: thrilled, passionate, delve, tapestry, testament, unwavering, eager to leverage, aligns perfectly, synergy, cutting-edge, excited to. No emojis, no exclamation marks, no em dashes.
+- Never write: ${STOCK_PHRASES.join(', ')}. No emojis, exclamation marks, dashes, semicolons, lists or markdown.
 
 Reply with JSON only: {"answers":[{"name":"<field name>","value":"<text>" or ["<option>", ...]}]}`;
 
@@ -145,14 +149,23 @@ export interface AnswerContext {
   job: { title: string; company: string; location: string | null; description: string };
   resumeText: string;
   tailoredText: string | null;
+  /** When the answers must be ready (ms since epoch): HUMANIZE starts no round it cannot finish by then. */
+  deadline: number;
 }
 
-/** Profile facts first, then one AI call for everything else it may answer. */
+/** A written answer worth humanizing: free text of a sentence or more (not "Bengaluru", not a picked option). */
+const isProse = (f: FilledField) =>
+  f.by === 'ai' &&
+  (f.type === 'textarea' || f.type === 'text') &&
+  typeof f.value === 'string' &&
+  f.value.split(/\s+/).length >= 6;
+
+/** Profile facts first, then one AI call for everything else it may answer, then HUMANIZE on what it wrote. */
 export async function answerForm(
   fields: FormField[],
   c: Candidate,
   ctx: AnswerContext,
-): Promise<{ fields: FilledField[]; model: string | null; aiError: string | null }> {
+): Promise<{ fields: FilledField[]; model: string | null; aiError: string | null; humanized: HumanizeReport | null }> {
   const filled: FilledField[] = fields.map((f) => {
     if (YOUR_CALL.test(f.label)) return { ...f, value: '', by: 'you', note: 'a legal consent: your decision' };
     const fact = fillFromProfile(f, c, ctx.resumeText);
@@ -164,7 +177,7 @@ export async function answerForm(
     (f) =>
       f.by === 'you' && !YOUR_CALL.test(f.label) && f.type !== 'file' && (f.options?.length || 0) <= MAX_AI_OPTIONS,
   );
-  if (!ask.length) return { fields: filled, model: null, aiError: null };
+  if (!ask.length) return { fields: filled, model: null, aiError: null, humanized: null };
 
   const candidate = [
     `NAME: ${c.fullName}`,
@@ -195,15 +208,9 @@ export async function answerForm(
 
   try {
     const { text, model } = await completeJson(SYSTEM, user);
-    const parsed = Answers.safeParse(
-      JSON.parse(
-        text
-          .trim()
-          .replace(/^```(?:json)?\s*/i, '')
-          .replace(/\s*```$/, ''),
-      ),
-    );
-    if (!parsed.success) return { fields: filled, model, aiError: 'The AI reply could not be read. Try again.' };
+    const parsed = Answers.safeParse(JSON.parse(unfence(text)));
+    if (!parsed.success)
+      return { fields: filled, model, aiError: 'The AI reply could not be read. Try again.', humanized: null };
     const byName = new Map(parsed.data.answers.map((a) => [a.name, a.value]));
     for (const f of filled) {
       if (f.by !== 'you' || !byName.has(f.name)) continue;
@@ -214,8 +221,16 @@ export async function answerForm(
       else value = (Array.isArray(raw) ? raw.join(', ') : raw).trim().slice(0, 2000);
       if (Array.isArray(value) ? value.length : value) Object.assign(f, { value, by: 'ai' as const });
     }
-    return { fields: filled, model, aiError: null };
+
+    const prose = filled.filter(isProse);
+    const { values, report } = await humanize(
+      prose.map((f) => ({ name: f.name, label: f.label, value: f.value as string })),
+      { context: user, deadline: ctx.deadline },
+    );
+    for (const f of prose) f.value = values.get(f.name) ?? f.value;
+    return { fields: filled, model, aiError: null, humanized: prose.length ? report : null };
   } catch (err) {
-    return { fields: filled, model: null, aiError: err instanceof Error ? err.message : String(err) };
+    const aiError = err instanceof Error ? err.message : String(err);
+    return { fields: filled, model: null, aiError, humanized: null };
   }
 }

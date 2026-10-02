@@ -245,6 +245,7 @@ const SAMPLE: MatchedJob = {
     work_type: 'remote',
     skills: [],
     apply_url: '/sign-up',
+    form_url: '/sign-up',
     department: 'Engineering',
     posted_at: null,
     is_active: true,

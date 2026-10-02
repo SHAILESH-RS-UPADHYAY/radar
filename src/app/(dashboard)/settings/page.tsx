@@ -498,7 +498,7 @@ export default function SettingsPage() {
             <RadarLogo />
           </Link>
           <div className="flex items-center gap-3">
-            <span className="hidden sm:inline">{syncState}</span>
+            {profile && <span className="hidden sm:inline">{syncState}</span>}
             <Link
               href="/dashboard"
               aria-keyshortcuts="Escape"
@@ -523,7 +523,7 @@ export default function SettingsPage() {
             SYSTEM_CONFIG<span className="caret-blink text-phosphor">_</span>
           </h1>
           <p className="mt-2 text-sm text-dim">Every change saves instantly. Rescan to apply it to every open job.</p>
-          <div className="mt-3 sm:hidden">{syncState}</div>
+          {profile && <div className="mt-3 sm:hidden">{syncState}</div>}
         </div>
 
         {loading ? (
