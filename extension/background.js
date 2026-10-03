@@ -76,7 +76,7 @@ async function openForm(msg, sender) {
   }
   if (url.protocol !== 'https:') return { ok: false, error: 'only https forms are opened' };
   if (msg.packet && msg.packet.radar !== 1) return { ok: false, error: 'not a RADAR fill packet' };
-  // PHANTOM opens forms in the background, so they never steal your screen.
+  // ZERO-DAY opens forms in the background, so they never steal your screen.
   const tab = await chrome.tabs.create({
     url: url.href,
     index: sender.tab.index + 1,
@@ -95,7 +95,7 @@ async function openForm(msg, sender) {
     armedAt: 0,
     report: null,
     done: false,
-    // PHANTOM: { dryRun, consents }. Absent for ↯ HACK and INFILTRATE (you submit).
+    // ZERO-DAY: { dryRun, consents }. Absent for ↯ HACK and INFILTRATE (you submit).
     auto: msg.auto || null,
   });
   // A fast page can finish loading before the entry above existed; fill it now in that case.
@@ -185,18 +185,26 @@ const handlers = {
     if (!(await read(sender.tab.id))) return null;
     return (await chrome.storage.local.get('resume')).resume || null;
   },
-  // From an PHANTOM form tab: ready (checks passed), submitting, or parked with the reasons. Relayed to RADAR.
+  // From a ZERO-DAY form tab: ready (checks passed), submitting, or parked with the reasons. Relayed to RADAR.
   async autopilot(msg, sender) {
     const entry = await read(sender.tab.id);
     if (!entry || !entry.auto) return { ok: false };
     tellRadar(entry, { type: 'autopilot', state: msg.state, reasons: msg.reasons || [] });
     return { ok: true };
   },
-  // From an PHANTOM form tab, right before it presses Submit: only while the run is on (the kill switch).
+  // From a ZERO-DAY form tab, right before it presses Submit: only while the run is on (the kill switch).
   async 'may-submit'(msg, sender) {
     const entry = await read(sender.tab.id);
     const { autopilotOn } = await chrome.storage.session.get('autopilotOn');
     return { ok: !!(entry && entry.auto && !entry.auto.dryRun && autopilotOn) };
+  },
+  // From a ZERO-DAY form tab about to submit: show it, so you see its countdown.
+  async front(msg, sender) {
+    const entry = await read(sender.tab.id);
+    if (!entry || !entry.auto) return { ok: false };
+    await chrome.tabs.update(sender.tab.id, { active: true });
+    await chrome.windows.update(sender.tab.windowId, { focused: true }).catch(() => {});
+    return { ok: true };
   },
   // From a form tab: an answer you typed in the panel, for RADAR to remember (relayed to the RADAR tab, which saves it).
   async learn(msg, sender) {
@@ -232,7 +240,7 @@ const handlers = {
     await chrome.action.setBadgeText({ text: msg.count ? String(msg.count) : '' });
     return { ok: true };
   },
-  // From RADAR: the daily PHANTOM alarm (your local time), or none.
+  // From RADAR: the daily ZERO-DAY alarm (your local time), or none.
   async schedule(msg, sender) {
     await chrome.alarms.clear('autopilot');
     if (!msg.enabled || !RADAR_PAGE.test(sender.url || '')) return { ok: true };
@@ -243,7 +251,7 @@ const handlers = {
     at.setHours(h, m, 0, 0);
     if (at.getTime() <= Date.now()) at.setDate(at.getDate() + 1);
     chrome.alarms.create('autopilot', { when: at.getTime(), periodInMinutes: 24 * 60 });
-    await chrome.storage.local.set({ autopilotUrl: new URL('/phantom?autostart=1', sender.url).href });
+    await chrome.storage.local.set({ autopilotUrl: new URL('/zero-day?autostart=1', sender.url).href });
     return { ok: true };
   },
   // You pressed the employer's Submit: remembered across the confirmation page load.

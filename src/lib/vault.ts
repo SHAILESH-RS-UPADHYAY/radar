@@ -1,7 +1,7 @@
 // ============================
 // RADAR — moving matches between Discovery, the Vault, C2 · OPS and dismissed
 // ============================
-// Shared by PATCH /api/vault (the dashboard) and PHANTOM (an application the employer confirmed).
+// Shared by PATCH /api/vault (the dashboard) and ZERO-DAY (an application the employer confirmed).
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isSchemaMissing } from '@/lib/supabase/errors';

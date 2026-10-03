@@ -117,8 +117,8 @@ describe('cleanAutopilot', () => {
     });
     expect('evil' in s).toBe(false);
   });
-  it('starts in DRY RUN', () => {
-    expect(DEFAULT_AUTOPILOT.dryRun).toBe(true);
+  it('starts live (the 5 s countdown in the tab is the last word)', () => {
+    expect(DEFAULT_AUTOPILOT.dryRun).toBe(false);
   });
 });
 

@@ -8,7 +8,7 @@ import { NeedsYou } from './Board';
 import type { QueueRow } from './useRunner';
 
 /**
- * The dashboard's NEEDS YOU: today's jobs PHANTOM left to you, with the same actions as /phantom. Hidden when there
+ * The dashboard's NEEDS YOU: today's jobs ZERO-DAY left to you, with the same actions as /zero-day. Hidden when there
  * are none (or before migration 010). Re-reads when you come back to the tab, since the runner works in other tabs.
  */
 export function ParkedPanel({ onApplied }: { onApplied: () => void }) {
@@ -44,10 +44,10 @@ export function ParkedPanel({ onApplied }: { onApplied: () => void }) {
     <div>
       <NeedsYou rows={rows} onSent={(r) => void settle(r, 'submitted')} onSkip={(r) => void settle(r, 'skipped')} />
       <Link
-        href="/phantom"
+        href="/zero-day"
         className="mt-2 block text-right font-mono text-[10px] tracking-[0.2em] text-dim transition-colors hover:text-phosphor"
       >
-        OPEN PHANTOM ▸
+        OPEN ZERO-DAY ▸
       </Link>
     </div>
   );

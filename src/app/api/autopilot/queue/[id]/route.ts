@@ -55,14 +55,15 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     const applied = await setMatchStatus(supabase, userId, [row.match_id], 'applied', row.tailored_id);
     if (applied.error) return NextResponse.json({ error: applied.error }, { status: 500 });
   }
-  // C2 · OPS keeps the story: what PHANTOM sent, and what it left to you and why.
+  // C2 · OPS keeps the story: what ZERO-DAY sent, and what it left to you and why.
   if (status === 'submitted' || status === 'needs_you') {
     await supabase.from('ops_events').insert({
       user_id: userId,
       match_id: row.match_id,
       source: 'radar',
       kind: status === 'submitted' ? 'autopilot_applied' : 'autopilot_parked',
-      summary: status === 'submitted' ? `PHANTOM sent it · ${where}` : `PHANTOM left it to you (${reason}) · ${where}`,
+      summary:
+        status === 'submitted' ? `ZERO-DAY sent it · ${where}` : `ZERO-DAY left it to you (${reason}) · ${where}`,
     });
   }
   return NextResponse.json({ ok: true });

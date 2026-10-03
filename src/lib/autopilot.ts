@@ -1,5 +1,5 @@
 // ============================
-// RADAR — PHANTOM: today's queue of applications
+// RADAR — ZERO-DAY: today's queue of applications
 // ============================
 // Built on demand, once a day (the /autopilot page asks for it when it opens): your best open matches in your exact
 // cities that a form can be filled for without an account, ranked. Each job's answers are drafted when its turn comes
@@ -47,7 +47,7 @@ export const DEFAULT_AUTOPILOT: AutopilotSettings = {
   target: 50,
   concurrency: 2,
   schedule: '10:00',
-  dryRun: true,
+  dryRun: false,
   perCompany: 2,
   consents: [],
 };
@@ -162,7 +162,7 @@ export function supplyByCity(candidates: QueueCandidate[], o: Omit<PickOptions, 
 /** Today's date in India (the queue's day), YYYY-MM-DD. */
 export const runDate = (now = new Date()) => new Date(now.getTime() + 5.5 * 3_600_000).toISOString().slice(0, 10);
 
-export const MIGRATION_HINT = 'PHANTOM needs migration 010. Run supabase/migrations/010_autopilot.sql.';
+export const MIGRATION_HINT = 'ZERO-DAY needs migration 010. Run supabase/migrations/010_autopilot.sql.';
 
 /** Your settings, cities, bar and every candidate match. Null when the migration has not run. */
 export async function loadAutopilot(supabase: SupabaseClient, userId: string) {
@@ -242,7 +242,7 @@ export async function loadAutopilot(supabase: SupabaseClient, userId: string) {
 const QUEUE_COLUMNS =
   'id, match_id, rank, status, reason, form_url, ats_provider, tailored_id, attempts, started_at, finished_at, confirmation, match_scores!inner(score, jobs!inner(title, employer, location, apply_url, companies!inner(name, ats_identifier)))';
 
-/** Today's jobs PHANTOM left to you (the dashboard's NEEDS YOU panel). Null when migration 010 has not run. */
+/** Today's jobs ZERO-DAY left to you (the dashboard's NEEDS YOU panel). Null when migration 010 has not run. */
 export async function parkedToday(supabase: SupabaseClient, userId: string) {
   const { data, error } = await supabase
     .from('apply_queue')

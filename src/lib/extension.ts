@@ -27,7 +27,7 @@ export interface ExtensionEvent {
   /** questions: one request from the form tab, answered with armInExtension({ more: { id, … } }). */
   id?: number;
   fields?: PageQuestion[];
-  /** autopilot: what an PHANTOM tab reached (ready = every check passed in DRY RUN), and why it parked. */
+  /** autopilot: what a ZERO-DAY tab reached (ready = every check passed in DRY RUN), and why it parked. */
   state?: 'ready' | 'submitting' | 'parked';
   reasons?: string[];
   /** applied: how the employer confirmed it. */
@@ -70,13 +70,13 @@ export function launchInExtension(launch: {
   matchId: string;
   tailoredId: string | null;
   packet?: FillPacket;
-  /** PHANTOM: open in the background, run pre-flight and, unless dryRun, press the form's Submit. */
+  /** ZERO-DAY: open in the background, run pre-flight and, unless dryRun, press the form's Submit. */
   auto?: { dryRun: boolean; consents: string[] };
 }) {
   send({ type: 'launch', ...launch });
 }
 
-/** PHANTOM's controls in the extension. */
+/** ZERO-DAY's controls in the extension. */
 export const autopilotExtension = {
   /** On = START; off = PAUSE or KILL SWITCH (no tab may press Submit). */
   run: (on: boolean) => send({ type: 'switch', on }),

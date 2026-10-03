@@ -456,11 +456,14 @@ export default function DashboardPage() {
   // A job RADAR auto-saved whose score fell under your bar leaves the Vault (the next scan moves it back to
   // Discovery for good); what you saved yourself stays.
   const bar = vaultSettings?.vault_min_score ?? 80;
+  const applied = matches.filter((m) => m.status === 'applied').sort(byRecent);
+  // Companies you already applied to sink to the bottom of the Vault (still there, just after fresh ones).
+  const appliedAt = new Set(applied.map((m) => m.job.company.name.toLowerCase()));
+  const sunk = (m: (typeof matches)[number]) => (appliedAt.has(m.job.company.name.toLowerCase()) ? 1 : 0);
   const saved = shown
     .filter((m) => m.status === 'saved' && m.job.is_active && !(m.auto_saved && m.score < bar))
-    .sort(byScore);
-  const today = todaysTen(saved);
-  const applied = matches.filter((m) => m.status === 'applied').sort(byRecent);
+    .sort((a, b) => sunk(a) - sunk(b) || byScore(a, b));
+  const today = todaysTen(saved, undefined, sunk);
   const archived = applied.filter((m) => CLOSED_STAGES.includes(m.stage || 'applied'));
   const activeOps = applied.filter((m) => !CLOSED_STAGES.includes(m.stage || 'applied'));
   const needsAttention = activeOps.filter((m) => opsSignals(m).length > 0).length;
@@ -641,11 +644,11 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
-              href="/phantom"
-              title="PHANTOM: today's jobs filled and checked one after another"
+              href="/zero-day"
+              title="ZERO-DAY: today's jobs filled and checked one after another"
               className="hidden border border-phosphor/20 px-3 py-2 font-mono text-[11px] tracking-[0.2em] text-dim transition-colors hover:border-phosphor/60 hover:text-phosphor md:inline-block"
             >
-              ◈ PHANTOM
+              ◈ ZERO-DAY
             </Link>
             <Link
               href="/settings"

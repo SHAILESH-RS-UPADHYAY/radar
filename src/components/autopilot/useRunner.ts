@@ -1,8 +1,8 @@
 'use client';
 
-// PHANTOM's runner: takes the next queued job, drafts its answers just in time (the same path as ↯ HACK), opens its
-// form in a background tab and reads what the extension reports back. This build runs in DRY RUN only: every form is
-// filled and pre-flight checked, and Submit is never pressed.
+// ZERO-DAY's runner: takes the next queued job, drafts its answers just in time (the same path as ↯ HACK), opens its
+// form in a background tab and reads what the extension reports back. Every form is filled and pre-flight checked; when
+// all checks pass the tab shows a 5 s countdown (FREEZE to review) and then presses Submit, unless DRY RUN is on.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { useApi } from '@/lib/use-api';
@@ -83,7 +83,7 @@ export function useRunner(api: ReturnType<typeof useApi>, rows: QueueRow[], sett
           matchId: row.match_id,
           tailoredId: prepared.tailoredId,
           packet,
-          auto: { dryRun: true, consents: settings?.consents ?? [] },
+          auto: { dryRun: settings?.dryRun ?? false, consents: settings?.consents ?? [] },
         });
       } catch (err) {
         active.current.delete(row.match_id);
@@ -93,7 +93,7 @@ export function useRunner(api: ReturnType<typeof useApi>, rows: QueueRow[], sett
     [api, mark, settings],
   );
 
-  // What the extension reports from each PHANTOM tab.
+  // What the extension reports from each ZERO-DAY tab.
   const viewRef = useRef(view);
   useEffect(() => {
     viewRef.current = view;

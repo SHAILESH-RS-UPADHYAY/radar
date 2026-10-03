@@ -137,12 +137,17 @@ const postedDays = (m: MatchedJob, now: number) =>
  * Today's 10: the Vault jobs to apply to first. Postings from the last 4 days lead (early applicants get read),
  * then the last two weeks, then the rest; score decides within each group. Unknown dates count as old.
  */
-export function todaysTen(saved: MatchedJob[], now = Date.now()): MatchedJob[] {
+export function todaysTen(
+  saved: MatchedJob[],
+  now = Date.now(),
+  /** 1 sinks a match below every 0 (e.g. a company you already applied to). */
+  sunk: (m: MatchedJob) => number = () => 0,
+): MatchedJob[] {
   const group = (m: MatchedJob) => {
     const days = postedDays(m, now);
     return days <= 4 ? 0 : days <= 14 ? 1 : 2;
   };
-  return [...saved].sort((a, b) => group(a) - group(b) || b.score - a.score).slice(0, 10);
+  return [...saved].sort((a, b) => sunk(a) - sunk(b) || group(a) - group(b) || b.score - a.score).slice(0, 10);
 }
 
 /** "NEW" for the first 4 days, then "6D", "3W"; empty when the posting date is unknown. */

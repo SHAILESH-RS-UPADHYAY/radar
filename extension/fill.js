@@ -15,7 +15,7 @@
   window.__radarFill = true;
 
   const TOP = window === window.top;
-  // PHANTOM's settings for this tab ({ dryRun, consents }), or null: then you press Submit, as always.
+  // ZERO-DAY's settings for this tab ({ dryRun, consents }), or null: then you press Submit, as always.
   let AUTO = null;
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -636,8 +636,19 @@
       .hud{position:relative;width:350px;max-width:calc(100vw - 32px);background:rgba(2,7,3,.95);border:1px solid rgba(0,255,65,.45);
         color:#d9ffe0;font:12px/1.55 "JetBrains Mono","Cascadia Code",Consolas,ui-monospace,monospace;overflow:hidden;
         box-shadow:0 0 0 1px rgba(0,0,0,.6),0 22px 70px rgba(0,0,0,.7),0 0 42px rgba(0,255,65,.16);backdrop-filter:blur(8px);
-        transition:box-shadow .3s ease}
-      .hud.dragging{box-shadow:0 0 0 1px rgba(0,255,65,.7),0 28px 80px rgba(0,0,0,.75),0 0 60px rgba(0,255,65,.3)}
+        transition:box-shadow .3s ease;animation:boot .7s steps(7) both,edge 3s ease-in-out .7s infinite}
+      .hud.dragging{box-shadow:0 0 0 1px rgba(0,255,65,.7),0 28px 80px rgba(0,0,0,.75),0 0 60px rgba(0,255,65,.3);
+        animation:jolt .18s steps(2) infinite}
+      .hud:after{content:"";position:absolute;left:0;right:0;height:38px;top:-40px;pointer-events:none;z-index:2;
+        background:linear-gradient(180deg,transparent,rgba(0,255,65,.09),transparent);animation:beam 3.4s linear infinite}
+      .dragging:after{animation-duration:.7s}
+      .dragging .title{animation:glitch .25s steps(1) infinite}
+      .dragging .corner{border-color:#22D3EE}
+      .trace{position:absolute;right:10px;bottom:4px;z-index:4;font-size:9px;letter-spacing:.14em;color:#22D3EE;opacity:0;transition:opacity .2s}
+      .dragging .trace{opacity:1}
+      .hex{height:12px;overflow:hidden;font-size:9px;letter-spacing:.1em;color:rgba(0,255,65,.4);padding:0 10px;white-space:nowrap;
+        border-bottom:1px solid rgba(0,255,65,.1)}
+      .dragging .hex{color:#22D3EE}
       .hud:before{content:"";position:absolute;inset:0;pointer-events:none;z-index:2;
         background:repeating-linear-gradient(0deg,rgba(0,255,65,.035) 0 1px,transparent 1px 3px)}
       .corner{position:absolute;width:10px;height:10px;border:2px solid #00FF41;pointer-events:none;z-index:3}
@@ -668,8 +679,7 @@
       .need{display:flex;align-items:center;gap:6px}
       .jump{all:unset;flex:1;min-width:0;box-sizing:border-box;cursor:pointer;color:#f5f0c8;padding:2px 0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       .jump:hover{color:#FACC15}
-      .teach{all:unset;cursor:pointer;color:#FACC15;border:1px solid rgba(250,204,21,.45);padding:0 6px;font-size:10px;letter-spacing:.1em}
-      .teach:hover{background:rgba(250,204,21,.12)}
+      .answer input:focus{border-color:#FACC15;box-shadow:0 0 12px rgba(250,204,21,.35)}
       .answer{display:flex;gap:6px;margin:4px 0 6px;animation:in .2s ease}
       .answer input{all:unset;flex:1;min-width:0;border:1px solid rgba(250,204,21,.5);padding:4px 6px;color:#fff8d6;background:rgba(250,204,21,.05)}
       .answer button{all:unset;cursor:pointer;background:#FACC15;color:#000;font-weight:700;padding:0 8px;font-size:10px;letter-spacing:.12em}
@@ -682,7 +692,20 @@
       .done{font-size:15px;font-weight:800;letter-spacing:.08em;color:#00FF41;text-shadow:0 0 18px rgba(0,255,65,.6);margin:6px 0}
       @keyframes spin{to{transform:rotate(360deg)}}@keyframes scan{to{transform:translateX(100%)}}
       @keyframes sig{50%{opacity:.25}}@keyframes in{from{opacity:0;transform:translateY(3px)}}
+      @keyframes boot{0%{clip-path:inset(0 0 100% 0);filter:brightness(3)}60%{clip-path:inset(0 0 30% 0)}100%{clip-path:inset(0);filter:none}}
+      @keyframes edge{50%{border-color:rgba(0,255,65,.85)}}@keyframes beam{to{top:100%}}
+      @keyframes jolt{0%{transform:translate(1px,0);filter:drop-shadow(-2px 0 rgba(255,42,109,.5))}
+        100%{transform:translate(-1px,0);filter:drop-shadow(2px 0 rgba(34,211,238,.5))}}
       @keyframes glitch{0%,96%{text-shadow:none}97%{text-shadow:-2px 0 #FF2A6D,2px 0 #22D3EE}98%{text-shadow:2px 0 #FF2A6D,-2px 0 #22D3EE}}
+      .arm{position:fixed;inset:0;z-index:9;display:grid;place-items:center;background:rgba(0,0,0,.72);backdrop-filter:blur(3px);animation:in .2s ease}
+      .arm>div{position:relative;width:330px;max-width:calc(100vw - 32px);border:1px solid #FF2A6D;background:rgba(10,2,5,.96);padding:18px;
+        text-align:center;box-shadow:0 0 60px rgba(255,42,109,.35);animation:boot .5s steps(5) both}
+      .arm b{display:block;font-size:10px;letter-spacing:.32em;color:#FF2A6D;animation:glitch 1s steps(1) infinite}
+      .arm .t{font-size:58px;font-weight:800;line-height:1.1;margin:8px 0 2px;color:#fff;text-shadow:0 0 24px rgba(255,42,109,.8)}
+      .arm .bar{height:3px;background:#FF2A6D;margin:10px 0 14px;transform-origin:left;animation:drain 5s linear forwards}
+      .arm .j{font-size:10px;color:#c9a3ae;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+      .arm .row{margin-top:0}.arm button.go{background:#FF2A6D;border-color:#FF2A6D;color:#000}
+      @keyframes drain{to{transform:scaleX(0)}}
       @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
     </style>
     <section class="hud" role="status" aria-live="polite">
@@ -690,8 +713,9 @@
       <header title="Drag to move · double-click to fold"><span class="dot"></span><span class="title">RADAR://FILL</span>
         <span class="job"></span><span class="sig" aria-hidden="true"><i></i><i></i><i></i></span>
         <span class="state">ARMED</span><button class="min" title="Fold / unfold" aria-label="Fold or unfold">▾</button></header>
+      <div class="hex" aria-hidden="true"></div><span class="trace" aria-hidden="true"></span>
       <div class="fold"><div><div class="body"><div class="log"></div>
-        <div class="needs" hidden><b>NEEDS YOU · ✎ TEACH RADAR</b><div class="list"></div></div>
+        <div class="needs" hidden><b>NEEDS YOU · TYPE HERE, RADAR LEARNS</b><div class="list"></div></div>
         <div class="row"><button class="btn" data-act="submit">▼ SUBMIT</button><button class="btn go" data-act="sent">✓ I SUBMITTED IT</button></div>
         <div class="note">RADAR never presses Submit. Review, then send it yourself.</div></div></div></div>
     </section>`;
@@ -701,6 +725,13 @@
     const $ = (s) => root.querySelector(s);
     const hud = $('.hud');
     $('.job').textContent = job;
+    // A running packet stream under the header; it races while the panel is dragged.
+    const hexLine = () =>
+      Array.from({ length: 24 }, () => ((Math.random() * 256) | 0).toString(16).padStart(2, '0')).join(' ');
+    let tick = 0;
+    setInterval(() => {
+      if (hud.classList.contains('dragging') || ++tick % 4 === 0) $('.hex').textContent = hexLine();
+    }, 90);
 
     // Fold and unfold, smoothly (the body's row height animates to 0).
     const fold = () => hud.classList.toggle('closed');
@@ -732,7 +763,10 @@
       hud.classList.add('dragging');
       $('header').setPointerCapture(e.pointerId);
       let last = null;
-      const move = (m) => (last = place(m.clientX - dx, m.clientY - dy));
+      const move = (m) => {
+        last = place(m.clientX - dx, m.clientY - dy);
+        $('.trace').textContent = `TRACE ${last.x | 0}:${last.y | 0}`;
+      };
       const up = () => {
         hud.classList.remove('dragging');
         $('header').removeEventListener('pointermove', move);
@@ -748,6 +782,8 @@
     });
 
     let teach = null; // set by the run: (question, answer, el) => void
+    let mirror = null; // set by the run: (el, text) => void, each keystroke
+    let pendingNeeds = null;
     const api = {
       job: (text) => ($('.job').textContent = text),
       async log(tag, text, tone = 'ok') {
@@ -769,43 +805,48 @@
         $('.state').style.color = color;
       },
       onTeach: (fn) => (teach = fn),
+      onMirror: (fn) => (mirror = fn),
+      // Every question you owe gets its own box: what you type goes straight into the form's field (text fields
+      // live, as you type), and Enter or leaving the box teaches RADAR the answer for every later form.
       needs(list) {
+        // Not while you are typing in a box: the list waits until you leave it.
+        if (root.activeElement && root.activeElement.closest('.list')) return (pendingNeeds = list);
+        pendingNeeds = null;
         $('.needs').hidden = !list.length;
         $('.list').replaceChildren(
           ...list.slice(0, 7).map(({ label, el }) => {
             const item = document.createElement('div');
-            const row = document.createElement('div');
-            row.className = 'need';
             const jump = document.createElement('button');
             jump.className = 'jump';
             jump.textContent = '⤷ ' + label;
-            jump.title = 'Go to this question';
+            jump.title = 'Go to this question in the form';
             if (el)
               jump.addEventListener('click', () => {
                 el.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'center' });
-                el.focus({ preventScroll: true });
                 glow(el, '250,204,21');
               });
-            const pen = document.createElement('button');
-            pen.className = 'teach';
-            pen.textContent = '✎';
-            pen.title = 'Answer it here: RADAR fills it and remembers it for every form';
-            pen.addEventListener('click', () => {
-              if (item.querySelector('.answer')) return item.querySelector('input').focus();
-              const box = document.createElement('form');
-              box.className = 'answer';
-              box.innerHTML =
-                '<input placeholder="your answer, remembered for next time"><button type="submit">TEACH</button>';
-              box.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const value = box.querySelector('input').value.trim();
-                if (value && teach) teach(label, value, el);
-              });
-              item.appendChild(box);
-              box.querySelector('input').focus();
+            const box = document.createElement('form');
+            box.className = 'answer';
+            box.innerHTML =
+              '<input placeholder="type here: fills the form, RADAR remembers"><button type="submit">↵</button>';
+            const input = box.querySelector('input');
+            input.addEventListener('input', () => mirror && mirror(el, input.value));
+            let taught = '';
+            const commit = () => {
+              const value = input.value.trim();
+              if (!value || value === taught || !teach) return;
+              taught = value;
+              teach(label, value, el);
+            };
+            box.addEventListener('submit', (e) => {
+              e.preventDefault();
+              commit();
             });
-            row.append(jump, pen);
-            item.appendChild(row);
+            input.addEventListener('blur', () => {
+              commit();
+              setTimeout(() => pendingNeeds && api.needs(pendingNeeds), 0);
+            });
+            item.append(jump, box);
             return item;
           }),
         );
@@ -814,6 +855,33 @@
         root.querySelector(`[data-act="${act}"]`).addEventListener('click', fn);
       },
       note: (text) => ($('.note').textContent = text),
+      /** Before ZERO-DAY presses Submit: a 5 s countdown; resolves 'go' (time up or EXECUTE) or 'hold' (FREEZE). */
+      countdown(sec, label) {
+        return new Promise((resolve) => {
+          const box = document.createElement('div');
+          box.className = 'arm';
+          box.innerHTML = `<div><i class="corner c1"></i><i class="corner c2"></i><i class="corner c3"></i><i class="corner c4"></i>
+            <b>// PAYLOAD ARMED · SUBMIT IN</b><div class="t"></div><div class="j"></div><div class="bar"></div>
+            <div class="row"><button class="btn" data-k="hold">⏸ FREEZE · REVIEW</button>
+            <button class="btn go" data-k="go">⚡ EXECUTE NOW</button></div></div>`;
+          box.querySelector('.j').textContent = label;
+          box.querySelector('.bar').style.animationDuration = sec + 's';
+          root.appendChild(box);
+          let left = sec;
+          const t = box.querySelector('.t');
+          const end = (how) => {
+            clearInterval(timer);
+            box.remove();
+            resolve(how);
+          };
+          t.textContent = left;
+          const timer = setInterval(() => (--left <= 0 ? end('go') : (t.textContent = left)), 1000);
+          box.addEventListener('click', (e) => {
+            const k = e.target.closest('button')?.dataset.k;
+            if (k) end(k);
+          });
+        });
+      },
       hideSubmitJump: () => (root.querySelector('[data-act="submit"]').hidden = true),
       done(text) {
         api.state('LOGGED', '#00FF41');
@@ -880,7 +948,7 @@
   }
 
   // =====================================================================================================
-  // PHANTOM: pre-flight, then (unless DRY RUN) the form's own Submit, then the employer's confirmation
+  // ZERO-DAY: pre-flight, then (unless DRY RUN) the form's own Submit, then the employer's confirmation
   // =====================================================================================================
 
   function captchaNow() {
@@ -936,7 +1004,7 @@
     if (!hud) return;
     hud.state('NEEDS YOU', '#FACC15');
     for (const r of reasons) hud.log('YOU', r, 'you');
-    hud.note('PHANTOM left this one to you. Fix what is listed, then press Submit; RADAR logs it.');
+    hud.note('ZERO-DAY left this one to you. Fix what is listed, then press Submit; RADAR logs it.');
   }
 
   async function autoFinish(packet, hud) {
@@ -952,12 +1020,21 @@
       ask({ type: 'autopilot', state: 'ready' });
       if (hud) {
         hud.state('DRY RUN ✓', '#00FF41');
-        hud.log('OK', 'every check passed: PHANTOM would press Submit now (DRY RUN is on)', 'ok');
+        hud.log('OK', 'every check passed: ZERO-DAY would press Submit now (DRY RUN is on)', 'ok');
       }
       return;
     }
     const go = await ask({ type: 'may-submit' });
-    if (!go || !go.ok) return park(hud, ['PHANTOM was stopped before Submit']);
+    if (!go || !go.ok) return park(hud, ['ZERO-DAY was stopped before Submit']);
+    // Last word is yours: the tab comes to the front with a 5 s countdown. FREEZE keeps it here for you to review.
+    if (hud) {
+      await ask({ type: 'front' });
+      hud.state('ARMED', '#FF2A6D');
+      if ((await hud.countdown(5, document.title)) === 'hold')
+        return park(hud, ['you froze it to review: press Submit yourself when it looks right']);
+      const again = await ask({ type: 'may-submit' }); // KILL during the countdown wins
+      if (!again || !again.ok) return park(hud, ['ZERO-DAY was stopped before Submit']);
+    }
     ask({ type: 'autopilot', state: 'submitting' });
     await ask({ type: 'armed' });
     if (hud) hud.log('SYS', "every check passed: pressing the form's Submit", 'dim');
@@ -1020,7 +1097,7 @@
       if (!entry || entry.done) return;
       const arrived = entry.version !== version && entry.packet;
       const newStep = visibleFields().length !== fields;
-      // PHANTOM decides once every answer is in (or after 5 minutes without them).
+      // ZERO-DAY decides once every answer is in (or after 5 minutes without them).
       if (AUTO && !arrived && !newStep && asking === 0 && !packet.partial)
         return exclusive(() => autoFinish(packet, hud));
       if (AUTO && Date.now() - startedAt > 5 * 60_000) return park(hud, ['the answers did not arrive in time']);
@@ -1083,10 +1160,17 @@
     let entry = await ask({ type: 'packet' });
     if (!entry) return; // the worker only injects into tabs RADAR opened; stay silent if that entry is gone
     hud = mountHud(entry.packet ? entry.packet.job : 'RADAR');
-    // ✎ in NEEDS YOU: your answer goes into the form and to RADAR, which gives it to every later form that asks.
+    // NEEDS YOU boxes: text fields follow your typing; on Enter (or leaving the box) the answer goes into the form
+    // (choices are picked then) and to RADAR, which gives it to every later form that asks.
+    const questionFor = (question, el) => (el && questionOf(el)) || questions().find((x) => x.label === question);
+    hud.onMirror((el, text) => {
+      const q = el && questionOf(el);
+      if (q && (q.kind === 'text' || q.kind === 'textarea')) setValue(q.el, text);
+    });
     hud.onTeach(async (question, value, el) => {
-      const q = (el && questionOf(el)) || questions().find((x) => x.label === question);
-      if (q && !answered(q)) await exclusive(() => answer(q, [value]));
+      const q = questionFor(question, el);
+      if (q && (q.kind === 'text' || q.kind === 'textarea')) setValue(q.el, value);
+      else if (q && !answered(q)) await exclusive(() => answer(q, [value]));
       await ask({ type: 'learn', question, answer: value });
       hud.log('OK', `learned "${question.slice(0, 48)}": RADAR answers it from now on`, 'ok');
       hud.needs(stillEmpty());
@@ -1102,11 +1186,11 @@
 
     AUTO = entry.auto;
     if (AUTO) {
-      hud.state('PHANTOM', '#22D3EE');
+      hud.state('ZERO-DAY', '#22D3EE');
       hud.note(
         AUTO.dryRun
-          ? 'PHANTOM · DRY RUN: fills and checks everything, never presses Submit.'
-          : "PHANTOM presses the form's Submit only when every pre-flight check passes; otherwise it leaves it to you.",
+          ? 'ZERO-DAY · DRY RUN: fills and checks everything, never presses Submit.'
+          : "ZERO-DAY presses the form's Submit only when every pre-flight check passes; otherwise it leaves it to you.",
       );
     }
     if (entry.done) return hud.done('Already logged in RADAR · C2 · OPS.');

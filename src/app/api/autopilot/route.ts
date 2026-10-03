@@ -18,7 +18,7 @@ async function respond(userId: string, build: boolean) {
   }
 }
 
-// GET — PHANTOM: your settings, today's queue and the live supply per city.
+// GET — ZERO-DAY: your settings, today's queue and the live supply per city.
 // GET ?parked=1 — only today's jobs left to you (light: the dashboard's NEEDS YOU panel).
 export async function GET(req: NextRequest) {
   const { userId } = await auth();
