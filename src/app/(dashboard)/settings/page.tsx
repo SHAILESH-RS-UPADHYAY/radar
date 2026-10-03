@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { UserButton, useUser } from '@clerk/nextjs';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useApi } from '@/lib/use-api';
+import { keepResumeFile } from '@/lib/apply/client';
 import type { SettingsProfile } from '@/types';
 import { RadarLogo } from '@/components/brand/RadarLogo';
 import { HudPanel, StatusLight } from '@/components/hud/Hud';
@@ -396,6 +397,7 @@ export default function SettingsPage() {
       const res = await api('/api/settings/resume', { method: 'POST', body: fd });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(d.error || 'HTTP ' + res.status);
+      await keepResumeFile(file); // the PDF one-click apply attaches when a job has no tailored resume
       setProfile(d.profile);
       setChanged(true);
       markSaved('Resume');

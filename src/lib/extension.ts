@@ -6,8 +6,17 @@
 import { useEffect, useState } from 'react';
 import type { FillPacket } from '@/lib/apply/bridge';
 
+/** A question the extension read on an open form that RADAR could not read ahead. */
+export interface PageQuestion {
+  name: string;
+  label: string;
+  type: 'text' | 'email' | 'tel' | 'url' | 'textarea' | 'select' | 'multiselect';
+  required: boolean;
+  options?: string[];
+}
+
 export interface ExtensionEvent {
-  type: 'pong' | 'launched' | 'filled' | 'applied';
+  type: 'pong' | 'launched' | 'filled' | 'applied' | 'questions';
   version?: string;
   matchId?: string;
   tailoredId?: string | null;
@@ -15,6 +24,9 @@ export interface ExtensionEvent {
   error?: string;
   filled?: number;
   needs?: number;
+  /** questions: one request from the form tab, answered with armInExtension({ more: { id, … } }). */
+  id?: number;
+  fields?: PageQuestion[];
 }
 
 const send = (message: Record<string, unknown>) =>
@@ -43,7 +55,7 @@ export function useExtension(): string | null {
 
 /**
  * One click: the extension opens the form in a new tab at once. The answers can come with it, or a moment later
- * through armInExtension (the form loads while the AI drafts them).
+ * through armInExtension (the form loads while RADAR prepares them).
  */
 export function launchInExtension(launch: {
   url: string;
@@ -54,11 +66,15 @@ export function launchInExtension(launch: {
   send({ type: 'launch', ...launch });
 }
 
-/** The answers for a form launched without them, or why there are none (the form tab shows it). */
+/**
+ * Answers for a launched form: a packet (merged with what the tab already has, so facts can come first and the AI's
+ * answers later), the answers to questions the tab asked (`more`), or why there are none.
+ */
 export function armInExtension(arm: {
   matchId: string;
   tailoredId?: string | null;
   packet?: FillPacket;
+  more?: { id: number; packet?: FillPacket; error?: string };
   error?: string;
 }) {
   send({ type: 'arm', ...arm });

@@ -13,6 +13,18 @@ const update = async (tabId, change) => {
   if (entry) await write(tabId, { ...entry, ...change });
   return entry;
 };
+// Answers arrive in steps (your facts first, the AI's answers later): each packet adds to what the tab has.
+const merge = (had, next) =>
+  had
+    ? {
+        ...had,
+        ...next,
+        fields: [...had.fields.filter((f) => !next.fields.some((n) => n.name === f.name)), ...next.fields],
+        resume: next.resume || had.resume,
+        asked: next.asked || had.asked,
+        partial: next.partial, // only the newest packet knows whether more is coming
+      }
+    : next;
 const tellRadar = (entry, message) =>
   chrome.tabs
     .sendMessage(entry.radarTab, { ...message, matchId: entry.matchId, tailoredId: entry.tailoredId })
@@ -64,7 +76,10 @@ async function openForm(msg, sender) {
   const tab = await chrome.tabs.create({ url: url.href, index: sender.tab.index + 1, openerTabId: sender.tab.id });
   await write(tab.id, {
     packet: msg.packet || null,
+    version: msg.packet ? 1 : 0,
     error: null,
+    note: null,
+    more: null,
     matchId: msg.matchId,
     tailoredId: msg.tailoredId || null,
     radarTab: sender.tab.id,
@@ -88,27 +103,50 @@ const handlers = {
     launching.set(msg.matchId, opening);
     return opening.finally(() => launching.get(msg.matchId) === opening && launching.delete(msg.matchId));
   },
-  // From RADAR: the answers for a form that is already open, or the reason there are none.
+  // From RADAR: answers for a form that is already open (added to what it has), answers to the questions the tab
+  // asked (`more`), or why there are none (`error`: before any answers it stops the tab, after them it is a note).
   async arm(msg) {
     await launching.get(msg.matchId)?.catch(() => {});
     const tabs = await tabsForMatch(msg.matchId);
     for (const tabId of tabs) {
       const entry = await read(tabId);
-      await write(tabId, {
-        ...entry,
-        packet: msg.packet || entry.packet,
-        tailoredId: msg.tailoredId ?? entry.tailoredId,
-        error: msg.packet ? null : msg.error || null,
-      });
+      const next = { ...entry, tailoredId: msg.tailoredId ?? entry.tailoredId };
+      if (msg.more) next.more = msg.more;
+      else if (msg.packet) Object.assign(next, { packet: merge(entry.packet, msg.packet), version: entry.version + 1 });
+      else if (msg.error && entry.packet)
+        Object.assign(next, {
+          note: msg.error,
+          packet: { ...entry.packet, partial: false },
+          version: entry.version + 1,
+        });
+      else if (msg.error) next.error = msg.error;
+      await write(tabId, next);
     }
     return tabs.length ? { ok: true } : { ok: false, error: 'the form tab was closed' };
   },
-  // From the form page: everything it needs to know about its tab. No packet and no error: still drafting.
+  // From the form page: everything it needs to know about its tab. No packet and no error: still preparing.
   async packet(msg, sender) {
     const entry = await read(sender.tab.id);
     if (!entry) return null;
-    const { packet, error, done, armedAt, report } = entry;
-    return { packet, error, done, armedAt, report };
+    const { packet, version, error, note, more, done, armedAt, report } = entry;
+    return { packet, version, error, note, more, done, armedAt, report };
+  },
+  // From the form page: questions RADAR could not read ahead. RADAR's tab answers them (arm with `more`).
+  async questions(msg, sender) {
+    const entry = await update(sender.tab.id, { more: null });
+    if (!entry) return { ok: false, error: 'not a RADAR tab' };
+    try {
+      await chrome.tabs.sendMessage(entry.radarTab, {
+        type: 'questions',
+        id: msg.id,
+        fields: msg.fields,
+        matchId: entry.matchId,
+        tailoredId: entry.tailoredId,
+      });
+      return { ok: true };
+    } catch {
+      return { ok: false, error: 'the RADAR tab was closed' };
+    }
   },
   // A frame filled the form: RADAR hears it, and the page's panel shows it (also a panel that loads after it).
   async filled(msg, sender) {

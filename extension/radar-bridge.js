@@ -11,7 +11,14 @@ window.addEventListener('message', (event) => {
   if (msg.type === 'ping') return toPage({ type: 'pong', version: VERSION });
   if (msg.type === 'arm')
     return chrome.runtime.sendMessage(
-      { type: 'arm', matchId: msg.matchId, packet: msg.packet, tailoredId: msg.tailoredId, error: msg.error },
+      {
+        type: 'arm',
+        matchId: msg.matchId,
+        packet: msg.packet,
+        more: msg.more,
+        tailoredId: msg.tailoredId,
+        error: msg.error,
+      },
       () => void chrome.runtime.lastError,
     );
   if (msg.type === 'launch')
@@ -25,7 +32,7 @@ window.addEventListener('message', (event) => {
 });
 
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg && (msg.type === 'filled' || msg.type === 'applied')) toPage(msg);
+  if (msg && (msg.type === 'filled' || msg.type === 'applied' || msg.type === 'questions')) toPage(msg);
 });
 
 toPage({ type: 'pong', version: VERSION });

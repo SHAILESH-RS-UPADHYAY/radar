@@ -72,6 +72,7 @@ const TELLS: [RegExp, string][] = [
   [/;/, 'a semicolon'],
   [/\bnot only\b[^.]*\bbut also\b/i, '"not only … but also"'],
   [/^\s*(as an?\b|i am writing|i'?m writing|with (over|more than) \d+)/i, 'a stock opening'],
+  [/^\s*(you('re| are)\b|your (team|company|mission|work|product)\b)/i, 'opens by addressing the company'],
   [/thank you for (considering|your consideration)|i look forward to/i, 'a stock closing'],
 ];
 
@@ -120,6 +121,7 @@ const FIXER = `You rewrite job-application answers so they read like the candida
 
 Rules:
 - Fix every issue listed for an answer. Keep every fact, number, name and claim; add none that the candidate's materials do not support.
+- Answer the question asked, from the candidate's side. Never open by addressing the company ("You are building…").
 - First person, plain words, contractions where natural. Mix short and longer sentences. One concrete detail beats three adjectives. No summary line at the end.
 - A light, dry touch of humour is fine only where the question invites personality. Never on factual, legal, visa or salary questions.
 - Keep the length the answer had (or shorter). No dashes, exclamation marks, semicolons, lists, markdown or emojis.

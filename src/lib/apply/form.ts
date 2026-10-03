@@ -23,7 +23,8 @@ export interface FormField {
 }
 
 export interface ApplicationForm {
-  source: 'greenhouse' | 'lever' | 'standard';
+  /** page = questions the extension read on the open form, which RADAR could not read ahead. */
+  source: 'greenhouse' | 'lever' | 'standard' | 'page';
   fields: FormField[];
 }
 

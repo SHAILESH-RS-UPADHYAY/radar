@@ -39,7 +39,7 @@ export default function PrivacyPage() {
               ['ACCOUNT', 'Your email, name and, if you add one, phone number, provided through sign-in.'],
               [
                 'RESUME',
-                'The text extracted from the PDF you upload. The PDF file itself is not kept. A numeric vector of that text is stored for matching.',
+                'The text extracted from the PDF you upload, and a numeric vector of that text for matching. The PDF file itself is not kept on RADAR’s server: a copy stays only in your own browser, so the RADAR extension can attach it to an application form you open.',
               ],
               [
                 'PREFERENCES',

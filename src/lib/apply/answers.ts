@@ -137,8 +137,10 @@ Rules:
 - Read everything given first: the job, the resume (and the one tailored for this job), the profile, the Application Kit, the projects and the candidate's own words. Answer from all of it.
 - Write in first person as a sharp engineer typing their own application: plain words, contractions where natural, short and longer sentences mixed, specific systems and real numbers from the materials. One concrete detail beats three adjectives. No summary line at the end.
 - A light, dry touch of humour is welcome only where a question invites personality (something about you, a fun fact). Never on factual, legal, visa or salary questions.
+- Answer exactly the question asked, from your side. Never open by addressing the company ("You are building…", "Your mission…").
 - Use only facts from the materials given. Never invent employers, titles, dates, numbers, schools, visas or links.
-- If the materials do not answer a question, return "" for it. The candidate will answer it.
+- A yes/no question about something the materials never mention (a security clearance, a licence, having worked here before): answer "No", since a "Yes" would be a claim nothing supports. Where they say where the candidate lives, answer location questions from it.
+- If the materials do not answer a question and either answer could be true, return "" for it. The candidate will answer it.
 - Short text fields: a few words. "Why this company / role": 2 to 4 sentences, under 80 words, tied to what the company builds and what the candidate has built. Other long answers: under 120 words.
 - A field that lists options: the value must be exactly one of the options (multi-select: an array of them).
 - Never write: ${STOCK_PHRASES.join(', ')}. No emojis, exclamation marks, dashes, semicolons, lists or markdown.
@@ -151,6 +153,8 @@ export interface AnswerContext {
   tailoredText: string | null;
   /** When the answers must be ready (ms since epoch): HUMANIZE starts no round it cannot finish by then. */
   deadline: number;
+  /** false = profile facts only, no AI (the first, instant fill of a form). Default true. */
+  draft?: boolean;
 }
 
 /** A written answer worth humanizing: free text of a sentence or more (not "Bengaluru", not a picked option). */
@@ -177,7 +181,7 @@ export async function answerForm(
     (f) =>
       f.by === 'you' && !YOUR_CALL.test(f.label) && f.type !== 'file' && (f.options?.length || 0) <= MAX_AI_OPTIONS,
   );
-  if (!ask.length) return { fields: filled, model: null, aiError: null, humanized: null };
+  if (!ask.length || ctx.draft === false) return { fields: filled, model: null, aiError: null, humanized: null };
 
   const candidate = [
     `NAME: ${c.fullName}`,

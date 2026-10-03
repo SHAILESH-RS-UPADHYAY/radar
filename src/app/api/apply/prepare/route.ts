@@ -2,10 +2,11 @@
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
+import { z } from 'zod';
 import { createServerClient } from '@/lib/supabase/client';
 import { isUuid } from '@/lib/validate';
 import { loadSettingsProfile, splitList } from '@/lib/profile';
-import { applicationFormUrl, readApplicationForm } from '@/lib/apply/form';
+import { applicationFormUrl, readApplicationForm, type ApplicationForm } from '@/lib/apply/form';
 import { answerForm, type Candidate } from '@/lib/apply/answers';
 import { resumeToText, type TailorOutput } from '@/lib/ai/tailor';
 
@@ -13,16 +14,33 @@ import { resumeToText, type TailorOutput } from '@/lib/ai/tailor';
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
-// POST { matchId } — FORM://INTERCEPT for one of your matches: read the posting's application form, fill what your
-// profile and Application Kit say, draft the rest with the AI in your voice, then HUMANIZE it (validate → fix until
-// nothing reads AI-written). Nothing is sent to the employer: HACK shows the answers and the extension (or the
-// RADAR FILL bookmark) fills the form in your own browser; you press submit.
+// Questions the extension read on the open form (a third-party page): plain data, size-capped.
+const PageField = z.object({
+  name: z.string().min(1).max(80),
+  label: z.string().trim().min(1).max(600),
+  type: z.enum(['text', 'email', 'tel', 'url', 'textarea', 'select', 'multiselect']),
+  required: z.boolean(),
+  options: z.array(z.string().max(300)).max(200).optional(),
+});
+const Body = z.object({
+  matchId: z.string().refine(isUuid),
+  /** false = profile facts only, no AI: the instant first fill. */
+  draft: z.boolean().optional(),
+  fields: z.array(PageField).min(1).max(80).optional(),
+});
+
+// POST { matchId, draft?, fields? } — FORM://INTERCEPT for one of your matches: read the posting's application form
+// (or take the questions the extension read on the open form), fill what your profile and Application Kit say, draft
+// the rest with the AI in your voice, then HUMANIZE it (validate → fix until nothing reads AI-written). Nothing is
+// sent to the employer: HACK shows the answers and the extension (or the RADAR FILL bookmark) fills the form in your
+// own browser; you press submit.
 export async function POST(req: NextRequest) {
   const startedAt = Date.now();
   const { userId } = await auth();
   if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  const body = (await req.json().catch(() => null)) as { matchId?: unknown } | null;
-  if (!isUuid(body?.matchId)) return NextResponse.json({ error: 'Expected { matchId }' }, { status: 400 });
+  const parsed = Body.safeParse(await req.json().catch(() => null));
+  if (!parsed.success) return NextResponse.json({ error: 'Expected { matchId, draft?, fields? }' }, { status: 400 });
+  const body = parsed.data;
 
   const supabase = createServerClient();
   const [{ data: match, error }, profile, { data: resume }, user] = await Promise.all([
@@ -57,12 +75,14 @@ export async function POST(req: NextRequest) {
     tailoredText = null;
   }
 
-  const form = await readApplicationForm({
-    provider: company.ats_provider,
-    identifier: company.ats_identifier,
-    externalId: job.external_id,
-    applyUrl: job.apply_url,
-  });
+  const form: ApplicationForm = body.fields
+    ? { source: 'page', fields: body.fields }
+    : await readApplicationForm({
+        provider: company.ats_provider,
+        identifier: company.ats_identifier,
+        externalId: job.external_id,
+        applyUrl: job.apply_url,
+      });
 
   const kit = profile.application_kit;
   const links = profile.portfolio;
@@ -106,6 +126,7 @@ export async function POST(req: NextRequest) {
     tailoredText,
     // Leaves a margin under maxDuration; the form tab waits for the answers meanwhile.
     deadline: startedAt + 240_000,
+    draft: body.draft,
   });
 
   return NextResponse.json({

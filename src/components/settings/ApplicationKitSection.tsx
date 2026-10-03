@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { HudPanel } from '@/components/hud/Hud';
 import type { ApplicationKit } from '@/types';
 import { BRIDGE_HREF } from '@/lib/apply/bridge';
 import { useExtension } from '@/lib/extension';
+import { keptResumeName, RESUME_KEPT } from '@/lib/apply/client';
 
 type TextKey = Exclude<keyof ApplicationKit, 'needs_sponsorship' | 'willing_to_relocate' | 'voice_notes'>;
 
@@ -56,6 +57,14 @@ export function ApplicationKitSection({
 }) {
   const set = kit ? Object.values(kit).filter(Boolean).length : 0;
   const extension = useExtension();
+  // The resume PDF kept in this browser (set when you upload it): attached when a job has no tailored resume.
+  const [resumeFile, setResumeFile] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    const read = () => void keptResumeName().then(setResumeFile);
+    read();
+    window.addEventListener(RESUME_KEPT, read);
+    return () => window.removeEventListener(RESUME_KEPT, read);
+  }, []);
   // React refuses javascript: links in JSX; the bookmark's href is set on the element directly.
   const bridge = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
@@ -156,9 +165,19 @@ export function ApplicationKitSection({
             </p>
             <p className="mt-1 text-sm leading-relaxed text-dim">
               {extension
-                ? 'HACK → ↯ LAUNCH + AUTO-FILL opens each form already filled with your answers and PDF. You press Submit; RADAR logs it.'
-                : 'Chrome → chrome://extensions → turn on Developer mode → Load unpacked → pick the extension folder of this repo. Then HACK opens every form already filled.'}
+                ? '↯ ONE-CLICK APPLY on any card opens the form already filled: your details, every question answered, Yes/No and dropdowns picked, your PDF attached. You press Submit; RADAR logs it.'
+                : 'Chrome → chrome://extensions → turn on Developer mode → Load unpacked → pick the extension folder of this repo. Then every card gets ↯ ONE-CLICK APPLY.'}
             </p>
+            {resumeFile !== undefined && (
+              <p className="mt-2 font-mono text-[11px] tracking-[0.15em]">
+                <span className="text-dim">RESUME PDF IN THIS BROWSER · </span>
+                {resumeFile ? (
+                  <span className="text-phosphor">{resumeFile}</span>
+                ) : (
+                  <span className="text-hud-amber">NONE: upload your resume once in RESUME above, so forms get it</span>
+                )}
+              </p>
+            )}
           </div>
 
           <div className="flex flex-col gap-3 border border-dashed border-phosphor/30 p-4 sm:flex-row sm:items-center sm:justify-between">

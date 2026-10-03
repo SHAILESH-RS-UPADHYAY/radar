@@ -7,7 +7,8 @@ import type { Portfolio } from '@/types';
 import { CopyButton } from '@/components/hud/CopyButton';
 import { scoreColor, type MatchedJob, type TailoredSummary } from './types';
 import { FormIntercept, useFormIntercept } from './FormIntercept';
-import { armInExtension, launchInExtension, onExtension, useExtension } from '@/lib/extension';
+import { launchInExtension, onExtension, useExtension } from '@/lib/extension';
+import { oneClickApply } from '@/lib/apply/client';
 
 const primary =
   'inline-flex items-center justify-center gap-2 bg-phosphor px-5 py-3 font-mono text-xs font-bold tracking-[0.22em] text-black shadow-[0_0_22px_rgba(0,255,65,0.35)] transition-colors hover:bg-[#33FF66] disabled:cursor-not-allowed disabled:bg-phosphor/30';
@@ -126,26 +127,18 @@ export function RunPanel({
       }),
     [match.id],
   );
-  // The tab opens at once; the answers (your step-02 edits included) follow as soon as they are ready.
+  // The tab opens at once with your facts; the AI's answers follow (step 02 shows them being drafted). With answers
+  // already intercepted, your step-02 edits go with the launch.
   const launchFilled = async () => {
-    const ready = form.data ? await form.buildPacket(form.data) : null;
-    launchInExtension({
-      url: job.form_url || job.apply_url,
-      matchId: match.id,
-      tailoredId: form.data?.tailoredId ?? null,
-      ...(ready ? { packet: ready } : {}),
-    });
     setOpened(true);
-    if (ready) return setLaunch({ tone: 'dim', text: 'Opening the form in a new tab…' });
-    setLaunch({ tone: 'dim', text: 'Form opening in a new tab · drafting and humanizing its answers…' });
-    const prepared = await form.intercept();
-    const packet = prepared && (await form.buildPacket(prepared).catch(() => null));
-    armInExtension(
-      packet
-        ? { matchId: match.id, tailoredId: prepared.tailoredId, packet }
-        : { matchId: match.id, error: 'RADAR could not read this form or draft its answers. See HACK step 02.' },
-    );
-    if (!packet) setLaunch({ tone: 'alert', text: 'Could not draft the answers. See step 02.' });
+    const url = job.form_url || job.apply_url;
+    if (form.data) {
+      const packet = await form.buildPacket(form.data);
+      launchInExtension({ url, matchId: match.id, tailoredId: form.data.tailoredId, ...(packet ? { packet } : {}) });
+      return setLaunch({ tone: 'dim', text: 'Opening the form in a new tab…' });
+    }
+    setLaunch({ tone: 'dim', text: 'Form opening in a new tab · your details fill in a second, the answers follow…' });
+    await oneClickApply(api, { matchId: match.id, url, company: job.company.name }, () => form.intercept());
   };
   const LAUNCH_TONE = { dim: 'text-dim', ok: 'text-phosphor', warn: 'text-hud-amber', alert: 'text-hud-red' } as const;
 

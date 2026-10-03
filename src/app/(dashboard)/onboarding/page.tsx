@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { RadarLogo } from '@/components/brand/RadarLogo';
 import { useUser } from '@clerk/nextjs';
 import { useApi } from '@/lib/use-api';
+import { keepResumeFile } from '@/lib/apply/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TiltCard } from '@/components/onboarding/TiltCard';
 import { TOP_CITIES, REMOTE_REGIONS, FIELDS_OF_STUDY, ROLES, ORG_CULTURES } from '@/components/onboarding/constants';
@@ -210,6 +211,7 @@ export default function OnboardingPage() {
         const data = await res.json();
         throw new Error(data.error || 'Failed to save profile');
       }
+      if (resumeFile) await keepResumeFile(resumeFile); // attached by one-click apply when there is no tailored PDF
 
       router.push('/dashboard');
     } catch (err: any) {

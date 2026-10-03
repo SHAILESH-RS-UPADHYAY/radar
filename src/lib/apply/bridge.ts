@@ -14,13 +14,23 @@ export interface FillPacket {
   /** label and type let the extension find a field by its label when the name is unknown, and pick from comboboxes. */
   fields: { name: string; label: string; type: string; value: string | string[]; submit?: string }[];
   resume?: { name: string; data: string };
+  /** Every question RADAR read on this form, answered or not: the extension asks RADAR only about the others. */
+  asked?: string[];
+  /** More answers follow (the AI is still drafting): the extension keeps the tab ready for them. */
+  partial?: boolean;
 }
 
 /** The packet for one form: only fields that have an answer; select values carry what the form submits. */
-export function fillPacket(job: string, fields: FilledField[], resume?: FillPacket['resume']): FillPacket {
+export function fillPacket(
+  job: string,
+  fields: FilledField[],
+  resume?: FillPacket['resume'],
+  extra: Pick<FillPacket, 'asked' | 'partial'> = {},
+): FillPacket {
   return {
     radar: 1,
     job,
+    ...extra,
     fields: fields
       .filter((f) => f.type !== 'file' && (Array.isArray(f.value) ? f.value.length : f.value))
       .map((f) => {

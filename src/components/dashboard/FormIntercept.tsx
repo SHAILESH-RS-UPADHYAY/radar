@@ -12,7 +12,12 @@ const BY = {
   ai: { tag: 'AI DRAFT', tone: 'border-hud-cyan/50 text-hud-cyan' },
   you: { tag: 'YOUR CALL', tone: 'border-hud-amber/50 text-hud-amber' },
 } as const;
-const SOURCE = { greenhouse: 'GREENHOUSE FORM', lever: 'LEVER FORM', standard: 'STANDARD FIELDS' } as const;
+const SOURCE = {
+  greenhouse: 'GREENHOUSE FORM',
+  lever: 'LEVER FORM',
+  standard: 'STANDARD FIELDS',
+  page: 'PAGE QUESTIONS',
+} as const;
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**

@@ -6,8 +6,8 @@ import { useRouter } from 'next/navigation';
 import { UserButton, useUser } from '@clerk/nextjs';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useApi } from '@/lib/use-api';
-import { armInExtension, launchInExtension, onExtension, useExtension } from '@/lib/extension';
-import { packForm, prepareForm } from '@/lib/apply/client';
+import { onExtension, useExtension } from '@/lib/extension';
+import { answerPageQuestions, oneClickApply } from '@/lib/apply/client';
 import type { MatchStatus, Stage } from '@/types';
 import { RadarLogo } from '@/components/brand/RadarLogo';
 import { HudPanel, StatusLight } from '@/components/hud/Hud';
@@ -480,24 +480,12 @@ export default function DashboardPage() {
   // ONE-CLICK APPLY (RADAR extension): the form opens in a new tab at once while RADAR reads it and drafts the
   // answers; the extension fills it as soon as they arrive. You review it there and press the employer's Submit.
   const extension = useExtension();
-  const quickApply = async (id: string) => {
+  const quickApply = (id: string) => {
     const m = matches.find((x) => x.id === id);
     if (!m) return;
     const company = m.job.company.name;
-    launchInExtension({ url: m.job.form_url || m.job.apply_url, matchId: id, tailoredId: null });
-    setNotice({
-      tone: 'info',
-      text: `${company}'s form is opening in a new tab · drafting and humanizing your answers…`,
-    });
-    try {
-      const prepared = await prepareForm(api, id);
-      const packet = await packForm(api, prepared, company);
-      armInExtension({ matchId: id, tailoredId: prepared.tailoredId, packet });
-    } catch (err) {
-      const why = err instanceof Error ? err.message : String(err);
-      armInExtension({ matchId: id, error: 'RADAR could not draft the answers: ' + why });
-      setNotice({ tone: 'alert', text: `Could not draft ${company}'s answers: ${why}. HACK ▸ shows each step.` });
-    }
+    setNotice({ tone: 'info', text: `${company}'s form is opening in a new tab · your details fill in a second…` });
+    void oneClickApply(api, { matchId: id, url: m.job.form_url || m.job.apply_url, company });
   };
 
   // What the extension reports from the form tab: filled, then applied (the employer confirmed, or you pressed
@@ -506,6 +494,11 @@ export default function DashboardPage() {
   useEffect(() => {
     onExtensionEvent.current = (e) => {
       if (!e.matchId) return;
+      // The form tab found questions RADAR could not read ahead: answer them (profile, AI, HUMANIZE) and send back.
+      if (e.type === 'questions' && e.id && e.fields?.length) {
+        const company = matches.find((m) => m.id === e.matchId)?.job.company.name || 'RADAR';
+        void answerPageQuestions(api, { matchId: e.matchId, id: e.id, fields: e.fields, company });
+      }
       if (e.type === 'launched' && !e.ok)
         setNotice({ tone: 'alert', text: 'The extension could not open the form: ' + e.error });
       if (e.type === 'filled' && hackMatch?.id !== e.matchId)
@@ -858,7 +851,7 @@ export default function DashboardPage() {
                           match={m}
                           onAction={onAction}
                           onOpen={setBriefingId}
-                          onQuickApply={extension ? (id) => void quickApply(id) : undefined}
+                          onQuickApply={extension ? quickApply : undefined}
                         />
                       ))}
                     </AnimatePresence>
@@ -933,7 +926,7 @@ export default function DashboardPage() {
                           onAction={onAction}
                           onRun={(id) => startHack([id])}
                           onOpen={setBriefingId}
-                          onQuickApply={extension ? (id) => void quickApply(id) : undefined}
+                          onQuickApply={extension ? quickApply : undefined}
                         />
                       ))}
                     </AnimatePresence>

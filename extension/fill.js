@@ -1,13 +1,14 @@
 // RADAR · Auto-Fill — fills an application form in a tab RADAR opened (the worker injects it into no other tab).
 //
-//   1. answers   RADAR opens the form at once and sends the answers a few seconds later (the AI drafts them):
-//                the panel shows DRAFTING until they arrive.
-//   2. the form  on the page, in a frame (Greenhouse embedded in a company site), or appearing later (a modal, an
-//                Apply button that reveals it): it waits for the form and never clicks anything to get there.
-//   3. filling   by the form's own field names, then ids, then labels; dropdowns, React selects, radios, checkboxes,
-//                the tailored PDF. It never overwrites what is already there.
-//   4. submit    it marks the Submit button and never presses it, and never touches a CAPTCHA. When the employer
-//                confirms the application (or you press "I submitted it"), RADAR logs it in C2 · OPS.
+//   1. answers    your profile facts and PDF arrive about a second after the tab opens; the AI's written answers
+//                 follow (drafted, then humanized) and fill in as they come.
+//   2. the form   on the page, in a frame (Greenhouse embedded in a company site), or appearing later (an Apply
+//                 button, a modal); multi-step forms step by step. It never clicks anything to get there.
+//   3. questions  anything RADAR could not read ahead (Ashby keeps its form behind a robots-disallowed /api/; company
+//                 sites) is read here, in your browser, answered by RADAR the same way, and filled: text, dropdowns,
+//                 search-and-pick boxes, Yes/No buttons, radios, checkboxes. It never overwrites an answer.
+//   4. submit     marked, never pressed; never a CAPTCHA. When the employer confirms the application (or you press
+//                 "I submitted it"), RADAR logs it in C2 · OPS.
 
 (() => {
   if (window.__radarFill) return;
@@ -32,13 +33,19 @@
       .toLowerCase()
       .replace(/[^a-z0-9]+/g, ' ')
       .trim();
-  const visible = (el) => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+  const visible = (el) => !!(el && (el.offsetWidth || el.offsetHeight || el.getClientRects().length));
+
+  // Fills one at a time: answers arriving while a pass runs wait for it, so two never type into the page at once.
+  let queue = Promise.resolve();
+  const exclusive = (job) => (queue = queue.then(job, job));
 
   // =====================================================================================================
-  // Fields: where they are and what they ask
+  // Reading the form: every question as one object (its label, kind, options, controls)
   // =====================================================================================================
 
   const FIELD = 'input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=search]), textarea, select';
+  /** Controls a question can be answered with: fields, and Yes/No style toggle buttons (Ashby). */
+  const CONTROL = FIELD + ', button[aria-pressed]';
   const isShown = (el) => el.type === 'file' || visible(el);
 
   // Where the application form is, so a newsletter or search box elsewhere on the page is never filled: the <form>
@@ -49,7 +56,7 @@
     let top = 2;
     for (const form of document.querySelectorAll('form')) {
       const n =
-        [...form.querySelectorAll(FIELD)].filter(isShown).length +
+        [...form.querySelectorAll(CONTROL)].filter(isShown).length +
         (form.querySelector('input[type=file]') ? 10 : 0) +
         (form.querySelector('textarea') ? 3 : 0);
       if (n > top) [best, top] = [form, n];
@@ -76,35 +83,132 @@
     return null;
   };
 
-  function labelText(el) {
-    if (el.id) {
-      const l = document.querySelector('label[for="' + CSS.escape(el.id) + '"]');
-      if (l) return l.textContent;
+  const labelOf = (id) => id && document.querySelector('label[for="' + CSS.escape(id) + '"]');
+
+  /** The title of the smallest block around a control that holds no other question (Ashby, most custom forms). */
+  function blockHead(el, own) {
+    const mine = new Set(own);
+    const inOwnLabel = (h) => own.some((c) => (c.closest('label') || c).contains(h));
+    let node = (el.closest('label') || el).parentElement;
+    for (let i = 0; node && node !== document.body && i < 6; node = node.parentElement, i++) {
+      if ([...node.querySelectorAll(CONTROL)].some((c) => !mine.has(c) && isShown(c))) return null;
+      const head = [
+        ...node.querySelectorAll('label, legend, [class*="title" i], [class*="label" i], [class*="question" i]'),
+      ].find(
+        (h) => !mine.has(h) && !h.contains(el) && !inOwnLabel(h) && !h.querySelector(CONTROL) && h.textContent.trim(),
+      );
+      if (head) return head;
     }
+    return null;
+  }
+
+  /** The element that names a control: <label for>, aria-labelledby, Lever's card title, a wrapping label, its block. */
+  function labelFor(el) {
+    const forIt = labelOf(el.id);
+    if (forIt && forIt.textContent.trim()) return forIt;
     const by = el.getAttribute('aria-labelledby');
-    if (by) {
-      const t = by
+    const named =
+      by &&
+      by
         .split(/\s+/)
-        .map((id) => (document.getElementById(id) || {}).textContent || '')
-        .join(' ')
-        .trim();
-      if (t) return t;
-    }
+        .map((id) => document.getElementById(id))
+        .find((n) => n && n.textContent.trim());
+    if (named) return named;
     // Lever writes the question once per card (.application-label); the input's own label may hold helper text.
     const card = el.closest('.application-question');
     const head = card && card.querySelector('.application-label');
-    if (head) return head.textContent;
-    const wrap = el.closest('label');
-    if (wrap) return wrap.textContent;
-    return el.getAttribute('aria-label') || el.getAttribute('placeholder') || '';
+    if (head) return head;
+    return el.closest('label') || blockHead(el, [el]);
+  }
+  const labelText = (el) => {
+    const l = labelFor(el);
+    return ((l && l.textContent) || el.getAttribute('aria-label') || el.getAttribute('placeholder') || '').trim();
+  };
+
+  /** The question a radio/checkbox group asks (each box's own label is just an option). */
+  function groupHead(el, own) {
+    const box = el.closest('fieldset, [role=radiogroup], [role=group], .application-question');
+    for (const sel of ['legend', '.application-label', '.text']) {
+      const head = box && box.querySelector(sel);
+      if (head && head.textContent.trim()) return head;
+    }
+    return blockHead(el, own);
   }
 
-  /** The question a radio/checkbox group belongs to (its own label is just the option). */
-  function groupLabel(el) {
-    const box = el.closest('fieldset, [role=radiogroup], [role=group], li.application-question, .application-question');
-    const head = box && box.querySelector('legend, .text, [class*="label"], label');
-    return (head && head.textContent) || el.name || '';
+  const groupOf = (el) => (el.name ? [...document.getElementsByName(el.name)] : [el]);
+  const choiceText = (box) => ((box.closest('label') || labelOf(box.id) || {}).textContent || box.value || '').trim();
+  const PLACEHOLDER = /^(select|choose|please|pick|--|—)/i;
+  const selectAnswered = (el) =>
+    !!el.value && !PLACEHOLDER.test(((el.selectedOptions && el.selectedOptions[0]) || {}).textContent?.trim() || '');
+  // A search-and-pick box shows its choice beside the input (React Select: .select__control > .select__single-value).
+  const comboHasValue = (input) => {
+    const box =
+      input.closest('[class*="control"]') || input.closest('[class*="value-container"]') || input.parentElement;
+    return !!(
+      box &&
+      box.querySelector(
+        '[class*="single-value"], [class*="singleValue"], [class*="multi-value"], [class*="multiValue"]',
+      )
+    );
+  };
+
+  /** Every question in the form, in order. */
+  function questions() {
+    const out = [];
+    const seen = new Set();
+    for (const el of scope.querySelectorAll(CONTROL)) {
+      if (seen.has(el)) continue;
+      let q;
+      if (el.tagName === 'BUTTON') {
+        const els = [...el.parentElement.querySelectorAll('button[aria-pressed]')];
+        q = { kind: 'buttons', el, els, hidden: [...el.parentElement.querySelectorAll('input')] };
+        q.options = els.map((b) => b.textContent.trim());
+      } else if (el.type === 'radio' || el.type === 'checkbox') {
+        const els = groupOf(el);
+        els.forEach((b) => seen.add(b));
+        if (!els.some((b) => visible(b) || visible(b.closest('label') || labelOf(b.id)))) continue; // behind buttons
+        const kind = el.type === 'radio' ? 'radio' : els.length > 1 ? 'checkboxes' : 'checkbox';
+        q = { kind, el, els, options: els.map(choiceText) };
+      } else if (!isShown(el)) continue;
+      else if (el.type === 'file') q = { kind: 'file', el, els: [el] };
+      else if (el.tagName === 'SELECT') {
+        q = { kind: 'select', el, els: [el] };
+        q.options = [...el.options].map((o) => o.textContent.trim()).filter((t) => t && !PLACEHOLDER.test(t));
+      } else if (el.getAttribute('role') === 'combobox') q = { kind: 'combo', el, els: [el] };
+      else q = { kind: el.tagName === 'TEXTAREA' ? 'textarea' : 'text', el, els: [el] };
+      [...q.els, ...(q.hidden || [])].forEach((e) => seen.add(e));
+      const head = ['buttons', 'radio', 'checkboxes'].includes(q.kind) ? groupHead(el, q.els) : labelFor(el);
+      const text = (head && head.textContent) || el.getAttribute('aria-label') || el.getAttribute('placeholder') || '';
+      q.label = text.replace(/[*✱]/g, '').replace(/\s+/g, ' ').trim();
+      q.required =
+        [...q.els, ...(q.hidden || [])].some((e) => e.required || e.getAttribute('aria-required') === 'true') ||
+        /\*\s*$/.test(text.trim()) ||
+        (!!head && /required/i.test(String(head.className)));
+      out.push(q);
+    }
+    return out;
   }
+
+  function answered(q) {
+    switch (q.kind) {
+      case 'buttons':
+        return q.els.some((b) => b.getAttribute('aria-pressed') === 'true');
+      case 'radio':
+      case 'checkboxes':
+      case 'checkbox':
+        return q.els.some((b) => b.checked);
+      case 'file':
+        return !!(q.el.files && q.el.files.length);
+      case 'select':
+        return selectAnswered(q.el);
+      case 'combo':
+        return comboHasValue(q.el) || !!q.el.value.trim();
+      default:
+        return !!q.el.value.trim();
+    }
+  }
+
+  const questionOf = (el) => questions().find((q) => q.els.includes(el) || (q.hidden || []).includes(el));
 
   function byNameOrId(name) {
     const el = document.getElementById(name);
@@ -130,8 +234,58 @@
     return fallback;
   }
 
+  const visibleFields = (root = scope) => [...root.querySelectorAll(FIELD)].filter(isShown);
+  // A form that asks only for a note (YC Work at a Startup: "a short note to the founders").
+  const NOTE_BOX = /why|interest|excit|motivat|cover|message|founder|note/;
+
+  // An application form, not a search box or a newsletter signup: a file upload, two of the form's own field names,
+  // three standard fields (name, email, phone…), or the one note box a short form asks for.
+  function hasForm(packet) {
+    if (document.querySelector('input[type=file]')) return true;
+    if (packet.fields.filter((f) => byNameOrId(f.name)).length >= 2) return true;
+    const fields = visibleFields(document);
+    if (fields.filter((el) => keyOf(labelText(el))).length >= 3) return true;
+    return fields.some((el) => el.tagName === 'TEXTAREA' && NOTE_BOX.test(norm(labelText(el))));
+  }
+
+  /** Wait for the form (by default 10 minutes: you may open it with the page's own Apply button). */
+  async function formAppears(packet, stop = () => false, seconds = 600) {
+    for (let i = 0; i < seconds; i++) {
+      if (stop()) return false;
+      if (hasForm(packet)) return true;
+      await sleep(1000);
+    }
+    return false;
+  }
+
+  const SUBMIT = /submit|apply|send/i;
+  // The form's own Submit: after its last field (an "Apply" button above the form only opened it).
+  function submitButton() {
+    const text = (b) => (b.textContent || b.value || '').trim();
+    const fields = visibleFields();
+    const last = fields[fields.length - 1];
+    const all = [...scope.querySelectorAll('button, input[type=submit]')].filter(
+      (b) => visible(b) && SUBMIT.test(text(b)),
+    );
+    const after = last ? all.filter((b) => last.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) : all;
+    const pool = after.length ? after : all;
+    return (
+      pool.find((b) => /submit application|^submit$/i.test(text(b))) || pool.find((b) => b.type === 'submit') || null
+    );
+  }
+
+  function fileInput() {
+    return (
+      scope.querySelector(
+        'input[type=file]#resume, input[type=file][name="resume"], input[type=file][id*="resume" i], input[type=file][name*="resume" i], input[type=file][aria-label*="resume" i]',
+      ) ||
+      [...scope.querySelectorAll('input[type=file]')].find((i) => /resume|\bcv\b/i.test(labelText(i))) ||
+      scope.querySelector('input[type=file]')
+    );
+  }
+
   // =====================================================================================================
-  // Values (React-controlled inputs need the native setter, then the events React listens to)
+  // Writing (React-controlled inputs need the native setter, then the events React listens to)
   // =====================================================================================================
 
   function setValue(el, value) {
@@ -147,10 +301,10 @@
   async function typeInto(el, text) {
     el.focus({ preventScroll: true });
     if (!still && text.length > 24) {
-      const step = Math.max(2, Math.ceil(text.length / 24));
+      const step = Math.max(3, Math.ceil(text.length / 16));
       for (let i = step; i < text.length; i += step) {
         setValue(el, text.slice(0, i));
-        await sleep(14);
+        await sleep(10);
       }
     }
     setValue(el, text);
@@ -162,47 +316,55 @@
       el.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, view: window }));
   };
 
-  /** A searchable dropdown (React Select and friends): type the answer, then click the matching option. */
-  async function pickCombo(input, wanted) {
+  // A Yes/No button can be a submit button of the form (Ashby's are): its click must never submit the application.
+  function pressSafely(button) {
+    const block = (e) => {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    };
+    window.addEventListener('submit', block, true);
+    try {
+      button.click();
+    } finally {
+      setTimeout(() => window.removeEventListener('submit', block, true), 100);
+    }
+  }
+
+  /**
+   * A search-and-pick box (React Select, Ashby's Location): type the answer, wait for the suggestions (they may come
+   * from the network), click the one that matches. `loose` (a place) takes the first suggestion. Nothing picked: the
+   * typed text is cleared, so the question shows up as yours.
+   */
+  async function pickCombo(input, wanted, loose) {
     input.focus({ preventScroll: true });
     clickLike(input);
     setValue(input, wanted);
-    for (let i = 0; i < 12; i++) {
-      await sleep(80);
-      const listId = input.getAttribute('aria-controls');
+    const w = norm(wanted);
+    for (let i = 0; i < 40; i++) {
+      await sleep(100);
+      const listId = input.getAttribute('aria-controls') || input.getAttribute('aria-owns');
       const list = (listId && document.getElementById(listId)) || document;
-      const options = [...list.querySelectorAll('[role="option"]')];
+      const options = [...list.querySelectorAll('[role="option"]')].filter(visible);
       const hit =
-        options.find((o) => norm(o.textContent) === norm(wanted)) ||
-        options.find((o) => norm(o.textContent).startsWith(norm(wanted)));
+        options.find((o) => norm(o.textContent) === w) ||
+        options.find((o) => norm(o.textContent).startsWith(w)) ||
+        options.find((o) => w.length > 3 && norm(o.textContent).includes(w)) ||
+        (loose && i >= 8 && options[0]);
       if (hit) {
         clickLike(hit);
-        await sleep(60);
+        await sleep(150);
         return true;
       }
     }
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    setValue(input, '');
     return false;
   }
 
-  // The chosen value sits beside the input, inside the control (React Select: .select__control > .select__single-value).
-  const comboHasValue = (input) => {
-    const box =
-      input.closest('[class*="control"]') || input.closest('[class*="value-container"]') || input.parentElement;
-    return !!(
-      box &&
-      box.querySelector(
-        '[class*="single-value"], [class*="singleValue"], [class*="multi-value"], [class*="multiValue"]',
-      )
-    );
-  };
-
-  const groupOf = (el) => (el.name ? [...document.getElementsByName(el.name)] : [el]);
-
-  function pickChoices(el, values) {
+  function pickChoices(els, values) {
     let hit = false;
-    for (const box of groupOf(el)) {
-      const text = norm((box.closest('label') || {}).textContent || box.value);
+    for (const box of els) {
+      const text = norm(choiceText(box));
       if (!values.some((v) => norm(v) === norm(box.value) || norm(v) === text)) continue;
       hit = true;
       if (!box.checked) box.click();
@@ -210,11 +372,9 @@
     return hit;
   }
 
-  function pickSelect(el, field, values) {
+  function pickSelect(el, submit, values) {
     const option = [...el.options].find(
-      (o) =>
-        (field.submit && o.value === field.submit) ||
-        values.some((v) => o.value === v || norm(o.textContent) === norm(v)),
+      (o) => (submit && o.value === submit) || values.some((v) => o.value === v || norm(o.textContent) === norm(v)),
     );
     if (!option) return false;
     setValue(el, option.value);
@@ -229,33 +389,56 @@
     setTimeout(() => (target.style.boxShadow = before), 1800);
   }
 
+  function attach(resume) {
+    const input = fileInput();
+    if (!input || !resume) return 'none';
+    if (input.files && input.files.length) return 'kept';
+    const bin = atob(resume.data);
+    const bytes = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    const dt = new DataTransfer();
+    dt.items.add(new File([bytes], resume.name, { type: 'application/pdf' }));
+    input.files = dt.files;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+    input.dispatchEvent(new Event('change', { bubbles: true }));
+    glow(input);
+    return 'attached';
+  }
+
   // =====================================================================================================
   // Filling
   // =====================================================================================================
 
-  /** One answer into the form. Never overwrites what is already there. */
+  /** One answer into one question, whatever its kind. */
+  async function answer(q, values, submit) {
+    let ok = false;
+    if (q.kind === 'buttons') {
+      const button = q.els.find((b) => values.some((v) => norm(v) === norm(b.textContent)));
+      if (button && button.getAttribute('aria-pressed') !== 'true') pressSafely(button);
+      ok = !!button;
+    } else if (q.kind === 'radio' || q.kind === 'checkboxes' || q.kind === 'checkbox') ok = pickChoices(q.els, values);
+    else if (q.kind === 'select') ok = pickSelect(q.el, submit, values);
+    else if (q.kind === 'combo') {
+      const place = /location|city|where.*(based|live|located)/i.test(q.label);
+      ok = true;
+      for (const v of values) ok = (await pickCombo(q.el, v, place)) && ok;
+    } else if (q.kind !== 'file') {
+      await typeInto(q.el, values.join(', '));
+      ok = true;
+    }
+    if (ok) glow(q.kind === 'buttons' ? q.el.parentElement : q.el);
+    return ok;
+  }
+
+  /** One packet answer, found by the form's own name or id, else by its label. Never overwrites an answer. */
   async function fillField(field) {
     const values = [].concat(field.value).filter(Boolean);
     if (!values.length || field.type === 'file') return { status: 'skip' };
     const el = byNameOrId(field.name) || byLabel(field.label);
-    if (!el) return { status: 'missing' };
-    const isCombo = el.getAttribute('role') === 'combobox';
-    const isChoice = el.type === 'radio' || el.type === 'checkbox';
-    const answered = isChoice
-      ? groupOf(el).some((b) => b.checked)
-      : isCombo
-        ? comboHasValue(el)
-        : el.tagName === 'SELECT'
-          ? el.selectedIndex > 0 && !!el.value // the first option is usually "Select…"
-          : !!el.value;
-    if (answered) return { status: 'kept', el };
-    let ok = true;
-    if (isChoice) ok = pickChoices(el, values);
-    else if (el.tagName === 'SELECT') ok = pickSelect(el, field, values);
-    else if (isCombo) for (const v of values) ok = (await pickCombo(el, v)) && ok;
-    else await typeInto(el, values.join(', '));
-    if (ok) glow(el);
-    return { status: ok ? 'filled' : 'missing', el };
+    const q = el && questionOf(el);
+    if (!q) return { status: 'missing' };
+    if (answered(q)) return { status: 'kept', q };
+    return { status: (await answer(q, values, field.submit)) ? 'filled' : 'missing', q };
   }
 
   /** Standard fields the packet names differently (first + last vs full name): filled by their meaning. */
@@ -277,134 +460,117 @@
 
   async function sweep(map, used) {
     let n = 0;
-    for (const el of scope.querySelectorAll(FIELD)) {
-      if (used.has(el) || el.value || !visible(el)) continue;
-      if (el.type === 'file' || el.type === 'radio' || el.type === 'checkbox' || el.tagName === 'SELECT') continue;
-      if (el.getAttribute('role') === 'combobox') continue;
-      const k = keyOf(labelText(el));
-      if (!k || !map[k]) continue;
-      await typeInto(el, map[k]);
-      glow(el);
-      used.add(el);
-      n++;
+    for (const q of questions()) {
+      if (used.has(q.el) || (q.kind !== 'text' && q.kind !== 'combo') || answered(q)) continue;
+      const k = keyOf(q.label);
+      if (k && map[k] && (await answer(q, [map[k]]))) n++;
     }
     return n;
   }
 
-  // A form RADAR could not read ahead (a company's own page, YC's Work at a Startup): your "why this role" answer
-  // goes into the one box that asks for it.
-  const WHY_BOX = /why|interest|excit|motivat|cover|message|founder|about (you|yourself)|anything else|additional|note/;
-  async function whyFallback(packet, usedFields, used) {
-    const answers = packet.fields.filter(
-      (f) => f.type === 'textarea' && [].concat(f.value)[0] && !usedFields.has(f.name),
-    );
-    if (!answers.length) return 0;
-    const best = answers.find((f) => /why|interest|motivat/i.test(f.label)) || answers[0];
-    const empty = [...scope.querySelectorAll('textarea')].filter((t) => visible(t) && !t.value && !used.has(t));
-    const target = empty.find((t) => WHY_BOX.test(norm(labelText(t)))) || (empty.length === 1 ? empty[0] : null);
-    if (!target) return 0;
-    await typeInto(target, [].concat(best.value)[0]);
-    glow(target);
-    used.add(target);
-    return 1;
-  }
-
-  function fileInput() {
-    return (
-      scope.querySelector(
-        'input[type=file]#resume, input[type=file][name="resume"], input[type=file][id*="resume" i], input[type=file][name*="resume" i], input[type=file][aria-label*="resume" i]',
-      ) ||
-      [...scope.querySelectorAll('input[type=file]')].find((i) => /resume|\bcv\b/i.test(labelText(i))) ||
-      scope.querySelector('input[type=file]')
-    );
-  }
-
-  function attach(resume) {
-    const input = fileInput();
-    if (!input || !resume) return 'none';
-    if (input.files && input.files.length) return 'kept';
-    const bin = atob(resume.data);
-    const bytes = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-    const dt = new DataTransfer();
-    dt.items.add(new File([bytes], resume.name, { type: 'application/pdf' }));
-    input.files = dt.files;
-    input.dispatchEvent(new Event('input', { bubbles: true }));
-    input.dispatchEvent(new Event('change', { bubbles: true }));
-    glow(input);
-    return 'attached';
-  }
-
-  // =====================================================================================================
-  // Reading the page
-  // =====================================================================================================
-
-  const visibleFields = (root = scope) => [...root.querySelectorAll(FIELD)].filter(isShown);
-  // An application form, not a search box or a newsletter signup: a file upload, two of the form's own field names,
-  // three standard fields (name, email, phone…), or the one "why" box a short form (YC Work at a Startup) asks for.
-  function hasForm(packet) {
-    if (document.querySelector('input[type=file]')) return true;
-    if (packet.fields.filter((f) => byNameOrId(f.name)).length >= 2) return true;
-    const fields = visibleFields(document);
-    if (fields.filter((el) => keyOf(labelText(el))).length >= 3) return true;
-    return fields.some((el) => el.tagName === 'TEXTAREA' && WHY_BOX.test(norm(labelText(el))));
-  }
-
-  /** Wait for the form (by default 10 minutes: you may open it with the page's own Apply button). */
-  async function formAppears(packet, stop = () => false, seconds = 600) {
-    for (let i = 0; i < seconds; i++) {
-      if (stop()) return false;
-      if (hasForm(packet)) return true;
-      await sleep(1000);
+  /** One pass over the form as it is now. Safe to repeat: it never overwrites an answer. */
+  async function fillPass(packet) {
+    scope = formRoot();
+    const used = new Set();
+    const pass = { filled: 0, kept: 0, pdf: 'none' };
+    for (const field of packet.fields) {
+      const { status, q } = await fillField(field);
+      if (q) used.add(q.el);
+      if (status === 'filled' || status === 'kept') pass[status]++;
     }
-    return false;
+    pass.filled += await sweep(profileMap(packet), used);
+    pass.pdf = attach(packet.resume);
+    return pass;
   }
 
-  /** Required fields still empty after filling: these are yours. */
+  /** Required questions still empty: these are yours. */
   function stillEmpty() {
-    const out = [];
     const seen = new Set();
-    for (const el of visibleFields()) {
-      const text = labelText(el) || '';
-      const isChoice = el.type === 'radio' || el.type === 'checkbox';
-      const required = el.required || el.getAttribute('aria-required') === 'true' || /\*\s*$/.test(text.trim());
-      if (!required && !(isChoice && /\*/.test(groupLabel(el)))) continue;
-      const empty =
-        el.type === 'file'
-          ? !(el.files && el.files.length)
-          : isChoice
-            ? !groupOf(el).some((b) => b.checked)
-            : el.getAttribute('role') === 'combobox'
-              ? !comboHasValue(el)
-              : !el.value;
-      if (!empty) continue;
-      const label = (isChoice ? groupLabel(el) : text).replace(/[*✱]/g, '').trim();
-      const id = isChoice ? 'g:' + el.name : label;
-      if (!label || seen.has(id)) continue; // an unlabeled input is a widget's inner part, not a question
-      seen.add(id);
-      out.push({ label, el });
+    return questions()
+      .filter((q) => q.required && q.label && !answered(q) && !seen.has(q.label) && seen.add(q.label))
+      .map((q) => ({ label: q.label, el: q.el }));
+  }
+
+  function markSubmit() {
+    const submit = submitButton();
+    if (!submit) return;
+    submit.style.outline = '2px solid #00FF41';
+    submit.style.outlineOffset = '3px';
+    submit.style.boxShadow = '0 0 0 6px rgba(0,255,65,.18), 0 0 28px rgba(0,255,65,.55)';
+  }
+
+  // =====================================================================================================
+  // Questions RADAR could not read ahead: read here, answered by RADAR (profile, AI, HUMANIZE), filled
+  // =====================================================================================================
+
+  const TYPE = {
+    text: 'text',
+    textarea: 'textarea',
+    combo: 'text',
+    select: 'select',
+    radio: 'select',
+    buttons: 'select',
+    checkboxes: 'multiselect',
+  };
+  const sentToRadar = new Set(); // labels already asked in this tab: never twice
+
+  /** Ask RADAR about the open questions it has not seen; fill its answers. Returns how many were filled. */
+  async function askRadar(packet, hud) {
+    const known = (packet.asked || []).map(norm);
+    const isKnown = (l) =>
+      known.some((a) => a === l || (Math.min(a.length, l.length) > 12 && (a.startsWith(l) || l.startsWith(a))));
+    const open = questions().filter(
+      (q) => TYPE[q.kind] && q.label && !answered(q) && !isKnown(norm(q.label)) && !sentToRadar.has(norm(q.label)),
+    );
+    if (!open.length) return null;
+    open.forEach((q) => sentToRadar.add(norm(q.label)));
+    const id = Date.now();
+    const byName = new Map(open.map((q, i) => ['q' + i, q]));
+    if (hud) hud.log('AI', `${open.length} more questions on this form: RADAR is answering them…`, 'ai');
+    const sent = await ask({
+      type: 'questions',
+      id,
+      fields: [...byName].map(([name, q]) => ({
+        name,
+        label: q.label.slice(0, 600),
+        type: q.kind === 'text' && ['email', 'tel', 'url'].includes(q.el.type) ? q.el.type : TYPE[q.kind],
+        required: q.required,
+        ...(q.options && q.options.length ? { options: q.options.slice(0, 200).map((o) => o.slice(0, 300)) } : {}),
+      })),
+    });
+    if (!sent || !sent.ok) {
+      if (hud) hud.log('ERR', `${(sent && sent.error) || 'RADAR did not get them'}: these questions are yours`, 'err');
+      return null;
     }
-    return out;
+    for (let i = 0; i < 300; i++) {
+      await sleep(1000);
+      const entry = await ask({ type: 'packet' });
+      if (!entry || entry.done) return null;
+      if (!entry.more || entry.more.id !== id) continue;
+      if (entry.more.error) {
+        if (hud) hud.log('ERR', 'RADAR could not answer them: ' + entry.more.error, 'err');
+        return null;
+      }
+      return exclusive(async () => {
+        let n = 0;
+        for (const f of (entry.more.packet && entry.more.packet.fields) || []) {
+          const asked = byName.get(f.name);
+          // The page may have redrawn the question meanwhile: find it again by its label.
+          const q = asked && (asked.el.isConnected ? asked : questions().find((x) => x.label === asked.label));
+          if (q && !answered(q) && (await answer(q, [].concat(f.value).filter(Boolean), f.submit))) n++;
+        }
+        return n;
+      });
+    }
+    if (hud) hud.log('ERR', 'RADAR did not answer in time: keep its dashboard tab open', 'err');
+    return null;
   }
 
-  const SUBMIT = /submit|apply|send/i;
-  // The form's own Submit: after its last field (an "Apply" button above the form only opened it).
-  function submitButton() {
-    const text = (b) => (b.textContent || b.value || '').trim();
-    const fields = visibleFields();
-    const last = fields[fields.length - 1];
-    const all = [...scope.querySelectorAll('button, input[type=submit]')].filter(
-      (b) => visible(b) && SUBMIT.test(text(b)),
-    );
-    const after = last ? all.filter((b) => last.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) : all;
-    const pool = after.length ? after : all;
-    return (
-      pool.find((b) => /submit application|^submit$/i.test(text(b))) || pool.find((b) => b.type === 'submit') || null
-    );
-  }
+  // =====================================================================================================
+  // Confirmation: a new page (Lever's /thanks) or a thank-you text that was not on the page while you filled it
+  // (a job description can say "thank you for your interest", so that phrase is not used at all)
+  // =====================================================================================================
 
-  // A confirmation is a new page (Lever's /thanks) or a thank-you text that was not on the page while you filled it
-  // (a job description can say "thank you for your interest", so that phrase is not used at all).
   const CONFIRM =
     /thank you for (applying|your application)|application (has been |was )?(submitted|received)|we('ve| have) received your application|successfully submitted/i;
   const pageText = () => (document.body && document.body.innerText.slice(0, 20000)) || '';
@@ -525,93 +691,25 @@
   // =====================================================================================================
 
   const LOGGED = 'Logged in RADAR · C2 · OPS. RADAR now watches for the reply.';
+  const PDF = {
+    attached: (p) => [`${p.resume.name} attached`, 'ok'],
+    kept: () => ['a resume is already attached', 'ok'],
+    none: (p) => [
+      p.resume ? 'no upload field found' : 'no resume PDF: upload yours once in RADAR → Settings → RESUME',
+      'you',
+    ],
+  };
 
-  /** One pass over the form as it is now. Safe to repeat: it never overwrites an answer. */
-  async function fillPass(packet) {
-    scope = formRoot();
-    const used = new Set();
-    const usedFields = new Set();
-    const pass = { filled: 0, kept: 0, missing: 0, pdf: 'none' };
-    for (const field of packet.fields) {
-      const { status, el } = await fillField(field);
-      if (el) used.add(el);
-      if (status === 'filled' || status === 'kept') usedFields.add(field.name);
-      if (status in pass) pass[status]++;
-      if (status === 'filled' && !still) await sleep(45);
-    }
-    pass.filled += await sweep(profileMap(packet), used);
-    pass.filled += await whyFallback(packet, usedFields, used);
-    pass.pdf = attach(packet.resume);
-    return pass;
-  }
-
-  function markSubmit() {
-    const submit = submitButton();
-    if (!submit) return;
-    submit.style.outline = '2px solid #00FF41';
-    submit.style.outlineOffset = '3px';
-    submit.style.boxShadow = '0 0 0 6px rgba(0,255,65,.18), 0 0 28px rgba(0,255,65,.55)';
-  }
-
-  /** The panel's lines for one fill. */
-  function summary(packet, pass, needs) {
-    const pdf = {
-      attached: [`${packet.resume && packet.resume.name} attached`, 'ok'],
-      kept: ['a resume is already attached', 'ok'],
-      none: [packet.resume ? 'no upload field found' : 'no tailored resume: attach yours', 'you'],
-    }[pass.pdf];
-    return [
-      ['OK', `${pass.filled} fields filled${pass.kept ? ` · ${pass.kept} already had your answer` : ''}`, 'ok'],
-      ...(pass.missing ? [['AI', `${pass.missing} answers had no matching field on this form`, 'ai']] : []),
-      ['PDF', ...pdf],
-      needs.length
-        ? ['YOU', `${needs.length} required left for you`, 'you']
-        : ['OK', 'every required field has an answer', 'ok'],
-    ];
-  }
-
-  /** Fill the form in this document, tell RADAR (and the page's panel), then stay with it until it is sent. */
-  async function fillHere(packet, hud) {
-    textBefore = CONFIRM.test(pageText());
-    const pass = await fillPass(packet);
-    await sleep(300);
+  /** What the form looks like now, to RADAR (toast) and to the panel (lines, NEEDS YOU). */
+  function report(hud, lines) {
     const needs = stillEmpty();
     markSubmit();
-    const lines = summary(packet, pass, needs);
-    ask({
-      type: 'filled',
-      filled: pass.filled + pass.kept,
-      needs: needs.length,
-      lines,
-      labels: needs.map((n) => n.label),
-    });
+    const filled = questions().filter(answered).length;
+    ask({ type: 'filled', filled, needs: needs.length, lines, labels: needs.map((n) => n.label) });
     if (hud) {
-      for (const [tag, text, tone] of lines) await hud.log(tag, text, tone);
+      for (const [tag, text, tone] of lines) hud.log(tag, text, tone);
       hud.needs(needs);
-      hud.state('READY', '#00FF41');
     }
-    watchForConfirmation(hud);
-    keepFilling(packet, hud);
-  }
-
-  // Multi-step forms (Workday, SmartRecruiters…) show their next step without loading a new page: fill each one too.
-  function keepFilling(packet, hud) {
-    let seen = visibleFields().length;
-    let busy = false;
-    const until = Date.now() + 30 * 60_000;
-    const timer = setInterval(async () => {
-      if (Date.now() > until) return clearInterval(timer);
-      if (busy || visibleFields().length === seen) return;
-      busy = true;
-      const pass = await fillPass(packet);
-      markSubmit();
-      if (hud) {
-        if (pass.filled) hud.log('OK', `${pass.filled} more fields filled on this step`, 'ok');
-        hud.needs(stillEmpty());
-      }
-      seen = visibleFields().length;
-      busy = false;
-    }, 1500);
   }
 
   /** After you press the employer's Submit: log the application when the employer confirms it. */
@@ -639,20 +737,72 @@
   }
 
   /**
-   * The tab opens before the answers exist: wait for RADAR to draft them and HUMANIZE them (validate → fix rounds,
-   * up to a few minutes), or to say why it could not.
+   * Fill the form with what has arrived, ask RADAR about the questions it has not seen, then stay with the form for
+   * 30 minutes: answers that arrive later (the AI's) and new steps of a multi-step form are filled as they come.
    */
+  async function session(packet, version, hud) {
+    textBefore = CONFIRM.test(pageText());
+    let asking = 0;
+    const settle = () => {
+      if (!hud) return;
+      const busy = asking > 0 || packet.partial;
+      hud.state(busy ? 'ANSWERING' : 'READY', busy ? '#22D3EE' : '#00FF41');
+    };
+    const askMore = async () => {
+      asking++;
+      settle();
+      try {
+        const n = await askRadar(packet, hud);
+        if (n) report(hud, [['AI', `${n} more questions answered`, 'ai']]);
+        else if (n === 0) report(hud, []); // none answerable from your materials: NEEDS YOU lists them
+      } finally {
+        asking--;
+        settle();
+      }
+    };
+
+    const first = await exclusive(() => fillPass(packet));
+    report(hud, [
+      ['OK', `${first.filled} fields filled${first.kept ? ` · ${first.kept} already had your answer` : ''}`, 'ok'],
+      ['PDF', ...PDF[first.pdf](packet)],
+    ]);
+    if (hud && packet.partial) hud.log('AI', 'your written answers are on the way: drafted, then humanized…', 'ai');
+    settle();
+    watchForConfirmation(hud);
+    void askMore();
+
+    let fields = visibleFields().length;
+    for (const until = Date.now() + 30 * 60_000; Date.now() < until;) {
+      await sleep(1200);
+      const entry = await ask({ type: 'packet' });
+      if (!entry || entry.done) return;
+      const arrived = entry.version !== version && entry.packet;
+      const newStep = visibleFields().length !== fields;
+      if (!arrived && !newStep) continue;
+      if (arrived) [packet, version] = [entry.packet, entry.version];
+      const pass = await exclusive(() => fillPass(packet));
+      const lines = [];
+      if (arrived) lines.push(['AI', `answers arrived · ${pass.filled} more filled`, 'ai']);
+      else if (pass.filled) lines.push(['OK', `${pass.filled} more fields filled on this step`, 'ok']);
+      if (pass.pdf === 'attached') lines.push(['PDF', ...PDF.attached(packet)]);
+      if (arrived && entry.note) lines.push(['ERR', entry.note, 'err']);
+      report(hud, lines);
+      settle();
+      void askMore();
+      fields = visibleFields().length;
+    }
+  }
+
+  /** The tab opens before the answers exist: wait for RADAR (your facts take about a second), or for why it could not. */
   async function waitForAnswers(entry, hud) {
     if (entry.packet || entry.error) return entry;
     if (hud) {
-      hud.state('DRAFTING', '#22D3EE');
-      await hud.log('AI', 'drafting your answers for this form…', 'ai');
+      hud.state('PREPARING', '#22D3EE');
+      hud.log('AI', 'reading the form and your profile…', 'ai');
     }
     for (let i = 0; i < 300 && entry && !entry.packet && !entry.error; i++) {
-      await sleep(1000);
+      await sleep(i < 20 ? 250 : 1000);
       entry = await ask({ type: 'packet' });
-      if (hud && i === 12)
-        hud.log('AI', 'humanizing: a strict reviewer checks each answer for AI tells, then fixes them', 'ai');
     }
     return entry;
   }
@@ -662,16 +812,16 @@
     let entry = await ask({ type: 'packet' });
     if (!entry || entry.done) return;
     entry = await waitForAnswers(entry, null);
-    if (entry && entry.packet && (await formAppears(entry.packet))) await fillHere(entry.packet, null);
+    if (entry && entry.packet && (await formAppears(entry.packet))) await session(entry.packet, entry.version, null);
   }
 
   /** The page: the panel, and the form when it is here. */
   async function runInPage() {
     let hud = null;
     let fromFrame = null; // set when a frame inside this page filled the form
-    const showFrame = async (report) => {
+    const showFrame = (report) => {
       hud.hideSubmitJump(); // its Submit is inside the frame
-      for (const [tag, text, tone] of report.lines || []) await hud.log(tag, text, tone);
+      for (const [tag, text, tone] of report.lines || []) hud.log(tag, text, tone);
       hud.needs((report.labels || []).map((label) => ({ label })));
       hud.state('READY', '#00FF41');
     };
@@ -697,7 +847,7 @@
     if (entry.done) return hud.done('Already logged in RADAR · C2 · OPS.');
     // Back after pressing the employer's Submit (a new page load): log it if the employer confirmed it.
     if (entry.armedAt && Date.now() - entry.armedAt < 5 * 60_000 && confirmed()) {
-      await hud.log('OK', 'employer confirmed the application', 'ok');
+      hud.log('OK', 'employer confirmed the application', 'ok');
       const res = await ask({ type: 'submitted' });
       if (res && res.ok) hud.done(LOGGED);
       return;
@@ -711,23 +861,21 @@
     entry = await waitForAnswers(entry, hud);
     if (!entry || !entry.packet) {
       hud.state('NO ANSWERS', '#FF5555');
-      await hud.log('ERR', (entry && entry.error) || 'the answers did not arrive. Launch again from RADAR.', 'err');
+      hud.log('ERR', (entry && entry.error) || 'the answers did not arrive. Launch again from RADAR.', 'err');
       return;
     }
-    const { packet } = entry;
-    hud.job(packet.job);
+    hud.job(entry.packet.job);
     if (fromFrame) return;
     hud.state('SCANNING');
-    await hud.log('SYS', `${packet.fields.length} answers armed for ${packet.job}`, 'dim');
 
     // Fill after the page's own app has taken over its inputs, or it may reset them while hydrating.
     for (let i = 0; i < 40 && document.readyState !== 'complete'; i++) await sleep(250);
-    await sleep(500);
+    await sleep(400);
     const inFrame = () => !!fromFrame;
     // A form embedded in a frame reports within a few seconds: only then say there is none yet.
-    if (!(await formAppears(packet, inFrame, 3)) && !fromFrame) {
+    if (!(await formAppears(entry.packet, inFrame, 3)) && !fromFrame) {
       hud.state('WAITING');
-      await hud.log(
+      hud.log(
         'SYS',
         entry.report
           ? 'RADAR filled the form on the previous page. Sent it? Press ✓ I SUBMITTED IT.'
@@ -735,13 +883,13 @@
         'dim',
       );
     }
-    if (!(await formAppears(packet, inFrame))) {
+    if (!(await formAppears(entry.packet, inFrame))) {
       if (fromFrame) return;
       hud.state('NO FORM', '#FF5555');
       return hud.log('ERR', 'no application form appeared on this page', 'err');
     }
     hud.state('FILLING');
-    await fillHere(packet, hud);
+    await session(entry.packet, entry.version, hud);
   }
 
   (TOP ? runInPage : runInFrame)();
