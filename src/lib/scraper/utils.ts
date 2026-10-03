@@ -169,7 +169,7 @@ export function inferExperience(title: string, description = ''): ExperienceLeve
   const t = title.toLowerCase();
   if (/\b(intern|internship|trainee|apprentice|new grad|graduate|fresher|entry[- ]level)\b/.test(t)) return 'fresher';
   if (/\b(junior|jr\.?|associate)\b/.test(t)) return '0-1';
-  if (/\b(senior|sr\.?|staff|principal|lead|head|director|manager|architect|vp)\b/.test(t)) return '5+';
+  // A title such as "Senior" or "Lead" says nothing reliable about years: only the years the JD states count.
 
   const d = description.toLowerCase();
   const years = d.match(/(\d{1,2})\s*\+?\s*(?:-|–|to)?\s*(\d{1,2})?\s*\+?\s*years?/);

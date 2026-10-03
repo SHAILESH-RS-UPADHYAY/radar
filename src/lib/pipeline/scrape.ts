@@ -63,8 +63,8 @@ function hashJob(j: ScrapedJob): string {
 }
 
 /**
- * RADAR keeps only jobs that ask for at most 3 years: '3-5' (4+ years) and '5+' are never stored. A job with no
- * stated experience is kept (most startup postings say nothing).
+ * RADAR keeps only jobs whose JD asks for at most 3 years: '3-5' (4-5 years) and '5+' are never stored. The title
+ * ("Senior", "Lead") does not decide it, and a job that states no years is kept (most startup postings say nothing).
  */
 export const TOO_SENIOR: readonly string[] = ['3-5', '5+'];
 export const withinExperience = (j: { experience_required: string | null }) =>

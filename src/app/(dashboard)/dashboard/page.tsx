@@ -9,6 +9,19 @@ import { useApi } from '@/lib/use-api';
 import { onExtension, useExtension } from '@/lib/extension';
 import { answerPageQuestions, oneClickApply, rememberAnswer } from '@/lib/apply/client';
 import type { MatchStatus, Stage } from '@/types';
+
+type OpsLane = Stage | 'closed' | 'attention';
+/** Each lane's colour: APPLIED is cyan, the pipeline warms up towards OFFER. */
+const LANE_COLOR: Record<OpsLane, string> = {
+  applied: '#22D3EE',
+  screening: '#FACC15',
+  interview: '#00FF41',
+  offer: '#c792ea',
+  rejected: '#FF5555',
+  withdrawn: '#7B9481',
+  closed: '#FF5555',
+  attention: '#FF9F1C',
+};
 import { RadarLogo } from '@/components/brand/RadarLogo';
 import { HudPanel, StatusLight } from '@/components/hud/Hud';
 import { Toast, type Notice } from '@/components/hud/Toast';
@@ -150,6 +163,8 @@ export default function DashboardPage() {
   const [vaultSettings, setVaultSettings] = useState<VaultSettings | null>(null);
   const [primaryTab, setPrimaryTab] = useState<PrimaryTab>('DISCOVERY');
   const [activeTab, setActiveTab] = useState<Section>('recommended');
+  // C2 · OPS: which stage's pill is open (APPLIED by default: the biggest pile).
+  const [opsLane, setOpsLane] = useState<OpsLane>('applied');
   const [opsReady, setOpsReady] = useState(true);
   const [tailoredByJob, setTailoredByJob] = useState<Record<string, TailoredSummary>>({});
   const [overclockReady, setOverclockReady] = useState(true);
@@ -1166,84 +1181,155 @@ export default function DashboardPage() {
                 />
               ) : (
                 <>
-                  <div className="mb-6 grid grid-cols-2 border border-phosphor/20 bg-black/60 sm:grid-cols-3 lg:grid-cols-6">
-                    {[...ACTIVE_STAGES, 'closed' as const].map((s) => {
-                      const count =
-                        s === 'closed'
-                          ? applied.filter((m) => CLOSED_STAGES.includes(m.stage || 'applied')).length
-                          : applied.filter((m) => (m.stage || 'applied') === s).length;
-                      return (
-                        <div key={s} className="border-b border-r border-phosphor/10 p-4">
-                          <p className="font-mono text-2xl font-extrabold text-white">{count}</p>
-                          <p className="mt-1 font-mono text-[10px] tracking-[0.25em] text-dim">
-                            {s === 'closed' ? 'CLOSED' : STAGE_META[s].label}
-                          </p>
+                  {(() => {
+                    const lanes: [OpsLane, string, MatchedJob[]][] = [
+                      ...ACTIVE_STAGES.map((s): [OpsLane, string, MatchedJob[]] => [
+                        s,
+                        STAGE_META[s].label,
+                        applied.filter((m) => (m.stage || 'applied') === s),
+                      ]),
+                      ['closed', 'CLOSED', archived],
+                      ['attention', 'NEED ATTENTION', activeOps.filter((m) => opsSignals(m).length > 0)],
+                    ];
+                    const [, openLabel, list] = lanes.find(([k]) => k === opsLane) ?? lanes[0];
+                    const color = LANE_COLOR[opsLane];
+                    return (
+                      <>
+                        <div
+                          className="mb-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6"
+                          role="tablist"
+                          aria-label="Applications by stage"
+                        >
+                          {lanes.map(([k, label, items]) => {
+                            const on = k === opsLane;
+                            const c = LANE_COLOR[k];
+                            return (
+                              <motion.button
+                                key={k}
+                                type="button"
+                                role="tab"
+                                aria-selected={on}
+                                onClick={() => setOpsLane(k)}
+                                whileTap={{ scale: 0.96 }}
+                                className="group relative overflow-hidden border bg-black/60 p-4 text-left transition-colors"
+                                style={{
+                                  borderColor: on ? c : c + '33',
+                                  boxShadow: on ? `0 0 0 1px ${c}, 0 0 28px ${c}40, inset 0 0 24px ${c}14` : 'none',
+                                }}
+                              >
+                                {on && (
+                                  <motion.span
+                                    layoutId="ops-lane"
+                                    className="pointer-events-none absolute inset-0"
+                                    style={{ background: `linear-gradient(135deg, ${c}22, transparent 70%)` }}
+                                    transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                                  />
+                                )}
+                                <span className="relative flex items-center justify-between">
+                                  <motion.span
+                                    key={on ? 'on' : 'off'}
+                                    initial={on ? { rotateX: -90, opacity: 0 } : false}
+                                    animate={{ rotateX: 0, opacity: 1 }}
+                                    transition={{ duration: 0.35 }}
+                                    className="font-mono text-2xl font-extrabold"
+                                    style={{ color: on ? c : '#fff' }}
+                                  >
+                                    {items.length}
+                                  </motion.span>
+                                  <motion.span
+                                    aria-hidden="true"
+                                    animate={{ rotate: on ? 360 : 0 }}
+                                    transition={{ duration: 0.6, ease: 'easeInOut' }}
+                                    className="font-mono text-sm"
+                                    style={{ color: c }}
+                                  >
+                                    ◈
+                                  </motion.span>
+                                </span>
+                                <span
+                                  className={
+                                    'relative mt-1 block font-mono text-[10px] tracking-[0.25em] ' +
+                                    (on ? '' : 'text-dim group-hover:text-white')
+                                  }
+                                  style={on ? { color: c } : undefined}
+                                >
+                                  {label}
+                                </span>
+                              </motion.button>
+                            );
+                          })}
                         </div>
-                      );
-                    })}
-                    <div className="border-b border-r border-phosphor/10 p-4">
-                      <p className="font-mono text-2xl font-extrabold text-hud-amber">{needsAttention}</p>
-                      <p className="mt-1 font-mono text-[10px] tracking-[0.25em] text-dim">NEED ATTENTION</p>
-                    </div>
-                  </div>
 
-                  <div className="grid items-start gap-4 md:grid-cols-2 xl:grid-cols-4">
-                    {ACTIVE_STAGES.map((s) => {
-                      const column = applied.filter((m) => (m.stage || 'applied') === s);
-                      return (
-                        <section key={s} aria-label={STAGE_META[s].label} className="min-w-0">
-                          <div className="mb-3 flex items-center justify-between border-b border-phosphor/15 pb-2">
-                            <StatusLight tone={STAGE_META[s].tone} pulse={false}>
-                              {STAGE_META[s].label}
-                            </StatusLight>
-                            <span className="font-mono text-[11px] text-dim">{column.length}</span>
-                          </div>
-                          <div className="space-y-3">
-                            <AnimatePresence>
-                              {column.map((m) => (
-                                <OpsCard
-                                  key={m.id}
-                                  match={m}
-                                  editable={opsReady}
-                                  onStage={setStage}
-                                  onNotes={setNotes}
-                                  onAction={onAction}
-                                  onOpen={setBriefingId}
-                                />
-                              ))}
-                            </AnimatePresence>
-                            {column.length === 0 && (
-                              <p className="border border-dashed border-phosphor/10 py-6 text-center font-mono text-[10px] tracking-[0.25em] text-dim/60">
-                                EMPTY
+                        <AnimatePresence mode="wait">
+                          <motion.section
+                            key={opsLane}
+                            aria-label={openLabel}
+                            initial={{ clipPath: 'inset(0 0 100% 0)', opacity: 0.4 }}
+                            animate={{ clipPath: 'inset(0 0 0% 0)', opacity: 1 }}
+                            exit={{ clipPath: 'inset(0 0 100% 0)', opacity: 0 }}
+                            transition={{ duration: 0.45, ease: [0.2, 0.8, 0.2, 1] }}
+                            className="relative border bg-black/40 p-4 sm:p-5"
+                            style={{ borderColor: color + '55', boxShadow: `inset 0 1px 0 ${color}` }}
+                          >
+                            <div
+                              className="mb-4 flex items-center justify-between gap-3 border-b pb-3"
+                              style={{ borderColor: color + '33' }}
+                            >
+                              <p className="font-mono text-[11px] font-bold tracking-[0.3em]" style={{ color }}>
+                                {'// ' + openLabel}
+                                <span className="ml-2 text-dim">
+                                  {list.length}{' '}
+                                  {opsLane === 'applied' ? 'OPERATIONS IN FLIGHT' : list.length === 1 ? 'JOB' : 'JOBS'}
+                                </span>
+                              </p>
+                              <span
+                                className="h-2 w-2 shrink-0 animate-pulse rounded-full"
+                                style={{ background: color, boxShadow: `0 0 10px ${color}` }}
+                              />
+                            </div>
+                            {list.length ? (
+                              <div
+                                className={
+                                  'grid items-start gap-3 sm:grid-cols-2 ' +
+                                  (opsLane === 'applied' ? 'lg:grid-cols-3 2xl:grid-cols-4' : 'xl:grid-cols-3')
+                                }
+                              >
+                                {list.map((m, i) => (
+                                  <motion.div
+                                    key={m.id}
+                                    initial={{ opacity: 0, y: -10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: Math.min(i, 12) * 0.035 }}
+                                    className="min-w-0"
+                                    style={
+                                      opsLane === 'applied'
+                                        ? { borderLeft: `2px solid ${color}`, paddingLeft: 6 }
+                                        : undefined
+                                    }
+                                  >
+                                    <OpsCard
+                                      match={m}
+                                      editable={opsReady}
+                                      onStage={setStage}
+                                      onNotes={setNotes}
+                                      onAction={onAction}
+                                      onOpen={setBriefingId}
+                                    />
+                                  </motion.div>
+                                ))}
+                              </div>
+                            ) : (
+                              <p className="py-10 text-center font-mono text-[11px] tracking-[0.25em] text-dim/70">
+                                {opsLane === 'attention'
+                                  ? 'NOTHING NEEDS YOU · ALL QUIET'
+                                  : 'NO ' + openLabel + ' YET · MOVE A CARD HERE FROM ITS STAGE MENU'}
                               </p>
                             )}
-                          </div>
-                        </section>
-                      );
-                    })}
-                  </div>
-
-                  {archived.length > 0 && (
-                    <details className="group mt-8 border border-phosphor/15 bg-black/50">
-                      <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 font-mono text-[11px] tracking-[0.25em] text-dim transition-colors hover:text-phosphor [&::-webkit-details-marker]:hidden">
-                        <span>ARCHIVE · REJECTED / WITHDRAWN ({archived.length})</span>
-                        <span className="transition-transform group-open:rotate-45">+</span>
-                      </summary>
-                      <div className="grid gap-3 border-t border-phosphor/10 p-4 md:grid-cols-2 xl:grid-cols-4">
-                        {archived.map((m) => (
-                          <OpsCard
-                            key={m.id}
-                            match={m}
-                            editable={opsReady}
-                            onStage={setStage}
-                            onNotes={setNotes}
-                            onAction={onAction}
-                            onOpen={setBriefingId}
-                          />
-                        ))}
-                      </div>
-                    </details>
-                  )}
+                          </motion.section>
+                        </AnimatePresence>
+                      </>
+                    );
+                  })()}
                 </>
               )}
             </motion.section>

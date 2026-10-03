@@ -73,7 +73,8 @@ describe('normalizeSkill', () => {
 describe('inferExperience', () => {
   it('reads seniority from the title first', () => {
     expect(inferExperience('Software Engineer Intern')).toBe('fresher');
-    expect(inferExperience('Senior Backend Engineer', '1+ years')).toBe('5+');
+    expect(inferExperience('Senior Backend Engineer', '1+ years')).toBe('0-1');
+    expect(inferExperience('Senior Backend Engineer')).toBeNull();
     expect(inferExperience('Associate Engineer')).toBe('0-1');
   });
   it('falls back to years in the description', () => {

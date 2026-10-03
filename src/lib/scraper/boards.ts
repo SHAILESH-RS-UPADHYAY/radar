@@ -16,6 +16,9 @@
 //   weworkremotely  weworkremotely.com category RSS (robots.txt allows it); link back to the WWR listing
 //   workingnomads   workingnomads.com/api/exposed_jobs (robots.txt allows everything); link back to Working Nomads
 
+import { createServerClient } from '@/lib/supabase/client';
+import { splitList } from '@/lib/profile';
+import { cityAliases } from '@/lib/geo/city-companies';
 import {
   decodeEntities,
   fetchJson,
@@ -410,6 +413,18 @@ const ADZUNA_CURRENCY: Record<string, string> = {
   fr: 'EUR',
 };
 
+/**
+ * The Indian cities in your preferences (Mohali, Bangalore…), for city searches: country-wide results rarely reach
+ * smaller cities. At most 8, so a run stays well inside Adzuna's free daily limit.
+ */
+async function preferenceCities(): Promise<string[]> {
+  const { data } = await createServerClient().from('user_profiles').select('location').not('location', 'is', null);
+  const seen = new Map<string, string>();
+  for (const city of (data || []).flatMap((p) => splitList(p.location as string)))
+    if (!/^remote$/i.test(city)) seen.set(cityAliases(city)[0], city);
+  return [...seen.values()].slice(0, 8);
+}
+
 async function scrapeAdzuna(): Promise<ScrapedJob[]> {
   const id = process.env.ADZUNA_APP_ID?.trim();
   const key = process.env.ADZUNA_APP_KEY?.trim();
@@ -418,12 +433,18 @@ async function scrapeAdzuna(): Promise<ScrapedJob[]> {
     return [];
   }
   const jobs = new Map<string, ScrapedJob>();
-  for (const country of splitEnvList(process.env.RADAR_ADZUNA_COUNTRIES || 'in,gb,de,nl,fr,sg,us')) {
+  // Country-wide searches, then India city by city for your cities.
+  const searches: [string, string][] = splitEnvList(process.env.RADAR_ADZUNA_COUNTRIES || 'in,gb,de,nl,fr,sg,us').map(
+    (c) => [c, ''],
+  );
+  for (const city of await preferenceCities().catch(() => [])) searches.push(['in', city]);
+  for (const [country, where] of searches) {
     for (const term of searchTerms()) {
       const params = new URLSearchParams({
         app_id: id,
         app_key: key,
         what: term,
+        ...(where ? { where } : {}),
         results_per_page: '50',
         max_days_old: '30',
         'content-type': 'application/json',
