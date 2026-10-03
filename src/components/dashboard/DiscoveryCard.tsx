@@ -9,14 +9,17 @@ export function DiscoveryCard({
   match,
   onAction,
   onOpen,
-  onQuickApply,
+  onInfiltrate,
+  onHack,
 }: {
   match: MatchedJob;
   onAction: (id: string, action: MatchAction) => void;
   /** Opens the JD terminal for this match. */
   onOpen?: (id: string) => void;
-  /** With the RADAR extension: open the form already filled (one click here, one Submit there). */
-  onQuickApply?: (id: string) => void;
+  /** INFILTRATE: the step-by-step run (tailored resume, the form's answers, then the form). */
+  onInfiltrate: (id: string) => void;
+  /** ↯ HACK (with the RADAR extension): one click, the form opens filled; you press Submit. */
+  onHack?: (id: string) => void;
 }) {
   const { job } = match;
   const open = onOpen ? () => onOpen(match.id) : undefined;
@@ -69,26 +72,18 @@ export function DiscoveryCard({
 
         <div className="flex w-full flex-col gap-2 sm:w-44">
           <ScoreMeter score={match.score} />
-          {onQuickApply ? (
-            <button
-              type="button"
-              onClick={() => onQuickApply(match.id)}
-              title="Opens the form filled with your answers and tailored PDF. You review it and press Submit."
-              className="mt-2 bg-phosphor py-2 text-center font-mono text-[11px] font-bold tracking-[0.2em] text-black transition-colors hover:bg-[#33FF66]"
-            >
-              ↯ ONE-CLICK APPLY
-            </button>
-          ) : (
-            <a
-              href={job.apply_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => onAction(match.id, 'APPLY')}
-              className="mt-2 bg-phosphor py-2 text-center font-mono text-[11px] font-bold tracking-[0.2em] text-black transition-colors hover:bg-[#33FF66]"
-            >
-              APPLY ↗
-            </a>
-          )}
+          <button
+            type="button"
+            onClick={() => (onHack ? onHack(match.id) : onInfiltrate(match.id))}
+            title={
+              onHack
+                ? 'One click: the form opens filled with your answers and resume. You press Submit.'
+                : 'Step by step: the tailored resume, every answer of the form to review, then the form'
+            }
+            className="mt-2 bg-phosphor py-2 text-center font-mono text-[11px] font-bold tracking-[0.25em] text-black transition-colors hover:bg-[#33FF66]"
+          >
+            {onHack ? '↯ HACK' : 'INFILTRATE ▸'}
+          </button>
           <button
             onClick={() => onAction(match.id, 'SAVE')}
             className="border border-phosphor/40 py-2 font-mono text-[11px] font-bold tracking-[0.2em] text-phosphor transition-colors hover:bg-phosphor/10"

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { UserButton, useUser } from '@clerk/nextjs';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useApi } from '@/lib/use-api';
-import { keepResumeFile } from '@/lib/apply/client';
+import { keepResumeFile, useKeptResume } from '@/lib/apply/client';
 import type { SettingsProfile } from '@/types';
 import { RadarLogo } from '@/components/brand/RadarLogo';
 import { HudPanel, StatusLight } from '@/components/hud/Hud';
@@ -249,6 +249,7 @@ export default function SettingsPage() {
   const [dream, setDream] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const resumePdf = useKeptResume();
   // Only a profile that is not there sends you to onboarding; a failed load offers a retry instead.
   const [missing, setMissing] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
@@ -681,6 +682,20 @@ export default function SettingsPage() {
                 tone={profile.has_resume ? 'ok' : 'alert'}
                 hint="Your resume drives the semantic half of every score. Upload a new one any time; its skills are merged into yours."
               >
+                {profile.has_resume && (
+                  <div className="mb-4 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 border border-phosphor/40 bg-phosphor/[0.06] px-4 py-3 font-mono text-[11px] tracking-[0.15em]">
+                    <span className="font-bold text-phosphor">
+                      ✓ RESUME ON FILE · {profile.resume_skills.length} SKILLS READ FROM IT
+                    </span>
+                    {resumePdf !== undefined && (
+                      <span className={'min-w-0 truncate ' + (resumePdf ? 'text-phosphor/80' : 'text-hud-amber')}>
+                        {resumePdf
+                          ? 'PDF FOR FORMS · ' + resumePdf
+                          : 'PDF FOR FORMS · not in this browser: upload it once here'}
+                      </span>
+                    )}
+                  </div>
+                )}
                 <label
                   onDragOver={(e) => {
                     e.preventDefault();
@@ -712,7 +727,7 @@ export default function SettingsPage() {
                     }}
                   />
                   <span className="font-mono text-sm font-bold tracking-[0.2em] text-phosphor">
-                    {uploading ? 'PARSING RESUME…' : '[ UPLOAD NEW RESUME ]'}
+                    {uploading ? 'PARSING RESUME…' : profile.has_resume ? '[ REPLACE RESUME ]' : '[ UPLOAD RESUME ]'}
                   </span>
                   <span className="font-mono text-[10px] tracking-wider text-dim">
                     PDF · max 4 MB · drop it here or click

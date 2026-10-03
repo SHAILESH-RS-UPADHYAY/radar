@@ -1,11 +1,11 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { HudPanel } from '@/components/hud/Hud';
 import type { ApplicationKit } from '@/types';
 import { BRIDGE_HREF } from '@/lib/apply/bridge';
 import { useExtension } from '@/lib/extension';
-import { keptResumeName, RESUME_KEPT, shareKeptResume } from '@/lib/apply/client';
+import { shareKeptResume, useKeptResume } from '@/lib/apply/client';
 
 type TextKey = Exclude<keyof ApplicationKit, 'needs_sponsorship' | 'willing_to_relocate' | 'voice_notes'>;
 
@@ -44,7 +44,7 @@ const field =
 const label = 'mb-2 block font-mono text-[10px] tracking-[0.3em] text-dim';
 
 /**
- * CONFIG://05 — the answers application forms ask for again and again, saved once. HACK fills forms from it, the AI
+ * CONFIG://05 — the answers application forms ask for again and again, saved once. ↯ HACK fills forms from it, the AI
  * drafts the rest in your voice, and the RADAR FILL bookmark puts them into the employer's form. `kit` is null until
  * migration 009 has run.
  */
@@ -58,13 +58,7 @@ export function ApplicationKitSection({
   const set = kit ? Object.values(kit).filter(Boolean).length : 0;
   const extension = useExtension();
   // The resume PDF kept in this browser (set when you upload it): attached when a job has no tailored resume.
-  const [resumeFile, setResumeFile] = useState<string | null | undefined>(undefined);
-  useEffect(() => {
-    const read = () => void keptResumeName().then(setResumeFile);
-    read();
-    window.addEventListener(RESUME_KEPT, read);
-    return () => window.removeEventListener(RESUME_KEPT, read);
-  }, []);
+  const resumeFile = useKeptResume();
   // The extension keeps its own copy for every RADAR address; hand it one uploaded before it was installed.
   useEffect(() => {
     if (extension && resumeFile) void shareKeptResume();
@@ -84,7 +78,7 @@ export function ApplicationKitSection({
       className="min-w-0 scroll-mt-24 xl:col-span-2"
     >
       <p className="-mt-1 mb-5 text-sm leading-relaxed text-dim">
-        What application forms keep asking. Saved once, HACK answers every form from it; the AI drafts only what this
+        What application forms keep asking. Saved once, ↯ HACK answers every form from it; the AI drafts only what this
         does not cover, in your words. Nothing is sent to an employer: you review and submit.
       </p>
 
@@ -169,8 +163,8 @@ export function ApplicationKitSection({
             </p>
             <p className="mt-1 text-sm leading-relaxed text-dim">
               {extension
-                ? '↯ ONE-CLICK APPLY on any card opens the form already filled: your details, every question answered, Yes/No and dropdowns picked, your PDF attached. You press Submit; RADAR logs it.'
-                : 'Chrome → chrome://extensions → turn on Developer mode → Load unpacked → pick the extension folder of this repo. Then every card gets ↯ ONE-CLICK APPLY.'}
+                ? '↯ HACK on any card opens the form already filled: your details, every question answered, Yes/No and dropdowns picked, your PDF attached. You press Submit; RADAR logs it.'
+                : 'Chrome → chrome://extensions → turn on Developer mode → Load unpacked → pick the extension folder of this repo. Then every card gets ↯ HACK.'}
             </p>
             {resumeFile !== undefined && (
               <p className="mt-2 font-mono text-[11px] tracking-[0.15em]">
@@ -190,8 +184,8 @@ export function ApplicationKitSection({
                 BRIDGE://RADAR-FILL · NO EXTENSION NEEDED
               </p>
               <p className="mt-1 text-sm leading-relaxed text-dim">
-                Drag this to your bookmarks bar once. On an application page: HACK → COPY FILL PACKET, then click it. It
-                fills the form and marks Submit; it never presses it.
+                Drag this to your bookmarks bar once. On an application page: INFILTRATE → COPY FILL PACKET, then click
+                it. It fills the form and marks Submit; it never presses it.
               </p>
             </div>
             <a

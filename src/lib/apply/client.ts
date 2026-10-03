@@ -1,8 +1,9 @@
 // ============================
 // RADAR — the browser side of applying: ask RADAR for a form's answers, and pack them for the form
 // ============================
-// Used by HACK (FORM://INTERCEPT) and by ONE-CLICK APPLY on the cards. Nothing here talks to the employer.
+// Used by INFILTRATE (FORM://INTERCEPT) and by ↯ HACK on the cards. Nothing here talks to the employer.
 
+import { useEffect, useState } from 'react';
 import type { useApi } from '@/lib/use-api';
 import { armInExtension, keepResumeInExtension, launchInExtension, type PageQuestion } from '@/lib/extension';
 import type { FilledField } from './answers';
@@ -47,16 +48,17 @@ export async function prepareForm(
 const RESUME_CACHE = 'radar-resume';
 const RESUME_KEY = '/radar/resume.pdf';
 /** Fired on window when a new resume PDF is kept, so a status line can refresh. */
-export const RESUME_KEPT = 'radar:resume-kept';
+const RESUME_KEPT = 'radar:resume-kept';
 
 export async function keepResumeFile(file: File): Promise<void> {
+  // The extension's copy first, on its own: it is what forms get, on every RADAR address.
+  keepResumeInExtension({ name: file.name, data: toBase64(await file.arrayBuffer()) });
   try {
     const headers = { 'content-type': 'application/pdf', 'x-file-name': encodeURIComponent(file.name) };
     await (await caches.open(RESUME_CACHE)).put(RESUME_KEY, new Response(file, { headers }));
     window.dispatchEvent(new Event(RESUME_KEPT));
-    keepResumeInExtension({ name: file.name, data: toBase64(await file.arrayBuffer()) });
   } catch {
-    // No Cache Storage here (a private window): forms get the tailored PDF only.
+    // No Cache Storage here (a private window, a full disk): the extension's copy still serves every form.
   }
 }
 
@@ -74,8 +76,20 @@ export async function shareKeptResume(): Promise<void> {
   }
 }
 
+/** The resume PDF kept in this browser, kept current as you upload: its name, null for none, undefined while reading. */
+export function useKeptResume(): string | null | undefined {
+  const [name, setName] = useState<string | null | undefined>(undefined);
+  useEffect(() => {
+    const read = () => void keptResumeName().then(setName);
+    read();
+    window.addEventListener(RESUME_KEPT, read);
+    return () => window.removeEventListener(RESUME_KEPT, read);
+  }, []);
+  return name;
+}
+
 /** The resume PDF kept in this browser: its file name, or null. */
-export async function keptResumeName(): Promise<string | null> {
+async function keptResumeName(): Promise<string | null> {
   try {
     const kept = await (await caches.open(RESUME_CACHE)).match(RESUME_KEY);
     return kept ? decodeURIComponent(kept.headers.get('x-file-name') || 'Resume.pdf') : null;
@@ -130,10 +144,10 @@ export async function packForm(
 }
 
 /**
- * ONE-CLICK APPLY. The form opens at once; your profile facts and the PDF reach it in about a second (no AI); the
+ * ↯ HACK, one click. The form opens at once; your profile facts and the PDF reach it in about a second (no AI); the
  * AI's answers follow when they are drafted and humanized. A form RADAR could not read ahead (Ashby, company sites)
  * gets no AI pass here: the tab reads its real questions and asks for them (answerPageQuestions).
- * `draft` replaces the AI pass (HACK uses its own, so step 02 shows the log).
+ * `draft` replaces the AI pass (INFILTRATE uses its own, so step 02 shows the log).
  */
 export async function oneClickApply(
   api: Api,

@@ -24,7 +24,7 @@ const host = (url: string) => {
 };
 
 /**
- * CONFIG://04 — your links and the sites or projects you built. HACK hands them to you ready to paste on every
+ * CONFIG://04 — your links and the sites or projects you built. INFILTRATE hands them to you ready to paste on every
  * application; OVERCLOCK may cite them in a tailored resume. `portfolio` is null until migration 008 has run.
  */
 export function PortfolioSection({
@@ -57,8 +57,8 @@ export function PortfolioSection({
       className="min-w-0 scroll-mt-24 xl:col-span-2"
     >
       <p className="-mt-1 mb-5 text-sm leading-relaxed text-dim">
-        Your links and the sites you built. HACK puts them next to every application, ready to paste; OVERCLOCK can cite
-        your projects in a tailored resume.
+        Your links and the sites you built. INFILTRATE puts them next to every application, ready to paste; OVERCLOCK
+        can cite your projects in a tailored resume.
       </p>
 
       {!portfolio ? (

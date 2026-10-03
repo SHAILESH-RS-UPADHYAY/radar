@@ -576,7 +576,7 @@ export default function LandingPage() {
               SAMPLE MATCH
             </span>
             <div inert className="select-none">
-              <DiscoveryCard match={SAMPLE} onAction={() => {}} />
+              <DiscoveryCard match={SAMPLE} onAction={() => {}} onInfiltrate={() => {}} onHack={() => {}} />
             </div>
             <button
               type="button"

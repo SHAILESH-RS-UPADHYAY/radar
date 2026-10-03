@@ -631,19 +631,19 @@ const PANELS = [
   },
   {
     name: '07-hack',
-    title: 'HACK: the assisted apply run',
-    prompt: 'radar hack --queue vault',
+    title: 'HACK: one click, the form opens filled; INFILTRATE: step by step',
+    prompt: 'radar hack northwind-ai',
     status: 'HACK',
     statusTone: 'kw',
     lines: [
-      { sec: [t('HACK://NORTHWIND AI '), t('(AI Engineer · 92% · target 1 of 7)', 'dim')] },
+      { sec: [t('↯ HACK://NORTHWIND AI '), t('(AI Engineer · 92% · one click)', 'dim')] },
       {
         segs: [
           t('[1/4] ', 'num'),
-          t('RESUME   ', 'decl'),
+          t('FORM     ', 'decl'),
           t('▸ '),
-          t('tailored CV attached', 'plain'),
-          t('  northwind-ai-engineer.pdf ⬇', 'str'),
+          t('opened in a new tab, your facts filled in 1 s', 'plain'),
+          t('  jobs.ashbyhq.com/… ↗', 'str'),
         ],
       },
       {
@@ -651,25 +651,25 @@ const PANELS = [
           t('[2/4] ', 'num'),
           t('ANSWERS  ', 'decl'),
           t('▸ '),
-          t('name · email · links · cover note', 'plain'),
-          t('  ⧉ copied', 'fn'),
+          t('every question · Yes/No · dropdowns · Location', 'plain'),
+          t('  humanized', 'fn'),
         ],
       },
       {
         segs: [
           t('[3/4] ', 'num'),
-          t('LAUNCH   ', 'decl'),
+          t('RESUME   ', 'decl'),
           t('▸ '),
-          t('real apply link opened', 'plain'),
-          t('  jobs.ashbyhq.com/… ↗', 'str'),
+          t('tailored PDF attached', 'plain'),
+          t('  northwind-ai-engineer.pdf', 'str'),
         ],
       },
       {
         segs: [
           t('[4/4] ', 'num'),
-          t('CONFIRM  ', 'decl'),
+          t('SUBMIT   ', 'decl'),
           t('▸ '),
-          t('you press submit — the one step RADAR leaves to you', 'req'),
+          t('you press it, the one step RADAR leaves to you', 'req'),
         ],
       },
       {
@@ -682,9 +682,14 @@ const PANELS = [
           t(' · CV version stored with it', 'dim'),
         ],
       },
-      { sec: [t('NEXT '), t('(target 2 of 7 · HACK ALL walks the whole Vault)', 'dim')] },
+      {
+        sec: [
+          t('INFILTRATE ▸ '),
+          t('(step by step: review every answer first · INFILTRATE ALL walks the Vault)', 'dim'),
+        ],
+      },
     ],
-    footer: ['Hacking the queue', 'prepared in seconds · submitted by you'],
+    footer: ['Hacking the form', 'filled in seconds · submitted by you'],
   },
   {
     name: '08-track',

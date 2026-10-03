@@ -3,15 +3,15 @@
 import { HudPanel } from '@/components/hud/Hud';
 import { postedTag, scoreColor, type MatchedJob } from './types';
 
-/** TODAY://10 in the Vault: the jobs to apply to first (see todaysTen), each opening its briefing, and one HACK run. */
+/** TODAY://10 in the Vault: the jobs to apply to first (see todaysTen), each opening its briefing, and one INFILTRATE run. */
 export function TodayPanel({
   today,
   onOpen,
-  onHack,
+  onInfiltrate,
 }: {
   today: MatchedJob[];
   onOpen: (id: string) => void;
-  onHack: () => void;
+  onInfiltrate: () => void;
 }) {
   return (
     <HudPanel label="TODAY://10" status="APPLY FIRST" tone="warn" bodyClassName="p-0">
@@ -53,10 +53,10 @@ export function TodayPanel({
       <div className="p-4">
         <button
           type="button"
-          onClick={onHack}
+          onClick={onInfiltrate}
           className="w-full border border-hud-amber/60 bg-hud-amber/10 py-2.5 font-mono text-[11px] font-bold tracking-[0.25em] text-hud-amber transition-colors hover:bg-hud-amber hover:text-black"
         >
-          HACK THESE {today.length}
+          INFILTRATE THESE {today.length}
         </button>
       </div>
     </HudPanel>

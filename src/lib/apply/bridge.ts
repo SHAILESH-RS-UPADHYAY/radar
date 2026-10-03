@@ -1,7 +1,7 @@
 // ============================
 // RADAR FILL — the autofill bridge (a bookmarklet)
 // ============================
-// HACK copies a "fill packet" (your answers for that exact form, plus the tailored PDF when there is one) to the
+// INFILTRATE copies a "fill packet" (your answers for that exact form, plus the tailored PDF when there is one) to the
 // clipboard. On the employer's page, the RADAR FILL bookmark reads it, fills text fields, dropdowns, radios and
 // checkboxes by their form names, attaches the PDF to the resume input, and scrolls to Submit and marks it.
 // It never presses Submit: you review and send the application yourself.
@@ -51,7 +51,7 @@ export function fillPacket(
 const SOURCE = `(async()=>{
 const say=(t,ok)=>{let b=document.getElementById('radar-fill');if(!b){b=document.createElement('div');b.id='radar-fill';document.body.appendChild(b)}
 b.textContent=t;b.style.cssText='position:fixed;z-index:2147483647;left:50%;top:16px;transform:translateX(-50%);padding:10px 16px;font:600 12px/1.4 monospace;letter-spacing:.08em;background:#000;border:1px solid '+(ok?'#00FF41':'#FF5555')+';color:'+(ok?'#00FF41':'#FF5555')+';box-shadow:0 0 24px rgba(0,255,65,.35)';setTimeout(()=>b.remove(),9000)};
-let p;try{p=JSON.parse(await navigator.clipboard.readText())}catch(e){return say('RADAR FILL: copy the fill packet in HACK first, then allow clipboard access.',false)}
+let p;try{p=JSON.parse(await navigator.clipboard.readText())}catch(e){return say('RADAR FILL: copy the fill packet in INFILTRATE first, then allow clipboard access.',false)}
 if(!p||p.radar!==1)return say('RADAR FILL: the clipboard does not hold a RADAR fill packet.',false);
 const set=(el,v)=>{const proto=el instanceof HTMLTextAreaElement?HTMLTextAreaElement.prototype:el instanceof HTMLSelectElement?HTMLSelectElement.prototype:HTMLInputElement.prototype;Object.getOwnPropertyDescriptor(proto,'value').set.call(el,v);el.dispatchEvent(new Event('input',{bubbles:true}));el.dispatchEvent(new Event('change',{bubbles:true}))};
 const txt=e=>((e.closest('label')||{}).textContent||e.value||'').trim();

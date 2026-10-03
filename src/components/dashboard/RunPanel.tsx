@@ -215,26 +215,14 @@ export function RunPanel({
       <Step n="03" title="LAUNCH" done={opened}>
         {extension ? (
           <>
-            <div className="flex flex-wrap items-center gap-3">
-              <button
-                type="button"
-                onClick={() => void launchFilled()}
-                disabled={form.phase === 'running'}
-                className={primary}
-              >
-                ↯ LAUNCH + AUTO-FILL
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  window.open(job.apply_url, '_blank', 'noopener,noreferrer');
-                  setOpened(true);
-                }}
-                className="font-mono text-[10px] tracking-[0.2em] text-dim transition-colors hover:text-phosphor"
-              >
-                open without filling ↗
-              </button>
-            </div>
+            <button
+              type="button"
+              onClick={() => void launchFilled()}
+              disabled={form.phase === 'running'}
+              className={primary}
+            >
+              ↯ HACK
+            </button>
             <p className={'mt-2 font-mono text-[11px] ' + (launch ? LAUNCH_TONE[launch.tone] : 'text-dim')}>
               {launch?.text ||
                 `RADAR extension v${extension} connected: the form opens filled with the answers above and your PDF. You review and press Submit; RADAR logs it.`}
@@ -250,11 +238,11 @@ export function RunPanel({
               }}
               className={primary}
             >
-              OPEN APPLICATION ↗
+              OPEN FORM ↗
             </button>
             <p className="mt-2 text-xs text-dim">
               Opens the employer’s own form in a new tab. Click RADAR FILL there (or paste), check it, submit. With the
-              RADAR extension (repo folder extension/) the form opens already filled.
+              RADAR extension (repo folder extension/) this is ↯ HACK: the form opens already filled.
             </p>
           </>
         )}

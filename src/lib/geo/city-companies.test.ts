@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { canonicalCity, cityAliases, knownCompaniesIn } from './city-companies';
+import { canonicalCity, cityAliases, inStrictCity, knownCompaniesIn, placeFit } from './city-companies';
 
 describe('city aliases', () => {
   it('maps alternate spellings to one city', () => {
@@ -23,5 +23,43 @@ describe('knownCompaniesIn', () => {
   });
   it('returns nothing for unknown cities', () => {
     expect(knownCompaniesIn(['Atlantis'])).toEqual([]);
+  });
+});
+
+describe('placeFit: whole words, every segment', () => {
+  it('finds the city in any segment of a multi-location posting', () => {
+    expect(placeFit(['Pune'], 'Bengaluru / Remote / Pune', null)).toEqual({ kind: 'city', city: 'Pune' });
+    expect(placeFit(['Bangalore'], 'Bengaluru, Karnataka, India', null)).toEqual({ kind: 'city', city: 'Bangalore' });
+    expect(placeFit(['banglore'], 'Bangalore', null)).toEqual({ kind: 'city', city: 'banglore' });
+    expect(placeFit(['Gurugram'], 'Gurgaon, Haryana', null)).toEqual({ kind: 'city', city: 'Gurugram' });
+    expect(placeFit(['Mumbai'], 'Navi Mumbai', null)).toEqual({ kind: 'city', city: 'Mumbai' });
+  });
+
+  it('never matches an alias inside another word', () => {
+    expect(placeFit(['San Francisco'], 'Data transfer team, Berlin', null).kind).toBe('elsewhere');
+    expect(placeFit(['Delhi'], 'Pancreas ncrna lab, Boston', null).kind).toBe('elsewhere');
+    expect(placeFit(['Pune'], 'Punekar Street, London', null).kind).toBe('elsewhere');
+    expect(placeFit(['San Francisco'], 'San Francisco, SF', null).kind).toBe('city');
+  });
+
+  it('reads remote as a whole word too', () => {
+    expect(placeFit(['Pune'], 'Remote, India', null)).toEqual({ kind: 'remote', wanted: false });
+    expect(placeFit(['Pune', 'Remote'], 'Remote', null)).toEqual({ kind: 'remote', wanted: true });
+    expect(placeFit(['Pune'], 'Remoteville', null).kind).toBe('elsewhere');
+  });
+});
+
+describe('inStrictCity (autopilot)', () => {
+  const off = { remote: false, countryOnly: false };
+  it('takes only your cities by default', () => {
+    expect(inStrictCity(['Pune'], 'Pune, Maharashtra', null, off)).toBe(true);
+    expect(inStrictCity(['Pune'], 'Mumbai', null, off)).toBe(false);
+    expect(inStrictCity(['Pune'], 'Remote', 'remote', off)).toBe(false);
+    expect(inStrictCity(['Pune'], 'India', null, off)).toBe(false);
+  });
+  it('adds remote roles and country-only postings only when you allow them', () => {
+    expect(inStrictCity(['Pune'], 'Remote', 'remote', { remote: true, countryOnly: false })).toBe(true);
+    expect(inStrictCity(['Pune'], 'India', null, { remote: false, countryOnly: true })).toBe(true);
+    expect(inStrictCity(['Pune'], 'Bengaluru, India', null, { remote: false, countryOnly: true })).toBe(false);
   });
 });

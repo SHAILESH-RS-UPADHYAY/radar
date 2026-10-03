@@ -5,7 +5,7 @@ answers, Yes/No buttons, dropdowns, search-and-pick boxes like Location) and you
 the employer's Submit. RADAR logs the application.
 
 ```text
-RADAR card  ↯ ONE-CLICK APPLY
+RADAR card  ↯ HACK
    │  the form opens in a new tab at once
    ▼
 form tab    ~1 s   your facts + PDF filled (name, email, phone, links, location, sponsorship, EEO): no AI needed
@@ -24,7 +24,7 @@ RADAR       C2 · OPS: applied, with the resume that went out
 1. Chrome → `chrome://extensions` → switch on **Developer mode** (top right).
 2. **Load unpacked** → pick this `extension/` folder.
 3. Open RADAR (or reload it). **Settings → Application Kit** shows `EXTENSION://RADAR-AUTO-FILL · CONNECTED`, and the
-   cards in DISCOVERY and THE VAULT show **↯ ONE-CLICK APPLY**.
+   cards in DISCOVERY and THE VAULT show **↯ HACK**.
 4. Upload your resume once in **Settings → RESUME** in this browser: RADAR keeps the PDF here (never on its server) and
    attaches it whenever a job has no OVERCLOCK-tailored resume. The Kit shows `RESUME PDF IN THIS BROWSER`.
 
@@ -101,6 +101,6 @@ a form go to RADAR (your own account) to be answered, like the forms RADAR reads
 
 ## Test
 
-`chrome://extensions` → load it, open RADAR, press ↯ ONE-CLICK APPLY on a Greenhouse, Lever or Ashby job and do
+`chrome://extensions` → load it, open RADAR, press ↯ HACK on a Greenhouse, Lever or Ashby job and do
 **not** submit: the panel should reach READY with the PDF attached, every question answered and Submit marked. A tab
 you open yourself shows no panel.

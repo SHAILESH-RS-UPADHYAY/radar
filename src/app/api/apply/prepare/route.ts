@@ -32,7 +32,7 @@ const Body = z.object({
 // POST { matchId, draft?, fields? } — FORM://INTERCEPT for one of your matches: read the posting's application form
 // (or take the questions the extension read on the open form), fill what your profile and Application Kit say, draft
 // the rest with the AI in your voice, then HUMANIZE it (validate → fix until nothing reads AI-written). Nothing is
-// sent to the employer: HACK shows the answers and the extension (or the RADAR FILL bookmark) fills the form in your
+// sent to the employer: INFILTRATE shows the answers and the extension (or the RADAR FILL bookmark) fills the form in your
 // own browser; you press submit.
 export async function POST(req: NextRequest) {
   const startedAt = Date.now();

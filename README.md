@@ -22,7 +22,7 @@ RADAR is a job-intelligence engine that runs 24/7. It does everything except the
 + scores each job against your resume, 0–100
 + saves every 80%+ match to your Vault automatically
 + rewrites your resume, honestly, for 50–79% near-misses (Anthropic · Gemini · Grok)
-+ prepares each application (HACK) and reads recruiter replies from Gmail
++ fills each application in one click (↯ HACK) and reads recruiter replies from Gmail
 - applying by hand
 ```
 
@@ -136,19 +136,19 @@ XAI_API_KEY=…                 # optional XAI_MODEL       (default grok-4.7)
 
 ---
 
-## `▌SYSTEM://07` — HACK · the assisted apply run
+## `▌SYSTEM://07` — HACK · one click, the form opens filled
 
-<img src="docs/readme/07-hack.svg" width="100%" alt="HACK: tailored CV, answers, real link, then you submit" />
+<img src="docs/readme/07-hack.svg" width="100%" alt="HACK: the form opens filled, every question answered, you press submit" />
 
-Tailored CV, then **FORM://INTERCEPT**: RADAR reads the posting's real application form (Greenhouse questions, Lever
-cards, standard fields elsewhere), fills it from your profile and Application Kit and drafts the rest with the AI in
-your voice. **HACK ALL** walks the whole Vault. → `RunPanel.tsx` · `src/lib/apply/`
+**↯ HACK** on any card (with the **RADAR · Auto-Fill** extension, [`extension/`](extension/README.md)) opens the form
+already filled: your facts in about a second, then every question answered (Yes/No, dropdowns, Location, written
+answers through HUMANIZE), even on forms RADAR cannot read ahead (Ashby, company sites: the tab reads them), your PDF
+attached and Submit marked. You press Submit; the employer's confirmation logs it in C2 · OPS.
 
-With the **RADAR · Auto-Fill** extension ([`extension/`](extension/README.md)), **↯ ONE-CLICK APPLY** on any card opens
-the form already filled: your facts in about a second, then every question answered (Yes/No, dropdowns, Location,
-written answers through HUMANIZE), even on forms RADAR cannot read ahead (Ashby, company sites: the tab reads them),
-your PDF attached and Submit marked. You press Submit; the employer's confirmation logs it in C2 · OPS. Without it, the
-RADAR FILL bookmark does the same from the clipboard. The final submit is always yours.
+**INFILTRATE ▸** is the same run step by step: the tailored CV, then **FORM://INTERCEPT** (RADAR reads the posting's
+real form, fills it from your profile and Application Kit and drafts the rest in your voice) for you to review and edit,
+then the form. **INFILTRATE ALL** walks the whole Vault. Without the extension, the RADAR FILL bookmark fills the form
+from the clipboard. The final submit is always yours. → `RunPanel.tsx` · `src/lib/apply/`
 
 ---
 

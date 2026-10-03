@@ -11,6 +11,8 @@ import { bits, curvature, fmt, wrapAngle } from '@/lib/cursor-math';
 // • resting on text shows that letter in binary; dragging across text streams each letter's bits
 // • a lock-on frame hugs small controls; a large one gets a compact lock at the pointer instead
 // • a hit marker on click (a ring, four strokes kicking out, the locked target flashing), a data streak while scrolling
+// • a clean aperture: a thin red ring around the pointer whose inside nothing is ever drawn over, so what you are about
+//   to click is always plain to see; every animation above lives outside it
 // Mouse only, never with reduced motion, never over dialogs; no frames at all while idle.
 
 const CW = 11; // glyph cell, CSS px
@@ -23,7 +25,8 @@ const IDLE_MS = 2600; // the reticle fades this long after the last move
 const FAST = 700; // px/s: a flick faster than this shows θ and |v| beside the reticle
 const FLICK_HOLD = 450; // ms that readout stays after the pointer slows down
 const DRAG_START = 8; // px the pointer must travel with the button held before it counts as a drag
-const UNIT = 26; // unit-circle radius around the reticle
+const CLEAR = 30; // px: the clean circle around the pointer; nothing is drawn inside it
+const UNIT = CLEAR + 16; // unit-circle radius around the reticle, outside the clean circle
 const PANEL_W = 236;
 const LOG_LINES = 4;
 const LOCK_MAX_W = 200; // a control bigger than this gets a compact lock at the pointer, not a frame around it
@@ -41,6 +44,7 @@ const YELLOW = '230, 219, 116';
 const VIOLET = '199, 146, 234';
 const WHITE = '248, 248, 242';
 const DIM = '138, 138, 138';
+const RED = '255, 85, 85';
 const LOCKABLE = 'a[href], button, [role="button"], [role="tab"], [role="switch"], input, select, textarea, summary';
 
 interface Cell {
@@ -335,7 +339,7 @@ export default function SignalCursor() {
       ctx.arc(x, y, UNIT, 0, Math.PI * 2);
       ctx.stroke();
       ctx.strokeStyle = `rgba(${WHITE}, ${(0.22 * a).toFixed(3)})`;
-      line(x - c * 56, y - s * 56, x + c * 56, y + s * 56); // the tangent: the path's direction right now
+      line(x - c * (UNIT + 24), y - s * (UNIT + 24), x + c * (UNIT + 24), y + s * (UNIT + 24)); // the tangent: the path's direction right now
       ctx.strokeStyle = `rgba(${WHITE}, ${(0.35 * a).toFixed(3)})`;
       line(px, py, px, y);
       line(px, py, x, py);
@@ -355,11 +359,11 @@ export default function SignalCursor() {
       ctx.lineWidth = 1;
       ctx.strokeStyle = `rgba(${YELLOW}, ${(0.9 * a).toFixed(3)})`;
       ctx.beginPath();
-      ctx.arc(x, y, 12, 0, th, th < 0);
+      ctx.arc(x, y, CLEAR + 5, 0, th, th < 0);
       ctx.stroke();
       ctx.font = `500 9px ${family}`;
       ctx.fillStyle = `rgba(${YELLOW}, ${a.toFixed(3)})`;
-      ctx.fillText(`θ ${deg(-th)}`, x + Math.cos(th / 2) * 18 + 3, y + Math.sin(th / 2) * 18 - 5);
+      ctx.fillText(`θ ${deg(-th)}`, x + Math.cos(th / 2) * (CLEAR + 12) + 3, y + Math.sin(th / 2) * (CLEAR + 12) - 5);
       ctx.fillStyle = `rgba(${GREEN}, ${a.toFixed(3)})`;
       ctx.fillText(`cos θ ${num(c)}`, c >= 0 ? px + 4 : px - 62, y + 3);
       ctx.fillStyle = `rgba(${MAGENTA}, ${a.toFixed(3)})`;
@@ -400,10 +404,10 @@ export default function SignalCursor() {
     // CALC://LIVE: an oscilloscope of |v| (green) and d|v|/dt (cyan), then the log, typed in.
     const drawPanel = (now: number, a: number, ease: (k: number) => number) => {
       const H = 22 + 28 + LOG_LINES * 13 + 8;
-      let px = ret.x + 56;
-      let py = ret.y + 44;
-      if (px + PANEL_W > w - 8) px = ret.x - 56 - PANEL_W;
-      if (py + H > h - 8) py = ret.y - 44 - H;
+      let px = ret.x + UNIT + 34;
+      let py = ret.y + UNIT + 18;
+      if (px + PANEL_W > w - 8) px = ret.x - UNIT - 34 - PANEL_W;
+      if (py + H > h - 8) py = ret.y - UNIT - 18 - H;
       px = Math.max(8, Math.min(px, w - PANEL_W - 8));
       py = Math.max(8, Math.min(py, h - H - 8));
       if (a < 0.05) Object.assign(panel, { x: px, y: py });
@@ -536,13 +540,13 @@ export default function SignalCursor() {
         ctx.strokeStyle = `rgba(${PHOS}, ${(0.9 * fade).toFixed(3)})`;
         ctx.lineWidth = 0.6 + 1.6 * fade;
         ctx.beginPath();
-        ctx.arc(p.x, p.y, 4 + out * 30, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, CLEAR + out * 26, 0, Math.PI * 2);
         ctx.stroke();
         ctx.strokeStyle = `rgba(234, 255, 240, ${fade.toFixed(3)})`;
         ctx.lineWidth = 1.5;
         for (let q = 0; q < 4; q++) {
           const a = Math.PI / 4 + (q * Math.PI) / 2;
-          const r1 = 7 + out * 10;
+          const r1 = CLEAR + 4 + out * 10;
           const r2 = r1 + 2 + 6 * fade;
           line(p.x + Math.cos(a) * r1, p.y + Math.sin(a) * r1, p.x + Math.cos(a) * r2, p.y + Math.sin(a) * r2);
         }
@@ -573,13 +577,13 @@ export default function SignalCursor() {
       }
 
       // Lock-on: the frame grows from the reticle to the target, and shrinks back when it leaves.
-      let box = { l: ret.x - 16, t: ret.y - 16, r: ret.x + 16, b: ret.y + 16 };
+      let box = { l: ret.x - CLEAR - 6, t: ret.y - CLEAR - 6, r: ret.x + CLEAR + 6, b: ret.y + CLEAR + 6 };
       const locked = fresh && !!target?.isConnected;
       if (locked) {
         const r = target!.getBoundingClientRect();
         compact = r.width > LOCK_MAX_W || r.height > LOCK_MAX_H;
         box = compact
-          ? { l: ret.x - 12, t: ret.y - 12, r: ret.x + 12, b: ret.y + 12 }
+          ? { l: ret.x - CLEAR - 6, t: ret.y - CLEAR - 6, r: ret.x + CLEAR + 6, b: ret.y + CLEAR + 6 }
           : {
               l: Math.max(4, r.left - 4),
               t: Math.max(4, r.top - 4),
@@ -618,7 +622,7 @@ export default function SignalCursor() {
       const squeeze = 1 - 0.3 * Math.sin(Math.PI * Math.min(1, Math.max(0, (now - clickAt) / 260)));
       if (ringA > 0.01) {
         const { x, y } = ret;
-        const R = 14 * squeeze;
+        const R = CLEAR + 8 * squeeze;
         if (ctx.createConicGradient) {
           const g = ctx.createConicGradient(ret.spin, x, y);
           g.addColorStop(0, `rgba(${PHOS}, 0)`);
@@ -626,7 +630,7 @@ export default function SignalCursor() {
           g.addColorStop(1, `rgba(${PHOS}, ${(0.38 * ringA).toFixed(3)})`);
           ctx.fillStyle = g;
           ctx.beginPath();
-          ctx.arc(x, y, R, 0, Math.PI * 2);
+          ctx.arc(x, y, R + 4, 0, Math.PI * 2); // the clean circle is cut out of it below: a sweeping band
           ctx.fill();
         }
         ctx.strokeStyle = `rgba(${PHOS}, ${(0.9 * ringA).toFixed(3)})`;
@@ -646,15 +650,15 @@ export default function SignalCursor() {
         const readA = ringA * (1 - frame.a) * (1 - 0.9 * math);
         ctx.font = `500 9px ${family}`;
         ctx.fillStyle = `rgba(182, 255, 198, ${(0.6 * readA).toFixed(3)})`;
-        ctx.fillText(`x${pad(mouse.x)} y${pad(mouse.y + window.scrollY)}`, x + 20, y + 14);
+        ctx.fillText(`x${pad(mouse.x)} y${pad(mouse.y + window.scrollY)}`, x + R + 12, y + 4);
         // The letter the pointer rests on, in binary (not while it just passes over text).
         if (letter && now - letterAtTime < 400 && now - letterSince > DWELL_MS) {
           const code = letter.ch.codePointAt(0) ?? 0;
           ctx.fillStyle = `rgba(${CYAN}, ${(0.85 * readA).toFixed(3)})`;
-          ctx.fillText(`'${letter.ch}' 0x${code.toString(16).toUpperCase()} ${bits(letter.ch)}`, x + 20, y + 25);
+          ctx.fillText(`'${letter.ch}' 0x${code.toString(16).toUpperCase()} ${bits(letter.ch)}`, x + R + 12, y + 15);
         } else if (flick) {
           ctx.fillStyle = `rgba(${YELLOW}, ${(0.8 * readA).toFixed(3)})`;
-          ctx.fillText(`θ ${deg(kin.theta)}  |v| ${fmt(kin.speed)}`, x + 20, y + 25);
+          ctx.fillText(`θ ${deg(kin.theta)}  |v| ${fmt(kin.speed)}`, x + R + 12, y + 15);
         }
       }
 
@@ -698,6 +702,27 @@ export default function SignalCursor() {
           ctx.fillStyle = `rgba(${PHOS}, ${lockA.toFixed(3)})`;
           ctx.fillText(text, lx + 4, ly + 2);
         }
+      }
+
+      // The clean aperture, centred on the pointer itself (the reticle eases after it): whatever this frame drew is
+      // cut out of it, so the thing under the pointer is always plain to see.
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(mouse.x, mouse.y, CLEAR, 0, Math.PI * 2);
+      ctx.clip();
+      ctx.clearRect(mouse.x - CLEAR, mouse.y - CLEAR, CLEAR * 2, CLEAR * 2);
+      ctx.restore();
+      if (ret.alpha > 0.01) {
+        ctx.strokeStyle = `rgba(${RED}, ${(0.6 * ret.alpha).toFixed(3)})`;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.arc(mouse.x, mouse.y, CLEAR, 0, Math.PI * 2);
+        for (let q = 0; q < 4; q++) {
+          const a = (q * Math.PI) / 2;
+          ctx.moveTo(mouse.x + Math.cos(a) * CLEAR, mouse.y + Math.sin(a) * CLEAR);
+          ctx.lineTo(mouse.x + Math.cos(a) * (CLEAR - 4), mouse.y + Math.sin(a) * (CLEAR - 4));
+        }
+        ctx.stroke();
       }
 
       if (cells.size || pings.length || ret.alpha > 0.01 || frame.a > 0.01 || math > 0.01 || flick)

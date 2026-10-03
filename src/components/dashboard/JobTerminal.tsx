@@ -315,13 +315,15 @@ function TerminalView({
   demo,
   onClose,
   onAction,
-  onRun,
+  onInfiltrate,
+  onHack,
 }: {
   match: MatchedJob;
   demo?: JobDetail;
   onClose: () => void;
   onAction?: (id: string, action: MatchAction) => void;
-  onRun?: (id: string) => void;
+  onInfiltrate?: (id: string) => void;
+  onHack?: (id: string) => void;
 }) {
   const api = useApi();
   const reduce = useReducedMotion();
@@ -430,16 +432,22 @@ function TerminalView({
 
   const status = match.status;
   const applyUrl = detail?.job.applyUrl || match.job.apply_url;
-  const apply = useCallback(() => {
-    window.open(applyUrl, '_blank', 'noopener,noreferrer');
-    if (status !== 'applied') onAction?.(match.id, 'APPLY');
-  }, [applyUrl, status, onAction, match.id]);
-  const vault = useCallback(() => status === 'new' && onAction?.(match.id, 'SAVE'), [status, onAction, match.id]);
+  // ↯ HACK: one click, the form opens filled (RADAR extension). On the landing page's sample it leads to sign-up.
+  const canHack = status !== 'applied' && (!!onHack || !!demo);
   const hack = useCallback(() => {
-    if (status !== 'saved' || !onRun) return;
+    if (!canHack) return;
+    if (!onHack) return window.location.assign(applyUrl);
     onClose();
-    onRun(match.id);
-  }, [status, onRun, onClose, match.id]);
+    onHack(match.id);
+  }, [canHack, onHack, applyUrl, onClose, match.id]);
+  const vault = useCallback(() => status === 'new' && onAction?.(match.id, 'SAVE'), [status, onAction, match.id]);
+  // INFILTRATE ▸: the step-by-step run (tailored resume, every answer of the form, then the form).
+  const canInfiltrate = status !== 'applied' && !!onInfiltrate;
+  const infiltrate = useCallback(() => {
+    if (!canInfiltrate) return;
+    onClose();
+    onInfiltrate!(match.id);
+  }, [canInfiltrate, onInfiltrate, onClose, match.id]);
   const copy = useCallback(async () => {
     await navigator.clipboard
       .writeText(
@@ -450,7 +458,7 @@ function TerminalView({
     setTimeout(() => setCopied(false), 1500);
   }, [detail, match.job.title, match.job.company.name, applyUrl]);
 
-  // Any key skips the typing. After that: A apply · V vault · H hack · C copy · Home / End jump.
+  // Any key skips the typing. After that: H hack · I infiltrate · V vault · C copy · Home / End jump.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape' || e.key === 'Tab' || e.metaKey || e.altKey) return;
@@ -470,15 +478,15 @@ function TerminalView({
         jump('top');
       } else if (!e.ctrlKey) {
         const k = e.key.toLowerCase();
-        if (k === 'a') apply();
+        if (k === 'h') hack();
+        else if (k === 'i') infiltrate();
         else if (k === 'v') vault();
-        else if (k === 'h') hack();
         else if (k === 'c') void copy();
       }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [done, lines.length, apply, vault, hack, copy, jump]);
+  }, [done, lines.length, hack, infiltrate, vault, copy, jump]);
 
   const posting = detail?.posting.state;
   const hue = HUES[wordIdx % HUES.length];
@@ -591,20 +599,22 @@ function TerminalView({
           )
         ) : (
           <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
-            <button type="button" onClick={apply} className={hint}>
-              <span className={key}>a</span>
-              <span className="text-[#a6e22e]">apply ↗</span>
-            </button>
+            {canHack && (
+              <button type="button" onClick={hack} className={hint}>
+                <span className={key}>h</span>
+                <span className="text-[#a6e22e]">↯ hack</span>
+              </button>
+            )}
+            {canInfiltrate && (
+              <button type="button" onClick={infiltrate} className={hint}>
+                <span className={key}>i</span>
+                <span className="text-[#f92672]">infiltrate ▸</span>
+              </button>
+            )}
             {status === 'new' && onAction && (
               <button type="button" onClick={vault} className={hint}>
                 <span className={key}>v</span>
                 <span className="text-[#66d9ef]">add to vault</span>
-              </button>
-            )}
-            {status === 'saved' && onRun && (
-              <button type="button" onClick={hack} className={hint}>
-                <span className={key}>h</span>
-                <span className="text-[#f92672]">hack ▸</span>
               </button>
             )}
             <button type="button" onClick={() => void copy()} className={hint}>
@@ -634,19 +644,29 @@ export function JobTerminal({
   demo,
   onClose,
   onAction,
-  onRun,
+  onInfiltrate,
+  onHack,
 }: {
   match: MatchedJob | null;
   /** Preloaded detail instead of fetching (the landing page sample). */
   demo?: JobDetail;
   onClose: () => void;
   onAction?: (id: string, action: MatchAction) => void;
-  onRun?: (id: string) => void;
+  onInfiltrate?: (id: string) => void;
+  onHack?: (id: string) => void;
 }) {
   return (
     <Modal open={!!match} onClose={onClose} label={match ? `Job: ${match.job.title}` : 'Job'} variant="terminal">
       {match && (
-        <TerminalView key={match.id} match={match} demo={demo} onClose={onClose} onAction={onAction} onRun={onRun} />
+        <TerminalView
+          key={match.id}
+          match={match}
+          demo={demo}
+          onClose={onClose}
+          onAction={onAction}
+          onInfiltrate={onInfiltrate}
+          onHack={onHack}
+        />
       )}
     </Modal>
   );

@@ -96,6 +96,11 @@ export function freshness(postedAt: string | null | undefined, now = Date.now())
   return { delta: 0, note: '' };
 }
 
+/** A role asking for clearly more experience than you have: the auto-vault and autopilot both leave it out. */
+export function tooSeniorFor(jobExperience: string | null | undefined, years: number): boolean {
+  return (jobExperience === '5+' && years < 4) || (jobExperience === '3-5' && years < 2);
+}
+
 export function computeMatchScore(input: MatchInput): MatchResult {
   const userSkills = new Set(input.userSkills.map(normalizeSkill));
   const jobSkills = [...new Set(input.jobSkills.map(normalizeSkill))];
@@ -157,6 +162,6 @@ export function computeMatchScore(input: MatchInput): MatchResult {
     matchingSkills,
     missingSkills,
     section,
-    tooSenior: seniorityNote === 'Senior role (5+ yrs)' || seniorityNote === 'Asks for 3-5 yrs',
+    tooSenior: tooSeniorFor(input.jobExperience, years),
   };
 }

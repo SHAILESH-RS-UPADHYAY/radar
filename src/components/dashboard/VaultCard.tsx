@@ -10,18 +10,18 @@ const badge = 'border px-2 py-1 font-mono text-[10px] font-bold tracking-[0.2em]
 export function VaultCard({
   match,
   onAction,
-  onRun,
+  onInfiltrate,
   onOpen,
-  onQuickApply,
+  onHack,
 }: {
   match: MatchedJob;
   onAction: (id: string, action: MatchAction) => void;
-  /** Opens the HACK flow (assisted apply) for this job. */
-  onRun: (id: string) => void;
+  /** INFILTRATE: the step-by-step run for this job (tailored resume, the form's answers, then the form). */
+  onInfiltrate: (id: string) => void;
   /** Opens the JD terminal for this match. */
   onOpen?: (id: string) => void;
-  /** With the RADAR extension: open the form already filled (one click here, one Submit there). */
-  onQuickApply?: (id: string) => void;
+  /** ↯ HACK (with the RADAR extension): one click, the form opens filled; you press Submit. */
+  onHack?: (id: string) => void;
 }) {
   const { job } = match;
   const open = onOpen ? () => onOpen(match.id) : undefined;
@@ -73,33 +73,24 @@ export function VaultCard({
           <ScoreMeter score={match.score} />
           <button
             type="button"
-            onClick={() => onRun(match.id)}
+            onClick={() => onInfiltrate(match.id)}
+            title="Step by step: the tailored resume, every answer of the form to review, then the form"
             className="group/run mt-2 flex items-center justify-center gap-2.5 rounded-full border border-phosphor bg-phosphor/10 py-2.5 font-mono text-[11px] font-bold tracking-[0.3em] text-phosphor shadow-[0_0_22px_rgba(0,255,65,0.35)] transition-all hover:bg-phosphor hover:text-black hover:shadow-[0_0_32px_rgba(0,255,65,0.6)]"
           >
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-phosphor group-hover/run:bg-black" />
-            <span className="glitch" data-text="HACK ▸">
-              HACK ▸
+            <span className="glitch" data-text="INFILTRATE ▸">
+              INFILTRATE ▸
             </span>
           </button>
-          {onQuickApply ? (
+          {onHack && (
             <button
               type="button"
-              onClick={() => onQuickApply(match.id)}
-              title="Opens the form filled with your answers and tailored PDF. You review it and press Submit."
-              className="border border-phosphor/40 py-2 font-mono text-[10px] font-bold tracking-[0.2em] text-phosphor transition-colors hover:bg-phosphor/10"
+              onClick={() => onHack(match.id)}
+              title="One click: the form opens filled with your answers and resume. You press Submit."
+              className="border border-phosphor/40 py-2 font-mono text-[11px] font-bold tracking-[0.25em] text-phosphor transition-colors hover:bg-phosphor/10"
             >
-              ↯ ONE-CLICK APPLY
+              ↯ HACK
             </button>
-          ) : (
-            <a
-              href={job.apply_url}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => onAction(match.id, 'APPLY')}
-              className="text-center font-mono text-[10px] tracking-[0.2em] text-dim transition-colors hover:text-phosphor"
-            >
-              direct apply ↗
-            </a>
           )}
           <button
             onClick={() => onAction(match.id, 'REMOVE_SAVE')}

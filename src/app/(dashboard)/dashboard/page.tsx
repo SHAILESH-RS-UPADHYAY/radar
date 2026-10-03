@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Link from 'next/link';
+import Link, { useLinkStatus } from 'next/link';
 import { useRouter } from 'next/navigation';
 import { UserButton, useUser } from '@clerk/nextjs';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -18,7 +18,6 @@ import { VaultCard } from '@/components/dashboard/VaultCard';
 import { OverclockCard } from '@/components/dashboard/OverclockCard';
 import { RunPanel } from '@/components/dashboard/RunPanel';
 import { TodayPanel } from '@/components/dashboard/TodayPanel';
-import { ApplyConfirm } from '@/components/dashboard/ApplyConfirm';
 import { ScanConsole, type ScanDone } from '@/components/dashboard/ScanConsole';
 import { TailorPreview } from '@/components/dashboard/TailorPreview';
 import { JobTerminal } from '@/components/dashboard/JobTerminal';
@@ -106,6 +105,25 @@ function PageTitle({ kicker, title, children }: { kicker: string; title: string;
   );
 }
 
+// The left column scrolls on its own when it is taller than the screen, and the job list stays put meanwhile.
+const SIDEBAR =
+  'space-y-5 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:p-px';
+
+/** Preferences' gear spins from the click until the page opens (it waits on a server round trip). */
+function GearHint() {
+  const { pending } = useLinkStatus();
+  return (
+    <span
+      aria-hidden="true"
+      className={
+        'inline-block transition-transform duration-300 group-hover:rotate-90' + (pending ? ' animate-spin' : '')
+      }
+    >
+      ⚙
+    </span>
+  );
+}
+
 export default function DashboardPage() {
   const { user } = useUser();
   const api = useApi();
@@ -123,7 +141,7 @@ export default function DashboardPage() {
   const [engine, setEngine] = useState<{ name: string; model: string } | null | undefined>(undefined);
   const [tailoring, setTailoring] = useState<string[]>([]);
   const [preview, setPreview] = useState<string | null>(null);
-  const [hack, setHack] = useState<{ ids: string[]; i: number } | null>(null);
+  const [run, setRun] = useState<{ ids: string[]; i: number } | null>(null);
   const [place, setPlaceState] = useState<Place>('global');
   const [briefingId, setBriefingId] = useState<string | null>(null);
   const [pipeline, setPipeline] = useState<{ at: string | null; stale: boolean } | null>(null);
@@ -383,16 +401,7 @@ export default function DashboardPage() {
     void handleScan();
   }, [loading, noProfile, matches.length, handleScan]);
 
-  // Opening an apply link is not applying: RADAR asks first (APPLY://CONFIRM), and only a yes moves it to C2 · OPS.
-  const [confirmId, setConfirmId] = useState<string | null>(null);
-  const onAction = (id: string, action: MatchAction) => {
-    if (action === 'APPLY') {
-      // The JD terminal sits above every dialog; close it so the question is seen.
-      setBriefingId(null);
-      return setConfirmId(id);
-    }
-    void setStatus([id], ACTION_STATUS[action]);
-  };
+  const onAction = (id: string, action: MatchAction) => void setStatus([id], ACTION_STATUS[action]);
 
   const myCities = (vaultSettings?.location || '')
     .split(',')
@@ -426,7 +435,6 @@ export default function DashboardPage() {
   const placeLabel =
     place === 'global' ? 'GLOBAL' : place === 'remote' ? 'REMOTE' : place === 'mine' ? 'MY CITIES' : place.slice(5);
   const briefing = briefingId ? (matches.find((m) => m.id === briefingId) ?? null) : null;
-  const confirmMatch = confirmId ? matches.find((m) => m.id === confirmId) : undefined;
 
   const available = shown.filter((m) => m.status === 'new');
   // The Vault shows only postings that are still open; one the company took down simply drops out.
@@ -458,14 +466,14 @@ export default function DashboardPage() {
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8);
 
-  const hackMatch = hack ? matches.find((m) => m.id === hack.ids[hack.i]) : undefined;
-  const startHack = (ids: string[]) => ids.length > 0 && setHack({ ids, i: 0 });
-  const nextHack = () => {
-    if (!hack) return;
-    if (hack.i + 1 < hack.ids.length) setHack({ ...hack, i: hack.i + 1 });
+  const runMatch = run ? matches.find((m) => m.id === run.ids[run.i]) : undefined;
+  const startRun = (ids: string[]) => ids.length > 0 && setRun({ ids, i: 0 });
+  const nextRun = () => {
+    if (!run) return;
+    if (run.i + 1 < run.ids.length) setRun({ ...run, i: run.i + 1 });
     else {
-      setHack(null);
-      if (hack.ids.length > 1) setNotice({ tone: 'ok', text: 'HACK queue complete.' });
+      setRun(null);
+      if (run.ids.length > 1) setNotice({ tone: 'ok', text: 'INFILTRATE queue complete.' });
     }
   };
   const onApplied = (matchId: string, resumeVersionId: string | null) => {
@@ -474,13 +482,13 @@ export default function DashboardPage() {
       tone: 'ok',
       text: 'Logged in C2 · OPS' + (resumeVersionId ? ' with the tailored resume attached.' : '.'),
     });
-    nextHack();
+    nextRun();
   };
 
-  // ONE-CLICK APPLY (RADAR extension): the form opens in a new tab at once while RADAR reads it and drafts the
+  // ↯ HACK (RADAR extension), one click: the form opens in a new tab at once while RADAR reads it and drafts the
   // answers; the extension fills it as soon as they arrive. You review it there and press the employer's Submit.
   const extension = useExtension();
-  const quickApply = (id: string) => {
+  const hackNow = (id: string) => {
     const m = matches.find((x) => x.id === id);
     if (!m) return;
     const company = m.job.company.name;
@@ -489,7 +497,7 @@ export default function DashboardPage() {
   };
 
   // What the extension reports from the form tab: filled, then applied (the employer confirmed, or you pressed
-  // "I submitted it" in its panel). HACK's own panel shows the fill for its job, so the toast skips that one.
+  // "I submitted it" in its panel). INFILTRATE's own panel shows the fill for its job, so the toast skips that one.
   const onExtensionEvent = useRef<Parameters<typeof onExtension>[0]>(() => {});
   useEffect(() => {
     onExtensionEvent.current = (e) => {
@@ -501,7 +509,7 @@ export default function DashboardPage() {
       }
       if (e.type === 'launched' && !e.ok)
         setNotice({ tone: 'alert', text: 'The extension could not open the form: ' + e.error });
-      if (e.type === 'filled' && hackMatch?.id !== e.matchId)
+      if (e.type === 'filled' && runMatch?.id !== e.matchId)
         setNotice({
           tone: e.needs ? 'info' : 'ok',
           text: `Form filled · ${e.filled} fields${e.needs ? ` · ${e.needs} required left for you` : ''}. Review it in that tab and press Submit.`,
@@ -509,7 +517,7 @@ export default function DashboardPage() {
       if (e.type === 'applied') {
         void setStatus([e.matchId], 'applied', e.tailoredId ?? null);
         setNotice({ tone: 'ok', text: 'Application confirmed · logged in C2 · OPS.' });
-        if (hackMatch?.id === e.matchId) nextHack();
+        if (runMatch?.id === e.matchId) nextRun();
       }
     };
   });
@@ -612,7 +620,7 @@ export default function DashboardPage() {
               href="/settings"
               className="group flex items-center gap-2 border border-phosphor/20 px-3 py-2 font-mono text-[11px] tracking-[0.2em] text-dim transition-colors hover:border-phosphor/60 hover:text-phosphor"
             >
-              <span className="inline-block transition-transform duration-300 group-hover:rotate-90">⚙</span>
+              <GearHint />
               <span className="hidden sm:inline">PREFERENCES</span>
             </Link>
             {scanButton}
@@ -687,7 +695,7 @@ export default function DashboardPage() {
               exit={{ opacity: 0, y: -16 }}
               className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)] xl:gap-8"
             >
-              <aside className="space-y-5 lg:sticky lg:top-24">
+              <aside className={SIDEBAR}>
                 <HudPanel label="LANES" status={available.length + ' NEW'} bodyClassName="p-0">
                   <div className="grid grid-cols-3 lg:grid-cols-1">
                     {SECTIONS.map((s) => {
@@ -851,7 +859,8 @@ export default function DashboardPage() {
                           match={m}
                           onAction={onAction}
                           onOpen={setBriefingId}
-                          onQuickApply={extension ? quickApply : undefined}
+                          onInfiltrate={(id) => startRun([id])}
+                          onHack={extension ? hackNow : undefined}
                         />
                       ))}
                     </AnimatePresence>
@@ -869,7 +878,7 @@ export default function DashboardPage() {
               exit={{ opacity: 0, y: -16 }}
               className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)] xl:gap-8"
             >
-              <aside className="min-w-0 space-y-5 lg:sticky lg:top-24">
+              <aside className={'min-w-0 ' + SIDEBAR}>
                 <HudPanel label="VAULT://STATUS" status={autoVault ? 'AUTO' : 'MANUAL'} bodyClassName="p-5">
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-5 font-mono">
                     {vaultStats.map(([k, v]) => (
@@ -887,7 +896,11 @@ export default function DashboardPage() {
                   </Link>
                 </HudPanel>
                 {today.length > 1 && (
-                  <TodayPanel today={today} onOpen={setBriefingId} onHack={() => startHack(today.map((m) => m.id))} />
+                  <TodayPanel
+                    today={today}
+                    onOpen={setBriefingId}
+                    onInfiltrate={() => startRun(today.map((m) => m.id))}
+                  />
                 )}
                 <div className="hidden lg:block">{tunePanel}</div>
               </aside>
@@ -896,12 +909,12 @@ export default function DashboardPage() {
                 {saved.length > 1 && (
                   <button
                     type="button"
-                    onClick={() => startHack(saved.map((m) => m.id))}
-                    className="group/hack mb-5 flex w-full items-center justify-center gap-3 rounded-full border border-phosphor bg-phosphor/10 py-3.5 font-mono text-xs font-bold tracking-[0.35em] text-phosphor shadow-[0_0_28px_rgba(0,255,65,0.3)] transition-all hover:bg-phosphor hover:text-black sm:w-auto sm:px-10"
+                    onClick={() => startRun(saved.map((m) => m.id))}
+                    className="group/run mb-5 flex w-full items-center justify-center gap-3 rounded-full border border-phosphor bg-phosphor/10 py-3.5 font-mono text-xs font-bold tracking-[0.35em] text-phosphor shadow-[0_0_28px_rgba(0,255,65,0.3)] transition-all hover:bg-phosphor hover:text-black sm:w-auto sm:px-10"
                   >
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-phosphor group-hover/hack:bg-black" />
-                    <span className="glitch" data-text={'HACK ALL · ' + saved.length}>
-                      HACK ALL · {saved.length}
+                    <span className="h-2 w-2 animate-pulse rounded-full bg-phosphor group-hover/run:bg-black" />
+                    <span className="glitch" data-text={'INFILTRATE ALL · ' + saved.length}>
+                      INFILTRATE ALL · {saved.length}
                     </span>
                   </button>
                 )}
@@ -924,9 +937,9 @@ export default function DashboardPage() {
                           key={m.id}
                           match={m}
                           onAction={onAction}
-                          onRun={(id) => startHack([id])}
+                          onInfiltrate={(id) => startRun([id])}
                           onOpen={setBriefingId}
-                          onQuickApply={extension ? quickApply : undefined}
+                          onHack={extension ? hackNow : undefined}
                         />
                       ))}
                     </AnimatePresence>
@@ -944,7 +957,7 @@ export default function DashboardPage() {
               exit={{ opacity: 0, y: -16 }}
               className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)] xl:gap-8"
             >
-              <aside className="space-y-5 lg:sticky lg:top-24">
+              <aside className={SIDEBAR}>
                 <HudPanel
                   label="OVERCLOCK://PROTOCOL"
                   status={
@@ -996,7 +1009,8 @@ export default function DashboardPage() {
 
               <div className="min-w-0">
                 <PageTitle kicker="// OVERCLOCK" title="Push near-misses past 80">
-                  Jobs scoring {OVERCLOCK_MIN}–{OVERCLOCK_MAX}%. Tailor your resume to one, then HACK it from the Vault.
+                  Jobs scoring {OVERCLOCK_MIN}–{OVERCLOCK_MAX}%. Tailor your resume to one, then INFILTRATE it from the
+                  Vault.
                 </PageTitle>
                 {!overclockReady && (
                   <div className="mb-6">
@@ -1152,32 +1166,32 @@ export default function DashboardPage() {
       </main>
 
       <Modal
-        open={!!hackMatch}
-        onClose={() => setHack(null)}
-        label={'HACK://' + (hackMatch?.job.company.name.toUpperCase() ?? '')}
+        open={!!runMatch}
+        onClose={() => setRun(null)}
+        label={'INFILTRATE://' + (runMatch?.job.company.name.toUpperCase() ?? '')}
         status={
-          hack && hack.ids.length > 1 ? (
+          run && run.ids.length > 1 ? (
             <span className="text-hud-amber">
-              {hack.i + 1}/{hack.ids.length}
+              {run.i + 1}/{run.ids.length}
             </span>
           ) : undefined
         }
         wide
       >
-        {hackMatch && hack && (
+        {runMatch && run && (
           <RunPanel
-            key={hackMatch.id}
-            match={hackMatch}
-            position={hack.i + 1}
-            total={hack.ids.length}
-            tailored={tailoredByJob[hackMatch.job.id]}
-            tailoring={tailoring.includes(hackMatch.id)}
+            key={runMatch.id}
+            match={runMatch}
+            position={run.i + 1}
+            total={run.ids.length}
+            tailored={tailoredByJob[runMatch.job.id]}
+            tailoring={tailoring.includes(runMatch.id)}
             fullName={user?.fullName || ''}
             email={user?.primaryEmailAddress?.emailAddress || ''}
             onTailor={(id) => void tailor(id)}
             onReview={setPreview}
             onApplied={onApplied}
-            onSkip={nextHack}
+            onSkip={nextRun}
           />
         )}
       </Modal>
@@ -1189,21 +1203,12 @@ export default function DashboardPage() {
         <ScanConsole key={scanRun} onFinished={onScanFinished} onFailed={onScanFailed} onClose={closeScan} />
       )}
 
-      {confirmMatch && (
-        <ApplyConfirm
-          key={confirmMatch.id}
-          match={confirmMatch}
-          onApplied={() => void setStatus([confirmMatch.id], 'applied')}
-          onKeep={() => void setStatus([confirmMatch.id], 'saved')}
-          onClose={() => setConfirmId(null)}
-        />
-      )}
-
       <JobTerminal
         match={briefing}
         onClose={() => setBriefingId(null)}
         onAction={onAction}
-        onRun={(id) => startHack([id])}
+        onInfiltrate={(id) => startRun([id])}
+        onHack={extension ? hackNow : undefined}
       />
 
       <Toast notice={notice} onClose={closeNotice} />

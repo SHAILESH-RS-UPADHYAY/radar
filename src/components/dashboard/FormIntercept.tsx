@@ -23,7 +23,7 @@ const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
 /**
  * FORM://INTERCEPT state for one job: read the posting's real application form, fill it from your profile and
  * Application Kit, draft the rest with the AI, keep your edits, and build the fill packet (answers + tailored PDF)
- * for the RADAR extension or the RADAR FILL bookmark. HACK's steps 02 and 03 share it.
+ * for the RADAR extension or the RADAR FILL bookmark. INFILTRATE's steps 02 and 03 share it.
  */
 export function useFormIntercept(matchId: string, company: string) {
   const api = useApi();
@@ -112,7 +112,7 @@ export function useFormIntercept(matchId: string, company: string) {
 
 const shown = (v: FilledField['value']) => (Array.isArray(v) ? v.join(', ') : v);
 
-/** HACK step 02: the intercept log, every field with its answer, and the buttons. */
+/** INFILTRATE step 02: the intercept log, every field with its answer, and the buttons. */
 export function FormIntercept({ form }: { form: ReturnType<typeof useFormIntercept> }) {
   const { phase, log, data, setEdits, packet, intercept, copyPacket, valueOf } = form;
   return (

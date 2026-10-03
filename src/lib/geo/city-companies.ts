@@ -8,9 +8,9 @@
 
 /** Spellings that refer to the same city, used to match free-text job locations. */
 const CITY_ALIASES: Record<string, string[]> = {
-  Bangalore: ['bangalore', 'bengaluru'],
+  Bangalore: ['bangalore', 'bengaluru', 'banglore', 'bangaluru'],
   Mumbai: ['mumbai', 'bombay', 'navi mumbai', 'thane'],
-  Delhi: ['delhi', 'new delhi', 'ncr'],
+  Delhi: ['delhi', 'new delhi', 'ncr', 'delhi ncr'],
   Gurugram: ['gurugram', 'gurgaon'],
   Noida: ['noida', 'greater noida'],
   Hyderabad: ['hyderabad', 'secunderabad'],
@@ -38,6 +38,10 @@ export function cityAliases(city: string): string[] {
   return key ? CITY_ALIASES[key] : [city.trim().toLowerCase()];
 }
 
+const escape = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+/** A whole-word hit: "sf" in "San Francisco, SF" yes, in "transfer" no; "Pune / Remote" holds both segments. */
+const hasPlace = (location: string, alias: string) => new RegExp(`(^|[^a-z])${escape(alias)}($|[^a-z])`).test(location);
+
 export type PlaceFit =
   { kind: 'any' } | { kind: 'city'; city: string } | { kind: 'remote'; wanted: boolean } | { kind: 'elsewhere' };
 
@@ -51,12 +55,30 @@ export function placeFit(cities: string[], location: string | null | undefined, 
   const loc = (location || '').toLowerCase();
   const city = wanted
     .filter((c) => c.toLowerCase() !== 'remote')
-    .find((c) => cityAliases(c).some((alias) => loc.includes(alias)));
+    .find((c) => cityAliases(c).some((alias) => hasPlace(loc, alias)));
   if (city) return { kind: 'city', city };
-  if (workType === 'remote' || loc.includes('remote')) {
+  if (workType === 'remote' || hasPlace(loc, 'remote')) {
     return { kind: 'remote', wanted: wanted.some((c) => c.toLowerCase() === 'remote') };
   }
   return { kind: 'elsewhere' };
+}
+
+const COUNTRY_ONLY = /^\s*(india|in|ind|pan[ -]india|anywhere in india)\s*$/i;
+
+/**
+ * Autopilot's strict city: a job counts only in one of your cities, as a remote role (if you allow remote) or, when
+ * you allow it, a posting that names only the country ("India"). Unlike placeFit, nothing else gets through.
+ */
+export function inStrictCity(
+  cities: string[],
+  location: string | null | undefined,
+  workType: string | null | undefined,
+  opts: { remote: boolean; countryOnly: boolean },
+): boolean {
+  const fit = placeFit(cities, location, workType);
+  if (fit.kind === 'city') return true;
+  if (fit.kind === 'remote') return opts.remote;
+  return opts.countryOnly && COUNTRY_ONLY.test(location || '');
 }
 
 export function canonicalCity(city: string): string {

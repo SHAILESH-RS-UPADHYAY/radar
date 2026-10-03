@@ -61,12 +61,11 @@ export interface TailoredSummary {
 export const OVERCLOCK_MIN = 50;
 export const OVERCLOCK_MAX = 79;
 
-export type MatchAction = 'SAVE' | 'APPLY' | 'REMOVE_SAVE' | 'REMOVE_APPLY' | 'DISMISS';
+export type MatchAction = 'SAVE' | 'REMOVE_SAVE' | 'REMOVE_APPLY' | 'DISMISS';
 
 /** Removing from the Vault dismisses the job so auto-vault never brings it back. */
 export const ACTION_STATUS: Record<MatchAction, MatchStatus> = {
   SAVE: 'saved',
-  APPLY: 'applied',
   REMOVE_SAVE: 'dismissed',
   REMOVE_APPLY: 'saved',
   DISMISS: 'dismissed',
