@@ -2,6 +2,10 @@
 // The RADAR page and the extension talk through window.postMessage; this script relays both ways.
 // It reads nothing from the page except messages addressed to it ({ radar: 'app' }).
 
+// Re-injected by the worker after an update: one live copy per page.
+if (globalThis.__radarBridge) throw new Error('RADAR bridge already running');
+globalThis.__radarBridge = true;
+
 const VERSION = chrome.runtime.getManifest().version;
 const toPage = (message) => window.postMessage({ radar: 'ext', ...message }, location.origin);
 

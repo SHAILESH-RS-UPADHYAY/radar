@@ -22,7 +22,8 @@ const CITY_ALIASES: Record<string, string[]> = {
   Thiruvananthapuram: ['thiruvananthapuram', 'trivandrum'],
   Coimbatore: ['coimbatore'],
   Jaipur: ['jaipur'],
-  Chandigarh: ['chandigarh', 'mohali'],
+  // The tricity: one job market.
+  Chandigarh: ['chandigarh', 'mohali', 'sas nagar', 'panchkula', 'zirakpur', 'kharar'],
   'San Francisco': ['san francisco', 'sf', 'bay area'],
   'New York': ['new york', 'nyc'],
   London: ['london'],

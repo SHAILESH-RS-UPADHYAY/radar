@@ -23,7 +23,7 @@ import { ScanConsole, type ScanDone } from '@/components/dashboard/ScanConsole';
 import { TailorPreview } from '@/components/dashboard/TailorPreview';
 import { JobTerminal } from '@/components/dashboard/JobTerminal';
 import { Modal } from '@/components/hud/Modal';
-import { placeFit } from '@/lib/geo/city-companies';
+import { cityAliases, placeFit } from '@/lib/geo/city-companies';
 import {
   ACTION_STATUS,
   ACTIVE_STAGES,
@@ -447,6 +447,17 @@ export default function DashboardPage() {
   )
     .sort((a, b) => b[1] - a[1])
     .slice(0, 8);
+  // Every city in your preferences gets its own chip, even with no jobs yet (Mohali and Bangalore count once each).
+  const yourCities = [...new Map(myCities.map((c) => [cityAliases(c)[0], c])).values()].map(
+    (city) =>
+      [
+        city,
+        matches.filter(
+          (m) => m.status !== 'applied' && placeFit([city], m.job.location, m.job.work_type).kind === 'city',
+        ).length,
+      ] as const,
+  );
+  const emptyCity = place.startsWith('city:') && yourCities.some(([c, n]) => 'city:' + c === place && n === 0);
   const placeLabel =
     place === 'global' ? 'GLOBAL' : place === 'remote' ? 'REMOTE' : place === 'mine' ? 'MY CITIES' : place.slice(5);
   const briefing = briefingId ? (matches.find((m) => m.id === briefingId) ?? null) : null;
@@ -804,6 +815,40 @@ export default function DashboardPage() {
                       </button>
                     ))}
                   </div>
+                  {yourCities.length > 0 && (
+                    <>
+                      <p className="mb-2 mt-4 font-mono text-[10px] tracking-[0.25em] text-dim">YOUR CITIES</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {yourCities.map(([city, count]) => {
+                          const key: Place = `city:${city}`;
+                          return (
+                            <button
+                              key={city}
+                              type="button"
+                              aria-pressed={place === key}
+                              onClick={() => setPlace(place === key ? 'global' : key)}
+                              className={
+                                'border px-2.5 py-1.5 font-mono text-[10px] font-bold tracking-[0.2em] transition-colors ' +
+                                (place === key
+                                  ? 'border-phosphor bg-phosphor text-black'
+                                  : count
+                                    ? 'border-phosphor/20 text-dim hover:border-phosphor/50 hover:text-phosphor'
+                                    : 'border-hud-amber/30 text-hud-amber/70 hover:border-hud-amber')
+                              }
+                            >
+                              {city.toUpperCase()} <span className="opacity-60">{count}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                      {emptyCity && (
+                        <p className="mt-2 text-[11px] leading-relaxed text-hud-amber">
+                          No open jobs here yet. RADAR&apos;s company feeds rarely list smaller cities; local employers
+                          come through Adzuna and Jooble, which need their free API keys (see the README).
+                        </p>
+                      )}
+                    </>
+                  )}
                   {topCities.length > 0 && (
                     <>
                       <p className="mb-2 mt-4 font-mono text-[10px] tracking-[0.25em] text-dim">

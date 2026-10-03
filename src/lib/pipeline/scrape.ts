@@ -62,6 +62,54 @@ function hashJob(j: ScrapedJob): string {
     .digest('hex');
 }
 
+/**
+ * RADAR keeps only jobs that ask for at most 3 years: '3-5' (4+ years) and '5+' are never stored. A job with no
+ * stated experience is kept (most startup postings say nothing).
+ */
+export const TOO_SENIOR: readonly string[] = ['3-5', '5+'];
+export const withinExperience = (j: { experience_required: string | null }) =>
+  !TOO_SENIOR.includes(j.experience_required ?? '');
+
+/**
+ * Delete stored jobs that ask for more than 3 years, with their vectors. Jobs you applied to stay, so C2 · OPS keeps
+ * its history. Returns how many went.
+ */
+export async function purgeSenior(supabase: SupabaseClient): Promise<number> {
+  const ids: string[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('id')
+      .in('experience_required', [...TOO_SENIOR])
+      .order('id')
+      .range(from, from + 999);
+    if (error) throw new Error('Reading senior jobs failed: ' + error.message);
+    ids.push(...(data || []).map((d) => d.id as string));
+    if ((data || []).length < 1000) break;
+  }
+  if (!ids.length) return 0;
+  const kept = new Set<string>();
+  for (let i = 0; i < ids.length; i += 200) {
+    const { data, error } = await supabase
+      .from('match_scores')
+      .select('job_id')
+      .eq('status', 'applied')
+      .in('job_id', ids.slice(i, i + 200));
+    if (error) throw new Error('Reading applications failed: ' + error.message);
+    for (const d of data || []) kept.add(d.job_id as string);
+  }
+  const gone = ids.filter((id) => !kept.has(id));
+  for (let i = 0; i < gone.length; i += 200) {
+    const { error } = await supabase
+      .from('jobs')
+      .delete()
+      .in('id', gone.slice(i, i + 200));
+    if (error) throw new Error('Deleting senior jobs failed: ' + error.message);
+  }
+  await deleteJobVectors(gone).catch((e) => console.error('[SCRAPE] senior vectors not removed:', e));
+  return gone.length;
+}
+
 async function existingHashes(supabase: SupabaseClient, companyId: string): Promise<Map<string, string | null>> {
   const map = new Map<string, string | null>();
   for (let from = 0; ; from += 1000) {
@@ -118,7 +166,7 @@ async function scrapeOne(
 
   try {
     const scraped = await scrapeCompany(company.ats_provider, company.ats_identifier);
-    let unique = [...new Map(scraped.map((j) => [j.external_id, j])).values()];
+    let unique = [...new Map(scraped.filter(withinExperience).map((j) => [j.external_id, j])).values()];
     if ((BOARD_PROVIDERS as readonly string[]).includes(company.ats_provider)) {
       const own = await atsKeys();
       unique = unique.filter((j) => !own.has(jobKey(j.employer || '', j.title)));
@@ -289,6 +337,8 @@ export async function runScrape(
 ): Promise<ScrapeSummary> {
   const deadline = Date.now() + (opts.budgetMs ?? 200_000);
   await ensureCompaniesSeeded(supabase);
+  const purged = await purgeSenior(supabase).catch((e) => (console.error('[SCRAPE] senior purge failed:', e), 0));
+  if (purged) console.log('[SCRAPE] removed', purged, 'jobs asking for more than 3 years');
 
   let query = supabase
     .from('companies')

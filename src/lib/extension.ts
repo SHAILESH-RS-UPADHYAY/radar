@@ -74,6 +74,26 @@ export function launchInExtension(launch: {
   auto?: { dryRun: boolean; consents: string[] };
 }) {
   send({ type: 'launch', ...launch });
+  // No answer at all means no live extension on this page (not installed, or cut off by an update): say so, through
+  // the same 'launched' event every caller already shows, instead of leaving "opening…" on screen forever.
+  let answered = false;
+  const off = onExtension((e) => {
+    if (e.type === 'launched' && e.matchId === launch.matchId) answered = true;
+  });
+  setTimeout(() => {
+    off();
+    if (!answered)
+      window.postMessage(
+        {
+          radar: 'ext',
+          type: 'launched',
+          matchId: launch.matchId,
+          ok: false,
+          error: 'the RADAR extension did not answer. Reload this page (F5); if it repeats, reload the extension.',
+        },
+        window.location.origin,
+      );
+  }, 4000);
 }
 
 /** ZERO-DAY's controls in the extension. */

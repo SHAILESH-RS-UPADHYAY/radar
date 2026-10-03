@@ -131,6 +131,10 @@ export function computeMatchScore(input: MatchInput): MatchResult {
     seniorityNote = 'Entry-level friendly';
   }
 
+  // You asked for startups first: a small lift for startups and growth companies over large corporations.
+  const stage = input.companyCategory === 'Startup' ? 6 : input.companyCategory === 'Growth' ? 3 : 0;
+  score += stage;
+
   const loc = locationFit(input);
   score += loc.delta;
 
@@ -153,6 +157,7 @@ export function computeMatchScore(input: MatchInput): MatchResult {
   else if (vectorScore >= 45) parts.push('Good resume-JD alignment');
   else parts.push('Weak resume-JD alignment');
   if (seniorityNote) parts.push(seniorityNote);
+  if (stage === 6) parts.push('Startup');
   if (loc.note) parts.push(loc.note);
   if (fresh.note) parts.push(fresh.note);
 

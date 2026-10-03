@@ -62,7 +62,7 @@ describe('projectScore', () => {
     job: { title: 'AI Engineer', skills: ['python'], experience_required: null, location: null, work_type: null },
     jobId: 'job-1',
     isDreamCompany: false,
-    companyCategory: 'Growth',
+    companyCategory: 'MNC',
   };
 
   it('applies only the measured improvement to the current score', async () => {

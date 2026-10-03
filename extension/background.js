@@ -110,6 +110,14 @@ const launching = new Map();
 // RADAR's own pages (the bridge runs only there): the only senders whose resume the extension keeps.
 const RADAR_PAGE = /^(http:\/\/localhost:(3000|3100)|https:\/\/radar-neon-theta\.vercel\.app)\//;
 
+// After an install, reload or update, RADAR tabs that were already open still hold the old bridge, which is cut
+// off from this worker: ↯ HACK would do nothing until you reloaded the page. Give them a fresh one now.
+chrome.runtime.onInstalled.addListener(async () => {
+  const tabs = await chrome.tabs.query({ url: chrome.runtime.getManifest().content_scripts[0].matches });
+  for (const tab of tabs)
+    chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['radar-bridge.js'] }).catch(() => {});
+});
+
 const handlers = {
   // From RADAR: open the form now. The packet may come with it, or a moment later through `arm`.
   launch(msg, sender) {

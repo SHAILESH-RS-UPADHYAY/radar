@@ -25,6 +25,33 @@ export interface UserMatchSummary {
 }
 
 const TOP_K = Number(process.env.RADAR_MATCH_TOP_K || 400);
+/** Auto-saved Vault jobs per company: one employer (Amazon, ElevenLabs) must not flood your Vault. */
+export const VAULT_PER_COMPANY = Number(process.env.RADAR_VAULT_PER_COMPANY || 2);
+
+/**
+ * Which strong matches RADAR may auto-save: best first, at most `cap` per company counting what is already in the
+ * Vault, and none from a company you already applied to (most let you apply once; the rest stay in Discovery).
+ * Pure.
+ */
+export function pickForVault(
+  candidates: { id: string; company: string; score: number }[],
+  inVault: Map<string, number>,
+  appliedAt: Set<string>,
+  cap = VAULT_PER_COMPANY,
+): string[] {
+  const used = new Map(inVault);
+  const out: string[] = [];
+  for (const c of [...candidates].sort((a, b) => b.score - a.score)) {
+    const n = used.get(c.company) || 0;
+    if (appliedAt.has(c.company) || n >= cap) continue;
+    used.set(c.company, n + 1);
+    out.push(c.id);
+  }
+  return out;
+}
+
+const companyKey = (employer: string | null | undefined, name: string | null | undefined) =>
+  (employer || name || '').trim().toLowerCase();
 
 /** The profile fields scoring reads. */
 export interface ScoringProfile {
@@ -158,6 +185,7 @@ export async function matchUser(
     location: string | null;
     work_type: string | null;
     posted_at: string | null;
+    employer: string | null;
     company_id: string;
     companies: { category: string; name: string } | { category: string; name: string }[];
   };
@@ -167,7 +195,7 @@ export async function matchUser(
     const { data, error } = await supabase
       .from('jobs')
       .select(
-        'id, title, skills, experience_required, location, work_type, posted_at, company_id, companies!inner(category, name)',
+        'id, title, skills, experience_required, location, work_type, posted_at, employer, company_id, companies!inner(category, name)',
       )
       .in('id', allIds.slice(i, i + 100))
       .eq('is_active', true);
@@ -247,6 +275,62 @@ export async function matchUser(
       .eq('auto_saved', true)
       .lt('score', minScore);
     if (demoteErr) throw new MatchError('Failed to tidy the Vault: ' + demoteErr.message, 500);
+
+    // What is in the Vault and C2 · OPS now, by company: the per-company cap and "already applied there".
+    const companyOfJob = new Map(
+      jobs.map((j) => [
+        j.id,
+        companyKey(j.employer, (Array.isArray(j.companies) ? j.companies[0] : j.companies)?.name),
+      ]),
+    );
+    const held: { id: string; job_id: string; status: string; auto_saved: boolean; score: number; company: string }[] =
+      [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error } = await supabase
+        .from('match_scores')
+        .select('id, job_id, status, auto_saved, score, jobs!inner(employer, companies!inner(name))')
+        .eq('user_id', userId)
+        .in('status', ['saved', 'applied'])
+        .range(from, from + 999);
+      if (error) throw new MatchError('Reading the Vault failed: ' + error.message, 500);
+      for (const r of (data || []) as unknown as {
+        id: string;
+        job_id: string;
+        status: string;
+        auto_saved: boolean;
+        score: number;
+        jobs: { employer: string | null; companies: { name: string } };
+      }[])
+        held.push({ ...r, company: companyKey(r.jobs.employer, r.jobs.companies.name) });
+      if ((data || []).length < 1000) break;
+    }
+    const appliedAt = new Set(held.filter((h) => h.status === 'applied').map((h) => h.company));
+    // Auto-saved jobs that no longer belong: too senior for you, a company you applied to, or past the cap
+    // (the best ones stay). What you saved yourself is never moved.
+    const keep = new Set(
+      pickForVault(
+        held.filter((h) => h.status === 'saved' && h.auto_saved && !tooSenior.has(h.job_id)),
+        new Map(
+          [...held.filter((h) => h.status === 'saved' && !h.auto_saved)].reduce(
+            (m, h) => m.set(h.company, (m.get(h.company) || 0) + 1),
+            new Map<string, number>(),
+          ),
+        ),
+        appliedAt,
+      ),
+    );
+    const extra = held.filter((h) => h.status === 'saved' && h.auto_saved && !keep.has(h.id)).map((h) => h.id);
+    for (let i = 0; i < extra.length; i += 200) {
+      const { error } = await supabase
+        .from('match_scores')
+        .update({ status: 'new', auto_saved: false, status_changed_at: now })
+        .in('id', extra.slice(i, i + 200));
+      if (error) throw new MatchError('Failed to tidy the Vault: ' + error.message, 500);
+    }
+    const inVault = new Map<string, number>();
+    for (const h of held)
+      if (h.status === 'saved' && (!h.auto_saved || keep.has(h.id)))
+        inVault.set(h.company, (inVault.get(h.company) || 0) + 1);
     // A role that asks for clearly more years than you have stays in Discovery, however well it reads.
     const strong = rows.filter((r) => r.score >= minScore && !tooSenior.has(r.job_id)).map((r) => r.job_id);
     // Only jobs still waiting in Discovery, and only postings that are not known to be closed:
@@ -262,7 +346,13 @@ export async function matchUser(
       waiting.push(...(data || []).map((r) => r.job_id as string));
     }
     const open = await gateForVault(supabase, waiting);
-    const qualifying = waiting.filter((id) => open.has(id));
+    const qualifying = pickForVault(
+      waiting
+        .filter((id) => open.has(id))
+        .map((id) => ({ id, company: companyOfJob.get(id) || '', score: scoreOf.get(id) || 0 })),
+      inVault,
+      appliedAt,
+    );
     report({
       stage: 'gate',
       strong: strong.length,

@@ -6,7 +6,7 @@ const base: MatchInput = {
   jobSkills: ['react', 'typescript', 'node.js', 'aws'],
   vectorSimilarity: 0.85,
   isDreamCompany: false,
-  companyCategory: 'Growth',
+  companyCategory: 'MNC',
   userIsFresher: true,
   userExperienceYears: 0,
   jobExperience: null,
@@ -89,6 +89,7 @@ describe('computeMatchScore', () => {
     ).toBe(0);
     expect(computeMatchScore({ ...base, isDreamCompany: true }).section).toBe('dream');
     expect(computeMatchScore({ ...base, companyCategory: 'Startup' }).section).toBe('startup');
+    expect(computeMatchScore({ ...base, companyCategory: 'Startup' }).score).toBe(computeMatchScore(base).score + 6);
     expect(computeMatchScore(base).section).toBe('recommended');
   });
 
