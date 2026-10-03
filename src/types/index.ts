@@ -82,6 +82,8 @@ export interface ApplicationKit {
   disability_status: string;
   /** Facts and phrasing in the candidate's own words, for AI-drafted answers. */
   voice_notes: string;
+  /** Answers you taught RADAR from a form ("What is your current salary?" → "12 LPA"), by question. */
+  learned?: Record<string, string>;
 }
 
 export interface PortfolioProject {

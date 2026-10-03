@@ -37,7 +37,8 @@ export interface MatchedJob {
     salary_min: number | null;
     salary_max: number | null;
     salary_currency: string | null;
-    company: { name: string; source: string | null; category: string };
+    /** provider: where RADAR read the job (an ATS like greenhouse, a job board like remotive). */
+    company: { name: string; source: string | null; category: string; provider?: string | null };
   };
 }
 
@@ -73,9 +74,46 @@ export const ACTION_STATUS: Record<MatchAction, MatchStatus> = {
 
 export function formatSalary(job: MatchedJob['job']): string | null {
   if (!job.salary_min && !job.salary_max) return null;
+  // Indian pay reads in lakhs per annum: 1800000–2600000 → "18–26 LPA".
+  if (job.salary_currency === 'INR' && Math.max(job.salary_min || 0, job.salary_max || 0) >= 100_000) {
+    const lpa = [job.salary_min, job.salary_max]
+      .filter((n): n is number => !!n)
+      .map((n) => String(Math.round((n / 100_000) * 10) / 10));
+    return lpa.join('–') + ' LPA';
+  }
   const fmt = (n: number) => (n >= 1000 ? Math.round(n / 1000) + 'k' : String(n));
   const parts = [job.salary_min, job.salary_max].filter((n): n is number => !!n).map(fmt);
   return (job.salary_currency ? job.salary_currency + ' ' : '') + parts.join(' – ');
+}
+
+const BOARDS = new Set([
+  'hackernews',
+  'remotive',
+  'remoteok',
+  'arbeitnow',
+  'himalayas',
+  'jobicy',
+  'themuse',
+  'adzuna',
+  'jooble',
+  'weworkremotely',
+  'workingnomads',
+]);
+/** Where a job came from, said plainly: "GREENHOUSE · ATS API", "REMOTIVE · JOB BOARD", "WORKDAY · CAREERS SITE". */
+export function sourceLabel(job: MatchedJob['job']): string | null {
+  const p = job.company.provider;
+  if (!p) return job.company.source ? job.company.source.toUpperCase() : null;
+  const kind = BOARDS.has(p)
+    ? 'JOB BOARD'
+    : ['workday', 'amazon', 'eightfold'].includes(p)
+      ? 'CAREERS SITE'
+      : 'ATS API';
+  return `${p.toUpperCase()} · ${kind}`;
+}
+
+/** Days since a date, or null without one. */
+export function ageDays(iso: string | null, now = Date.now()): number | null {
+  return iso ? (now - Date.parse(iso)) / 86_400_000 : null;
 }
 
 export function timeAgo(iso: string | null, now = Date.now()): string | null {

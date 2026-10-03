@@ -1,4 +1,4 @@
-// RADAR · Auto-Fill — the pre-flight checks AUTOPILOT runs before it may press a form's Submit.
+// RADAR · Auto-Fill — the pre-flight checks PHANTOM runs before it may press a form's Submit.
 //
 // Pure functions over a snapshot of the form that fill.js takes: they say "submit", or "park" with every reason, and
 // touch nothing. Loaded into the page before fill.js; the repo's tests load this same file and run the same checks.
@@ -7,7 +7,7 @@
   // CAPTCHAs are never solved, bypassed or worked around: a visible one (or a challenge) parks the job for you.
   // An invisible reCAPTCHA (size=invisible) or one already passed is not a challenge, and does not.
   const CHALLENGE =
-    /recaptcha\/api2\/bframe|recaptcha\/enterprise\/bframe|hcaptcha\.com\/.*frame=challenge|arkoselabs|funcaptcha/i;
+    /recaptcha\/api2\/bframe|recaptcha\/enterprise\/bframe|hcaptcha\.com\/.*frame=challenge|arkoselabs|funcaptcha|captcha-delivery\.com/i;
   const WIDGET =
     /recaptcha\/(api2|enterprise)\/anchor(?!.*size=invisible)|hcaptcha\.com\/.*frame=checkbox|challenges\.cloudflare\.com/i;
 

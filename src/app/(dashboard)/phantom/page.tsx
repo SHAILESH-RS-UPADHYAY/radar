@@ -77,7 +77,7 @@ export default function AutopilotPage() {
   // The daily alarm opens this page with ?autostart=1.
   useEffect(() => {
     if (today?.settings.enabled && extension && new URLSearchParams(location.search).get('autostart') === '1') {
-      history.replaceState(null, '', '/autopilot');
+      history.replaceState(null, '', '/phantom');
       // eslint-disable-next-line react-hooks/set-state-in-effect -- the alarm's autostart: one run when the page opens
       void start();
     }
@@ -111,9 +111,9 @@ export default function AutopilotPage() {
       </header>
 
       <main className="relative mx-auto max-w-[1440px] px-4 py-10 sm:px-6 lg:px-10">
-        <p className="font-mono text-[11px] tracking-[0.35em] text-phosphor/70">{'// AUTOPILOT'}</p>
+        <p className="font-mono text-[11px] tracking-[0.35em] text-phosphor/70">{'// PHANTOM'}</p>
         <h1 className="mt-2 font-mono text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
-          AUTOPILOT<span className="caret-blink text-phosphor">_</span>
+          PHANTOM<span className="caret-blink text-phosphor">_</span>
         </h1>
         <p className="mt-2 text-sm text-dim">
           Today&apos;s jobs in your exact cities, filled and checked one after another in background tabs.{' '}
@@ -122,7 +122,7 @@ export default function AutopilotPage() {
 
         {error ? (
           <div className="mt-8 max-w-xl">
-            <HudPanel label="AUTOPILOT://ERROR" status="OFFLINE" tone="alert">
+            <HudPanel label="PHANTOM://ERROR" status="OFFLINE" tone="alert">
               <p className="text-sm text-hud-red">{error}</p>
             </HudPanel>
           </div>
@@ -132,7 +132,7 @@ export default function AutopilotPage() {
           <div className="mt-8 grid items-start gap-6 lg:grid-cols-[340px_minmax(0,1fr)] xl:gap-8">
             <aside className="min-w-0 space-y-5 lg:sticky lg:top-24 lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto lg:overscroll-contain lg:p-px">
               <HudPanel
-                label="AUTOPILOT://CONTROL"
+                label="PHANTOM://CONTROL"
                 status={runner.running ? 'RUNNING' : 'IDLE'}
                 tone={runner.running ? 'ok' : 'idle'}
               >
@@ -232,7 +232,7 @@ export default function AutopilotPage() {
                 </label>
                 {(
                   [
-                    ['enabled', 'Open AUTOPILOT daily at that time'],
+                    ['enabled', 'Open PHANTOM daily at that time'],
                     ['remote', 'Include remote roles'],
                     ['countryOnly', 'Include "India"-only postings'],
                   ] as const
@@ -308,7 +308,7 @@ export default function AutopilotPage() {
               </div>
               <div className="flex">
                 <StatusLight tone={runner.running ? 'ok' : 'idle'} pulse={runner.running}>
-                  {runner.running ? 'AUTOPILOT IS FILLING FORMS · DRY RUN' : 'AUTOPILOT IS IDLE'}
+                  {runner.running ? 'PHANTOM IS FILLING FORMS · DRY RUN' : 'PHANTOM IS IDLE'}
                 </StatusLight>
               </div>
               <NeedsYou

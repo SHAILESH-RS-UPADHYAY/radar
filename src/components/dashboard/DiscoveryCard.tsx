@@ -2,8 +2,8 @@
 
 import { motion } from 'framer-motion';
 import { Brackets } from '@/components/hud/Hud';
-import { BriefingButton, JobTitle, openOnClick, ScoreMeter, SkillChips } from './SkillChips';
-import { formatSalary, postedTag, timeAgo, type MatchAction, type MatchedJob } from './types';
+import { BriefingButton, JobFacts, JobTitle, openOnClick, ScoreMeter, SkillChips } from './SkillChips';
+import { postedTag, type MatchAction, type MatchedJob } from './types';
 
 export function DiscoveryCard({
   match,
@@ -23,7 +23,6 @@ export function DiscoveryCard({
 }) {
   const { job } = match;
   const open = onOpen ? () => onOpen(match.id) : undefined;
-  const meta = [job.location, job.department, formatSalary(job), timeAgo(job.posted_at)].filter(Boolean);
 
   return (
     <motion.article
@@ -58,10 +57,9 @@ export function DiscoveryCard({
             {postedTag(match) === 'NEW' && (
               <span className="border border-hud-amber/50 px-2 py-1 text-hud-amber">NEW · APPLY EARLY</span>
             )}
-            {job.company.source && <span className="text-dim">via {job.company.source}</span>}
           </div>
           <JobTitle title={job.title} onOpen={open} className="text-lg font-bold leading-snug text-white sm:text-xl" />
-          <p className="mt-1.5 font-mono text-[11px] text-dim">{meta.join(' · ')}</p>
+          <JobFacts job={job} />
           <SkillChips matching={match.matching_skills} missing={match.missing_skills} />
           <p className="mt-4 text-sm leading-relaxed text-dim">
             <span className="text-phosphor">&gt; </span>

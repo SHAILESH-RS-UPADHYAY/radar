@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { opsSignals, postedTag, timeAgo, todaysTen, type MatchedJob } from './types';
+import { formatSalary, opsSignals, postedTag, timeAgo, todaysTen, type MatchedJob } from './types';
 
 describe('timeAgo', () => {
   const now = Date.parse('2026-09-26T12:00:00Z');
@@ -80,5 +80,18 @@ describe('todaysTen', () => {
       '4W',
       '',
     ]);
+  });
+});
+
+describe('formatSalary', () => {
+  it('reads Indian pay in lakhs per annum', () => {
+    const job = { salary_min: 1800000, salary_max: 2600000, salary_currency: 'INR' } as Parameters<
+      typeof formatSalary
+    >[0];
+    expect(formatSalary(job)).toBe('18–26 LPA');
+    expect(formatSalary({ ...job, salary_min: null, salary_max: 1250000 })).toBe('12.5 LPA');
+    expect(formatSalary({ ...job, salary_min: 120000, salary_max: 150000, salary_currency: 'USD' })).toBe(
+      'USD 120k – 150k',
+    );
   });
 });

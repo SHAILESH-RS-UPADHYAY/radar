@@ -7,7 +7,7 @@ import { UserButton, useUser } from '@clerk/nextjs';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useApi } from '@/lib/use-api';
 import { onExtension, useExtension } from '@/lib/extension';
-import { answerPageQuestions, oneClickApply } from '@/lib/apply/client';
+import { answerPageQuestions, oneClickApply, rememberAnswer } from '@/lib/apply/client';
 import type { MatchStatus, Stage } from '@/types';
 import { RadarLogo } from '@/components/brand/RadarLogo';
 import { HudPanel, StatusLight } from '@/components/hud/Hud';
@@ -17,6 +17,7 @@ import { DiscoveryCard } from '@/components/dashboard/DiscoveryCard';
 import { VaultCard } from '@/components/dashboard/VaultCard';
 import { OverclockCard } from '@/components/dashboard/OverclockCard';
 import { RunPanel } from '@/components/dashboard/RunPanel';
+import { ParkedPanel } from '@/components/autopilot/ParkedPanel';
 import { TodayPanel } from '@/components/dashboard/TodayPanel';
 import { ScanConsole, type ScanDone } from '@/components/dashboard/ScanConsole';
 import { TailorPreview } from '@/components/dashboard/TailorPreview';
@@ -95,12 +96,26 @@ function EmptyState({
   );
 }
 
-function PageTitle({ kicker, title, children }: { kicker: string; title: string; children?: React.ReactNode }) {
+function PageTitle({
+  kicker,
+  title,
+  action,
+  children,
+}: {
+  kicker?: string;
+  title: string;
+  /** Shown on the right of the title (e.g. INFILTRATE ALL). */
+  action?: React.ReactNode;
+  children?: React.ReactNode;
+}) {
   return (
-    <div className="mb-8">
-      <p className="font-mono text-[11px] tracking-[0.35em] text-phosphor/70">{kicker}</p>
-      <h1 className="mt-2 font-mono text-3xl font-extrabold tracking-tight text-white sm:text-4xl">{title}</h1>
-      {children && <p className="mt-2 text-sm text-dim">{children}</p>}
+    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+      <div className="min-w-0">
+        {kicker && <p className="font-mono text-[11px] tracking-[0.35em] text-phosphor/70">{kicker}</p>}
+        <h1 className="mt-2 font-mono text-3xl font-extrabold tracking-tight text-white sm:text-4xl">{title}</h1>
+        {children && <p className="mt-2 text-sm text-dim">{children}</p>}
+      </div>
+      {action}
     </div>
   );
 }
@@ -438,7 +453,12 @@ export default function DashboardPage() {
 
   const available = shown.filter((m) => m.status === 'new');
   // The Vault shows only postings that are still open; one the company took down simply drops out.
-  const saved = shown.filter((m) => m.status === 'saved' && m.job.is_active).sort(byScore);
+  // A job RADAR auto-saved whose score fell under your bar leaves the Vault (the next scan moves it back to
+  // Discovery for good); what you saved yourself stays.
+  const bar = vaultSettings?.vault_min_score ?? 80;
+  const saved = shown
+    .filter((m) => m.status === 'saved' && m.job.is_active && !(m.auto_saved && m.score < bar))
+    .sort(byScore);
   const today = todaysTen(saved);
   const applied = matches.filter((m) => m.status === 'applied').sort(byRecent);
   const archived = applied.filter((m) => CLOSED_STAGES.includes(m.stage || 'applied'));
@@ -506,6 +526,10 @@ export default function DashboardPage() {
       if (e.type === 'questions' && e.id && e.fields?.length) {
         const company = matches.find((m) => m.id === e.matchId)?.job.company.name || 'RADAR';
         void answerPageQuestions(api, { matchId: e.matchId, id: e.id, fields: e.fields, company });
+      }
+      if (e.type === 'learn' && e.question && e.answer) {
+        void rememberAnswer(api, e.question, e.answer);
+        setNotice({ tone: 'ok', text: `RADAR learned your answer to "${e.question.slice(0, 60)}".` });
       }
       if (e.type === 'launched' && !e.ok)
         setNotice({ tone: 'alert', text: 'The extension could not open the form: ' + e.error });
@@ -617,11 +641,11 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
-              href="/autopilot"
-              title="AUTOPILOT: today's jobs filled and checked one after another"
+              href="/phantom"
+              title="PHANTOM: today's jobs filled and checked one after another"
               className="hidden border border-phosphor/20 px-3 py-2 font-mono text-[11px] tracking-[0.2em] text-dim transition-colors hover:border-phosphor/60 hover:text-phosphor md:inline-block"
             >
-              ⟳ AUTOPILOT
+              ◈ PHANTOM
             </Link>
             <Link
               href="/settings"
@@ -693,6 +717,9 @@ export default function DashboardPage() {
       )}
 
       <main className="relative mx-auto max-w-[1440px] px-4 py-8 sm:px-6 lg:px-10">
+        <div className="mb-6 empty:hidden">
+          <ParkedPanel onApplied={() => void fetchMatches()} />
+        </div>
         <AnimatePresence mode="wait">
           {primaryTab === 'DISCOVERY' && (
             <motion.section
@@ -913,19 +940,23 @@ export default function DashboardPage() {
               </aside>
 
               <div className="min-w-0">
-                {saved.length > 1 && (
-                  <button
-                    type="button"
-                    onClick={() => startRun(saved.map((m) => m.id))}
-                    className="group/run mb-5 flex w-full items-center justify-center gap-3 rounded-full border border-phosphor bg-phosphor/10 py-3.5 font-mono text-xs font-bold tracking-[0.35em] text-phosphor shadow-[0_0_28px_rgba(0,255,65,0.3)] transition-all hover:bg-phosphor hover:text-black sm:w-auto sm:px-10"
-                  >
-                    <span className="h-2 w-2 animate-pulse rounded-full bg-phosphor group-hover/run:bg-black" />
-                    <span className="glitch" data-text={'INFILTRATE ALL · ' + saved.length}>
-                      INFILTRATE ALL · {saved.length}
-                    </span>
-                  </button>
-                )}
-                <PageTitle kicker="// THE VAULT" title="Your shortlist">
+                <PageTitle
+                  title="Your shortlist"
+                  action={
+                    saved.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => startRun(saved.map((m) => m.id))}
+                        className="group/run flex w-full shrink-0 items-center justify-center gap-3 rounded-full border border-phosphor bg-phosphor/10 py-3.5 font-mono text-xs font-bold tracking-[0.35em] text-phosphor shadow-[0_0_28px_rgba(0,255,65,0.3)] transition-all hover:bg-phosphor hover:text-black sm:w-auto sm:px-10"
+                      >
+                        <span className="h-2 w-2 animate-pulse rounded-full bg-phosphor group-hover/run:bg-black" />
+                        <span className="glitch" data-text={'INFILTRATE ALL · ' + saved.length}>
+                          INFILTRATE ALL · {saved.length}
+                        </span>
+                      </button>
+                    )
+                  }
+                >
                   {autoVault
                     ? `Matches scoring ${minScore}%+ land here automatically after every scan.`
                     : 'Auto-vault is off. Save jobs from Discovery to keep them here.'}

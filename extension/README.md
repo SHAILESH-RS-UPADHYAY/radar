@@ -35,7 +35,7 @@ RADAR dashboard tab open while forms fill: it answers the questions the form tab
 
 | Does                                                                                  | Never                                                                               |
 | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| fills text, dropdowns (also React selects), search-and-pick boxes, radios, checkboxes | presses Submit (only AUTOPILOT may, below)                                          |
+| fills text, dropdowns (also React selects), search-and-pick boxes, radios, checkboxes | presses Submit (only PHANTOM may, below)                                            |
 | presses Yes/No buttons, with the form's submission blocked while it does              | touches a CAPTCHA                                                                   |
 | reads the questions RADAR could not read ahead, and gets each one its own answer      | runs in a tab RADAR did not open                                                    |
 | attaches your resume PDF (tailored, else the one kept in this browser)                | fills LinkedIn or Indeed (their terms forbid automation)                            |
@@ -44,7 +44,7 @@ RADAR dashboard tab open while forms fill: it answers the questions the form tab
 | fills a form embedded in a frame, and each step of a multi-step form                  | logs an application the employer did not confirm, unless you press ✓ I SUBMITTED IT |
 | lists the required questions still empty, with a jump to each                         |                                                                                     |
 
-## AUTOPILOT (v1.3, DRY RUN)
+## PHANTOM (v1.3, DRY RUN)
 
 `/autopilot` in RADAR picks today's jobs in your exact cities (no Workday or Amazon: they need an account), drafts each
 form's answers and opens it in a background tab with `auto: { dryRun, consents }`. `fill.js` fills it, ticks only the
@@ -85,7 +85,7 @@ cannot answer stay with you; the panel lists them.
 | `manifest.json`   | Manifest V3; permissions below                                                                                              |
 | `background.js`   | service worker: opens the form tab, merges its answers as they arrive (session memory), injects `fill.js` into it           |
 | `radar-bridge.js` | runs only on RADAR's own pages; relays between the page (`window.postMessage`) and the worker                               |
-| `preflight.js`    | AUTOPILOT's checks before Submit: pure functions, also run by the repo's tests                                              |
+| `preflight.js`    | PHANTOM's checks before Submit: pure functions, also run by the repo's tests                                                |
 | `fill.js`         | in the form tab: reads every question, fills it, asks RADAR about the unknown ones, the panel, watches for the confirmation |
 | `icons/`          | the radar mark, 16–128 px                                                                                                   |
 

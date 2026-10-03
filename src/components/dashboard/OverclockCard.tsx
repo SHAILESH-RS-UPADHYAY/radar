@@ -2,7 +2,7 @@
 
 import { motion } from 'framer-motion';
 import { Brackets } from '@/components/hud/Hud';
-import { JobTitle, openOnClick, ScoreMeter } from './SkillChips';
+import { JobTitle, openOnClick, ScoreMeter, JobFacts } from './SkillChips';
 import { scoreColor, type MatchedJob, type TailoredSummary } from './types';
 
 const button = 'border px-3 py-2 font-mono text-[10px] font-bold tracking-[0.2em] transition-colors';
@@ -52,9 +52,7 @@ export function OverclockCard({
             {match.status === 'saved' && <span className="border border-phosphor/20 px-2 py-1 text-dim">IN VAULT</span>}
           </div>
           <JobTitle title={job.title} onOpen={open} className="text-lg font-bold leading-snug text-white" />
-          <p className="mt-1.5 font-mono text-[11px] text-dim">
-            {[job.location, job.department].filter(Boolean).join(' · ')}
-          </p>
+          <JobFacts job={job} />
           {match.missing_skills.length > 0 && (
             <div className="mt-4">
               <p className="mb-2 font-mono text-[10px] tracking-[0.25em] text-dim">THE POSTING ASKS FOR</p>

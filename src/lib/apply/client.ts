@@ -176,6 +176,15 @@ export async function oneClickApply(
   }
 }
 
+/** Remember an answer you gave in the extension's panel: every later form that asks the same question gets it. */
+export async function rememberAnswer(api: Api, question: string, answer: string): Promise<void> {
+  await api('/api/settings/learn', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ question, answer }),
+  }).catch(() => {});
+}
+
 /** Questions the form tab read (RADAR could not read them ahead): answered like any other, then sent back. */
 export async function answerPageQuestions(
   api: Api,

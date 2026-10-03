@@ -26,7 +26,7 @@ window.addEventListener('message', (event) => {
       { type: 'resume', name: msg.name, data: msg.data },
       () => void chrome.runtime.lastError,
     );
-  // AUTOPILOT's controls: plain relays to the worker.
+  // PHANTOM's controls: plain relays to the worker.
   if (['switch', 'focus', 'close', 'badge', 'schedule'].includes(msg.type))
     return chrome.runtime.sendMessage(msg, () => void chrome.runtime.lastError);
   if (msg.type === 'launch')
@@ -47,7 +47,14 @@ window.addEventListener('message', (event) => {
 });
 
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg && (msg.type === 'filled' || msg.type === 'applied' || msg.type === 'questions' || msg.type === 'autopilot'))
+  if (
+    msg &&
+    (msg.type === 'filled' ||
+      msg.type === 'applied' ||
+      msg.type === 'questions' ||
+      msg.type === 'autopilot' ||
+      msg.type === 'learn')
+  )
     toPage(msg);
 });
 

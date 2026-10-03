@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react';
-import { scoreColor } from './types';
+import { ageDays, formatSalary, scoreColor, sourceLabel, timeAgo, type MatchedJob } from './types';
 
 /** A click anywhere on a card opens the JD terminal, unless it landed on a control inside the card. */
 export const openOnClick = (open: (() => void) | undefined) =>
@@ -71,6 +71,44 @@ export function SkillChips({
 }
 
 /** Big match percentage with a glowing bar, coloured by strength. */
+const FACT = 'inline-flex max-w-full items-center gap-1.5 border px-2 py-0.5 font-mono text-[10px] tracking-[0.12em]';
+
+/**
+ * A job's facts, each in its own colour so none melts into the green: where (cyan), pay (amber), experience (violet),
+ * how fresh (green when new, red when old) and where RADAR read it (pink).
+ */
+export function JobFacts({ job }: { job: MatchedJob['job'] }) {
+  const days = ageDays(job.posted_at);
+  const exp = job.experience_required;
+  const facts: [string, string | null, string][] = [
+    ['⌖', job.location || null, 'border-hud-cyan/60 text-hud-cyan'],
+    ['PAY', formatSalary(job), 'border-hud-amber/60 text-hud-amber'],
+    ['EXP', exp ? (exp === 'fresher' ? 'FRESHER' : exp + ' YRS') : null, 'border-[#c792ea]/60 text-[#c792ea]'],
+    [
+      '◷',
+      job.posted_at ? timeAgo(job.posted_at) : null,
+      days === null || days <= 3
+        ? 'border-phosphor/60 text-phosphor'
+        : days > 30
+          ? 'border-hud-red/60 text-hud-red'
+          : 'border-white/30 text-white/80',
+    ],
+    ['SRC', sourceLabel(job), 'border-[#ff2a6d]/50 text-[#ff8fb1]'],
+  ];
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {facts
+        .filter(([, v]) => v)
+        .map(([k, v, tone]) => (
+          <span key={k} className={FACT + ' ' + tone}>
+            <span className="opacity-60">{k}</span>
+            <span className="truncate">{v}</span>
+          </span>
+        ))}
+    </div>
+  );
+}
+
 export function ScoreMeter({ score }: { score: number }) {
   const color = scoreColor(score);
   return (

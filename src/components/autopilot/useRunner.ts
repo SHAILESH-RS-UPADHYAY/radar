@@ -1,13 +1,13 @@
 'use client';
 
-// AUTOPILOT's runner: takes the next queued job, drafts its answers just in time (the same path as ↯ HACK), opens its
+// PHANTOM's runner: takes the next queued job, drafts its answers just in time (the same path as ↯ HACK), opens its
 // form in a background tab and reads what the extension reports back. This build runs in DRY RUN only: every form is
 // filled and pre-flight checked, and Submit is never pressed.
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { useApi } from '@/lib/use-api';
 import { autopilotExtension, launchInExtension, onExtension } from '@/lib/extension';
-import { answerPageQuestions, packForm, prepareForm } from '@/lib/apply/client';
+import { answerPageQuestions, packForm, prepareForm, rememberAnswer } from '@/lib/apply/client';
 import type { AutopilotSettings } from '@/lib/autopilot';
 
 export type QueueStatus =
@@ -93,7 +93,7 @@ export function useRunner(api: ReturnType<typeof useApi>, rows: QueueRow[], sett
     [api, mark, settings],
   );
 
-  // What the extension reports from each AUTOPILOT tab.
+  // What the extension reports from each PHANTOM tab.
   const viewRef = useRef(view);
   useEffect(() => {
     viewRef.current = view;
@@ -101,6 +101,7 @@ export function useRunner(api: ReturnType<typeof useApi>, rows: QueueRow[], sett
   useEffect(
     () =>
       onExtension((e) => {
+        if (e.type === 'learn' && e.question && e.answer) void rememberAnswer(api, e.question, e.answer);
         const row = viewRef.current.find((r) => r.match_id === e.matchId);
         if (!row || !e.matchId) return;
         if (e.type === 'questions' && e.id && e.fields?.length)

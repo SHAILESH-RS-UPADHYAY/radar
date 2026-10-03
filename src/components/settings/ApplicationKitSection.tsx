@@ -7,7 +7,7 @@ import { BRIDGE_HREF } from '@/lib/apply/bridge';
 import { useExtension } from '@/lib/extension';
 import { shareKeptResume, useKeptResume } from '@/lib/apply/client';
 
-type TextKey = Exclude<keyof ApplicationKit, 'needs_sponsorship' | 'willing_to_relocate' | 'voice_notes'>;
+type TextKey = Exclude<keyof ApplicationKit, 'needs_sponsorship' | 'willing_to_relocate' | 'voice_notes' | 'learned'>;
 
 const GROUPS: { title: string; fields: [TextKey, string, string][] }[] = [
   {

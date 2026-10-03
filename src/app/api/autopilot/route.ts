@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/client';
-import { cleanAutopilot, MIGRATION_HINT, todaysQueue } from '@/lib/autopilot';
+import { cleanAutopilot, MIGRATION_HINT, parkedToday, todaysQueue } from '@/lib/autopilot';
 
 export const dynamic = 'force-dynamic';
 export const maxDuration = 60;
@@ -18,11 +18,18 @@ async function respond(userId: string, build: boolean) {
   }
 }
 
-// GET — AUTOPILOT: your settings, today's queue and the live supply per city.
-export async function GET() {
+// GET — PHANTOM: your settings, today's queue and the live supply per city.
+// GET ?parked=1 — only today's jobs left to you (light: the dashboard's NEEDS YOU panel).
+export async function GET(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) return fail('Unauthorized', 401);
-  return respond(userId, false);
+  if (req.nextUrl.searchParams.get('parked') !== '1') return respond(userId, false);
+  try {
+    const parked = await parkedToday(createServerClient(), userId);
+    return NextResponse.json({ parked: parked ?? [], ready: parked !== null });
+  } catch (err) {
+    return fail(err instanceof Error ? err.message : String(err), 500);
+  }
 }
 
 // POST — build today's queue (once a day; later calls return the same queue).

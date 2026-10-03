@@ -13,7 +13,7 @@ import { bits, curvature, fmt, wrapAngle } from '@/lib/cursor-math';
 // • a hit marker on click (a ring, four strokes kicking out, the locked target flashing), a data streak while scrolling
 // • a clean aperture: a thin red ring around the pointer whose inside nothing is ever drawn over, so what you are about
 //   to click is always plain to see; every animation above lives outside it
-// Mouse only, never with reduced motion, never over dialogs; no frames at all while idle.
+// Mouse only, never with reduced motion; over dialogs too (the JD popup); no frames at all while idle.
 
 const CW = 11; // glyph cell, CSS px
 const CH = 18;
@@ -139,7 +139,7 @@ export default function SignalCursor() {
     const t0 = performance.now();
     const cells = new Map<number, Cell>();
     const pings: { x: number; y: number; born: number }[] = [];
-    const mouse = { x: 0, y: 0, seen: -Infinity, inside: false, muted: false, dragging: false };
+    const mouse = { x: 0, y: 0, seen: -Infinity, inside: false, dragging: false };
     const ret = { x: 0, y: 0, alpha: 0, spin: 0, boost: 0 };
     const frame = { l: 0, t: 0, r: 0, b: 0, a: 0 };
     // The motion, from pointer samples: velocity and acceleration in px/s and px/s², heading θ (maths
@@ -553,7 +553,7 @@ export default function SignalCursor() {
       }
 
       // The reticle eases after the pointer and fades when it rests.
-      const fresh = mouse.inside && !mouse.muted && now - mouse.seen < IDLE_MS;
+      const fresh = mouse.inside && now - mouse.seen < IDLE_MS;
       if (ret.alpha < 0.02) {
         ret.x = mouse.x;
         ret.y = mouse.y;
@@ -741,28 +741,22 @@ export default function SignalCursor() {
       mouse.y = e.clientY;
       mouse.seen = now;
       mouse.inside = true;
-      mouse.muted = !!el?.closest('[role="dialog"]');
       mouse.dragging =
         (e.buttons & 1) === 1 && !!down && Math.hypot(e.clientX - down.x, e.clientY - down.y) > DRAG_START;
-      if (mouse.muted) {
-        last = null;
-        letter = null;
-      } else {
-        trail(e.clientX, e.clientY, now);
-        sample(e.clientX, e.clientY, now);
-        // The letter under the pointer, looked up at most every 45 ms (it asks the browser for layout).
-        if (now - letterAtTime > 45) {
-          const found = letterAt(e.clientX, e.clientY);
-          if (found?.key !== letter?.key) letterSince = now;
-          letter = found;
-          if (letter) letterAtTime = now;
-        }
-        if (mouse.dragging && letter && letter.key !== lastBitsKey) {
-          lastBitsKey = letter.key;
-          emitBits(letter.ch, e.clientX, e.clientY, now);
-        }
+      trail(e.clientX, e.clientY, now);
+      sample(e.clientX, e.clientY, now);
+      // The letter under the pointer, looked up at most every 45 ms (it asks the browser for layout).
+      if (now - letterAtTime > 45) {
+        const found = letterAt(e.clientX, e.clientY);
+        if (found?.key !== letter?.key) letterSince = now;
+        letter = found;
+        if (letter) letterAtTime = now;
       }
-      const hit = mouse.muted ? null : el?.closest(LOCKABLE);
+      if (mouse.dragging && letter && letter.key !== lastBitsKey) {
+        lastBitsKey = letter.key;
+        emitBits(letter.ch, e.clientX, e.clientY, now);
+      }
+      const hit = el?.closest(LOCKABLE);
       const next = hit && !hit.matches(':disabled') ? hit : null;
       if (next !== target) {
         target = next;
@@ -772,7 +766,7 @@ export default function SignalCursor() {
       wake();
     };
     const onDown = (e: PointerEvent) => {
-      if (e.pointerType !== 'mouse' || mouse.muted) return;
+      if (e.pointerType !== 'mouse') return;
       const now = performance.now();
       down = { x: e.clientX, y: e.clientY };
       clickAt = now;
@@ -793,7 +787,7 @@ export default function SignalCursor() {
     const onScroll = () => {
       const dy = window.scrollY - lastScroll;
       lastScroll = window.scrollY;
-      if (!dy || !mouse.inside || mouse.muted) return;
+      if (!dy || !mouse.inside) return;
       const now = performance.now();
       // Smooth scrolling moves a few px per event, so the streak grows with the scroll's momentum instead.
       ret.boost = Math.min(1, ret.boost + Math.abs(dy) / 200);
@@ -831,5 +825,5 @@ export default function SignalCursor() {
     };
   }, []);
 
-  return <canvas ref={ref} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[55] h-full w-full" />;
+  return <canvas ref={ref} aria-hidden="true" className="pointer-events-none fixed inset-0 z-[10001] h-full w-full" />;
 }

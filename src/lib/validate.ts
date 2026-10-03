@@ -60,6 +60,15 @@ const EMPTY_KIT: ApplicationKit = {
   voice_notes: '',
 };
 
+/** How a question is remembered: the same words, whatever their case, punctuation or asterisks. */
+export const learnKey = (question: string) =>
+  question
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .slice(0, 200);
+const MAX_LEARNED = 200;
+
 /** An Application Kit from the browser (or the database) → every field present, trimmed and capped. */
 export function cleanKit(input: unknown): ApplicationKit {
   const o = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
@@ -67,9 +76,17 @@ export function cleanKit(input: unknown): ApplicationKit {
     typeof o[k] === 'string' ? (o[k] as string).trim().slice(0, max) : '';
   const yesNo = (k: 'needs_sponsorship' | 'willing_to_relocate') => (o[k] === 'yes' || o[k] === 'no' ? o[k] : '');
   const kit = { ...EMPTY_KIT };
-  for (const k of Object.keys(EMPTY_KIT) as (keyof ApplicationKit)[]) {
+  for (const k of Object.keys(EMPTY_KIT) as Exclude<keyof ApplicationKit, 'learned'>[]) {
     if (k === 'needs_sponsorship' || k === 'willing_to_relocate') kit[k] = yesNo(k);
     else kit[k] = text(k, k === 'voice_notes' ? 1500 : k === 'work_authorization' ? 200 : 120);
+  }
+  // What you taught RADAR on forms: kept through every save, so a Settings edit never forgets it.
+  if (o.learned && typeof o.learned === 'object') {
+    const learned = Object.entries(o.learned as Record<string, unknown>)
+      .filter((e): e is [string, string] => typeof e[1] === 'string' && !!e[1].trim() && !!learnKey(e[0]))
+      .slice(-MAX_LEARNED)
+      .map(([q, a]) => [learnKey(q), a.trim().slice(0, 2000)]);
+    if (learned.length) kit.learned = Object.fromEntries(learned);
   }
   return kit;
 }

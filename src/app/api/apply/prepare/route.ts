@@ -109,6 +109,7 @@ export async function POST(req: NextRequest) {
     veteranStatus: kit?.veteran_status || '',
     disabilityStatus: kit?.disability_status || '',
     voiceNotes: kit?.voice_notes || '',
+    learned: kit?.learned || {},
     experienceYears: profile.is_fresher ? 0 : profile.experience_years,
     skills: profile.skills.length ? profile.skills : profile.resume_skills,
     targetRoles: profile.target_roles,

@@ -237,6 +237,16 @@ export async function matchUser(
   let vaulted = 0;
   if (profile.auto_vault !== false) {
     const minScore = profile.vault_min_score ?? 80;
+    // The other direction: a match RADAR put in the Vault whose score has since fallen under your bar (a rescan,
+    // a raised bar) goes back to Discovery. What you saved yourself stays where you put it.
+    const { error: demoteErr } = await supabase
+      .from('match_scores')
+      .update({ status: 'new', auto_saved: false, status_changed_at: now })
+      .eq('user_id', userId)
+      .eq('status', 'saved')
+      .eq('auto_saved', true)
+      .lt('score', minScore);
+    if (demoteErr) throw new MatchError('Failed to tidy the Vault: ' + demoteErr.message, 500);
     // A role that asks for clearly more years than you have stays in Discovery, however well it reads.
     const strong = rows.filter((r) => r.score >= minScore && !tooSenior.has(r.job_id)).map((r) => r.job_id);
     // Only jobs still waiting in Discovery, and only postings that are not known to be closed:

@@ -2,9 +2,11 @@
 
 import { motion } from 'framer-motion';
 import { Brackets } from '@/components/hud/Hud';
-import { BriefingButton, JobTitle, openOnClick, ScoreMeter, SkillChips } from './SkillChips';
-import { formatSalary, postedTag, timeAgo, type MatchAction, type MatchedJob } from './types';
+import { BriefingButton, JobFacts, JobTitle, openOnClick, ScoreMeter, SkillChips } from './SkillChips';
+import { postedTag, type MatchAction, type MatchedJob } from './types';
 
+const PILL =
+  'group/run mt-2 flex items-center justify-center gap-2.5 rounded-full border border-phosphor bg-phosphor/10 py-2.5 font-mono text-[11px] font-bold tracking-[0.3em] text-phosphor shadow-[0_0_22px_rgba(0,255,65,0.35)] transition-all hover:bg-phosphor hover:text-black hover:shadow-[0_0_32px_rgba(0,255,65,0.6)]';
 const badge = 'border px-2 py-1 font-mono text-[10px] font-bold tracking-[0.2em]';
 
 export function VaultCard({
@@ -25,14 +27,6 @@ export function VaultCard({
 }) {
   const { job } = match;
   const open = onOpen ? () => onOpen(match.id) : undefined;
-  const facts = [
-    job.location,
-    job.work_type?.toUpperCase(),
-    job.experience_required ? 'EXP ' + job.experience_required : null,
-    formatSalary(job),
-    job.posted_at ? 'posted ' + timeAgo(job.posted_at) : null,
-    job.company.source ? 'via ' + job.company.source : null,
-  ].filter(Boolean);
 
   return (
     <motion.article
@@ -60,7 +54,7 @@ export function VaultCard({
             {!job.is_active && <span className={badge + ' border-hud-red/40 text-hud-red'}>POSTING CLOSED</span>}
           </div>
           <JobTitle title={job.title} onOpen={open} className="text-lg font-bold leading-snug text-white sm:text-xl" />
-          <p className="mt-1.5 font-mono text-[11px] text-dim">{facts.join(' · ')}</p>
+          <JobFacts job={job} />
           <SkillChips matching={match.matching_skills} missing={match.missing_skills} maxMatching={8} maxMissing={5} />
           <p className="mt-4 text-sm leading-relaxed text-dim">
             <span className="text-phosphor">&gt; </span>
@@ -71,27 +65,32 @@ export function VaultCard({
 
         <div className="flex w-full flex-col gap-2 sm:w-44">
           <ScoreMeter score={match.score} />
-          <button
-            type="button"
-            onClick={() => onInfiltrate(match.id)}
-            title="Step by step: the tailored resume, every answer of the form to review, then the form"
-            className="group/run mt-2 flex items-center justify-center gap-2.5 rounded-full border border-phosphor bg-phosphor/10 py-2.5 font-mono text-[11px] font-bold tracking-[0.3em] text-phosphor shadow-[0_0_22px_rgba(0,255,65,0.35)] transition-all hover:bg-phosphor hover:text-black hover:shadow-[0_0_32px_rgba(0,255,65,0.6)]"
-          >
-            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-phosphor group-hover/run:bg-black" />
-            <span className="glitch" data-text="INFILTRATE ▸">
-              INFILTRATE ▸
-            </span>
-          </button>
+          {/* ↯ HACK first: the one-click run. INFILTRATE (step by step) under it, or alone without the extension. */}
           {onHack && (
             <button
               type="button"
               onClick={() => onHack(match.id)}
               title="One click: the form opens filled with your answers and resume. You press Submit."
-              className="border border-phosphor/40 py-2 font-mono text-[11px] font-bold tracking-[0.25em] text-phosphor transition-colors hover:bg-phosphor/10"
+              className={PILL}
             >
-              ↯ HACK
+              <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-phosphor group-hover/run:bg-black" />
+              <span className="glitch" data-text="↯ HACK">
+                ↯ HACK
+              </span>
             </button>
           )}
+          <button
+            type="button"
+            onClick={() => onInfiltrate(match.id)}
+            title="Step by step: the tailored resume, every answer of the form to review, then the form"
+            className={
+              onHack
+                ? 'border border-phosphor/40 py-2 font-mono text-[11px] font-bold tracking-[0.25em] text-phosphor transition-colors hover:bg-phosphor/10'
+                : PILL
+            }
+          >
+            INFILTRATE ▸
+          </button>
           <button
             onClick={() => onAction(match.id, 'REMOVE_SAVE')}
             title="Remove from Vault (it will not come back)"

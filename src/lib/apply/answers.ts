@@ -10,6 +10,7 @@
 import { z } from 'zod';
 import { completeJson, unfence } from '@/lib/ai/tailor';
 import type { FormField } from './form';
+import { learnKey } from '@/lib/validate';
 import { humanize, STOCK_PHRASES, type HumanizeReport } from './humanize';
 
 export interface Candidate {
@@ -39,6 +40,8 @@ export interface Candidate {
   skills: string[];
   targetRoles: string[];
   projects: { name: string; url: string; note: string }[];
+  /** Answers you taught RADAR on earlier forms, by question (learnKey). */
+  learned?: Record<string, string>;
 }
 
 export interface FilledField extends FormField {
@@ -79,6 +82,12 @@ export function fillFromProfile(
   const [first, ...rest] = c.fullName.trim().split(/\s+/);
 
   if (field.type === 'file') return /cover/.test(label) ? null : { value: 'resume.pdf', note: 'your resume PDF' };
+  // A question you answered on an earlier form: your own words, before any rule or the AI.
+  const taught = c.learned?.[learnKey(field.label)];
+  if (taught) {
+    const value = field.options?.length ? pickOption(field.options, taught) : taught;
+    if (value) return { value, note: 'you taught RADAR this answer' };
+  }
   if (field.name === 'first_name' || /\bfirst name\b/.test(label)) return text(first || '');
   if (field.name === 'last_name' || /\b(last|family) name\b/.test(label)) return text(rest.join(' '));
   if (field.name === 'name' || /^(full )?name\b/.test(field.label.toLowerCase())) return text(c.fullName);

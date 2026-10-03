@@ -115,6 +115,7 @@ export async function GET() {
         name: m.jobs.employer || m.jobs.companies.name,
         source: m.jobs.employer ? m.jobs.companies.name : null,
         category: m.jobs.companies.category,
+        provider: m.jobs.companies.ats_provider,
       },
     },
   }));

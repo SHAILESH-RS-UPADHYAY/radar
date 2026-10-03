@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { STAGES, type Stage } from '@/types';
 import { Brackets, StatusLight } from '@/components/hud/Hud';
-import { JobTitle, openOnClick } from './SkillChips';
+import { JobTitle, openOnClick, JobFacts } from './SkillChips';
 import { ACTIVE_STAGES, STAGE_META, opsSignals, timeAgo, type MatchAction, type MatchedJob } from './types';
 
 const SIGNAL_STYLE = {
@@ -70,9 +70,9 @@ export function OpsCard({
         </StatusLight>
       </div>
       <JobTitle title={job.title} onOpen={open} className="mt-3 text-sm font-bold leading-snug text-white" />
+      <JobFacts job={job} />
       <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-dim">
         {[
-          job.location,
           match.applied_at ? 'applied ' + timeAgo(match.applied_at) : null,
           match.stage_changed_at && stage !== 'applied' ? 'stage ' + timeAgo(match.stage_changed_at) : null,
         ]
