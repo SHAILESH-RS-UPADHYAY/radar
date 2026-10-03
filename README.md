@@ -145,9 +145,10 @@ cards, standard fields elsewhere), fills it from your profile and Application Ki
 your voice. **HACK ALL** walks the whole Vault. → `RunPanel.tsx` · `src/lib/apply/`
 
 With the **RADAR · Auto-Fill** extension ([`extension/`](extension/README.md)), **↯ ONE-CLICK APPLY** on any card opens
-the form already filled, PDF attached and Submit marked. You review it and press Submit; the employer's confirmation
-logs it in C2 · OPS. Without it, the RADAR FILL bookmark does the same from the clipboard. The final submit is always
-yours.
+the form already filled: your facts in about a second, then every question answered (Yes/No, dropdowns, Location,
+written answers through HUMANIZE), even on forms RADAR cannot read ahead (Ashby, company sites: the tab reads them),
+your PDF attached and Submit marked. You press Submit; the employer's confirmation logs it in C2 · OPS. Without it, the
+RADAR FILL bookmark does the same from the clipboard. The final submit is always yours.
 
 ---
 
@@ -265,7 +266,7 @@ src/
     gmail.ts · crypto.ts    Gmail sync, AES-256-GCM
     overclock.ts            OVERCLOCK core + auto-OVERCLOCK
   components/               dashboard (cards, JobTerminal, RunPanel), hud, site, settings
-extension/                  RADAR · Auto-Fill (Chrome, Manifest V3): one-click apply, filled forms
+extension/                  RADAR · Auto-Fill (Chrome, Manifest V3): one-click apply: every question answered, you press Submit
 supabase/migrations/        001 … 009
 docs/                       architecture · database · adding a source · readme/ (these panels)
 ```

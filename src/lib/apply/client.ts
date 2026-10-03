@@ -4,7 +4,7 @@
 // Used by HACK (FORM://INTERCEPT) and by ONE-CLICK APPLY on the cards. Nothing here talks to the employer.
 
 import type { useApi } from '@/lib/use-api';
-import { armInExtension, launchInExtension, type PageQuestion } from '@/lib/extension';
+import { armInExtension, keepResumeInExtension, launchInExtension, type PageQuestion } from '@/lib/extension';
 import type { FilledField } from './answers';
 import type { HumanizeReport } from './humanize';
 import { fillPacket, type FillPacket } from './bridge';
@@ -41,8 +41,9 @@ export async function prepareForm(
   return d;
 }
 
-// Your uploaded resume PDF, kept in this browser only (Cache Storage), so a form gets your real file when there is no
-// tailored resume for the job. RADAR's server keeps only its text (see /privacy).
+// Your uploaded resume PDF, kept on this computer only, so a form gets your real file when there is no tailored resume
+// for the job: in this browser's Cache Storage for this address, and in the extension, which keeps it for every RADAR
+// address (localhost, the live site). RADAR's server keeps only its text (see /privacy).
 const RESUME_CACHE = 'radar-resume';
 const RESUME_KEY = '/radar/resume.pdf';
 /** Fired on window when a new resume PDF is kept, so a status line can refresh. */
@@ -53,8 +54,23 @@ export async function keepResumeFile(file: File): Promise<void> {
     const headers = { 'content-type': 'application/pdf', 'x-file-name': encodeURIComponent(file.name) };
     await (await caches.open(RESUME_CACHE)).put(RESUME_KEY, new Response(file, { headers }));
     window.dispatchEvent(new Event(RESUME_KEPT));
+    keepResumeInExtension({ name: file.name, data: toBase64(await file.arrayBuffer()) });
   } catch {
     // No Cache Storage here (a private window): forms get the tailored PDF only.
+  }
+}
+
+/** Give the extension the PDF kept here (a resume uploaded before it was installed). */
+export async function shareKeptResume(): Promise<void> {
+  try {
+    const kept = await (await caches.open(RESUME_CACHE)).match(RESUME_KEY);
+    if (kept)
+      keepResumeInExtension({
+        name: (await keptResumeName()) || 'Resume.pdf',
+        data: toBase64(await kept.arrayBuffer()),
+      });
+  } catch {
+    // nothing kept here
   }
 }
 

@@ -66,6 +66,11 @@ export function launchInExtension(launch: {
   send({ type: 'launch', ...launch });
 }
 
+/** Your resume PDF for the extension to keep (on this computer only), so forms get it on every RADAR address. */
+export function keepResumeInExtension(resume: { name: string; data: string }) {
+  send({ type: 'resume', ...resume });
+}
+
 /**
  * Answers for a launched form: a packet (merged with what the tab already has, so facts can come first and the AI's
  * answers later), the answers to questions the tab asked (`more`), or why there are none.

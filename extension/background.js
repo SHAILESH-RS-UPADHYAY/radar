@@ -96,6 +96,9 @@ async function openForm(msg, sender) {
 // A launch still opening its tab: answers that arrive meanwhile wait for it instead of finding no tab.
 const launching = new Map();
 
+// RADAR's own pages (the bridge runs only there): the only senders whose resume the extension keeps.
+const RADAR_PAGE = /^(http:\/\/localhost:(3000|3100)|https:\/\/radar-neon-theta\.vercel\.app)\//;
+
 const handlers = {
   // From RADAR: open the form now. The packet may come with it, or a moment later through `arm`.
   launch(msg, sender) {
@@ -156,6 +159,20 @@ const handlers = {
     tellRadar(entry, { type: 'filled', filled: msg.filled, needs: msg.needs });
     if (sender.frameId !== 0) tellPage(sender.tab.id, { type: 'frame-report', ...report });
     return { ok: true };
+  },
+  // From RADAR: your resume PDF, kept on this computer (storage.local) so every form gets it, whichever RADAR
+  // address you use. A new upload replaces it.
+  async resume(msg, sender) {
+    if (!RADAR_PAGE.test(sender.url || '') || typeof msg.data !== 'string' || !msg.data) return { ok: false };
+    await chrome.storage.local.set({
+      resume: { name: String(msg.name || 'Resume.pdf').slice(0, 200), data: msg.data },
+    });
+    return { ok: true };
+  },
+  // From a form tab RADAR opened that got no PDF with its answers: the resume kept here.
+  async 'resume-file'(msg, sender) {
+    if (!(await read(sender.tab.id))) return null;
+    return (await chrome.storage.local.get('resume')).resume || null;
   },
   // You pressed the employer's Submit: remembered across the confirmation page load.
   async armed(msg, sender) {

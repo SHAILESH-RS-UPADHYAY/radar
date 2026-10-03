@@ -42,6 +42,9 @@ describe('aiTells', () => {
     expect(aiTells('I **love** this')).toContain('markdown');
     expect(aiTells('Not only did I ship it, but also I scaled it.')).toContain('"not only … but also"');
     expect(aiTells('As a backend engineer I build APIs.')).toContain('a stock opening');
+    expect(aiTells("You're building North for enterprises. I build agents.")).toContain(
+      'opens by addressing the company',
+    );
     expect(aiTells('I ship fast APIs here. I write clean tests there. I fix slow queries daily.')).toContain(
       'every sentence about the same length',
     );

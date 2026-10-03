@@ -72,3 +72,20 @@ export async function loadSettingsProfile(supabase: SupabaseClient, userId: stri
     application_kit: p.application_kit === undefined ? null : cleanKit(p.application_kit),
   };
 }
+
+/** Marks the details typed during onboarding (instead of, or besides, a PDF) inside resume_text. */
+export const MANUAL_DETAILS = '\n\n--- USER PROVIDED DETAILS ---\n';
+
+/**
+ * The resume text and skills an onboarding run saves. Running it again (REDO FULL ONBOARDING, or after a false
+ * "no profile") must never erase: without a new PDF the resume already saved stays, and skills only grow. Pure.
+ */
+export function onboardingResume(
+  existing: { resume_text: string | null; skills: string[] | null } | null,
+  upload: { text: string; manual: string; skills: string[] },
+): { resumeText: string; skills: string[] } {
+  const previous = existing?.resume_text || '';
+  const base = upload.text || previous.split(MANUAL_DETAILS)[0];
+  const resumeText = upload.manual ? base + MANUAL_DETAILS + upload.manual : upload.text || previous;
+  return { resumeText, skills: [...new Set([...(existing?.skills || []), ...upload.skills])] };
+}

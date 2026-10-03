@@ -5,7 +5,7 @@ import { HudPanel } from '@/components/hud/Hud';
 import type { ApplicationKit } from '@/types';
 import { BRIDGE_HREF } from '@/lib/apply/bridge';
 import { useExtension } from '@/lib/extension';
-import { keptResumeName, RESUME_KEPT } from '@/lib/apply/client';
+import { keptResumeName, RESUME_KEPT, shareKeptResume } from '@/lib/apply/client';
 
 type TextKey = Exclude<keyof ApplicationKit, 'needs_sponsorship' | 'willing_to_relocate' | 'voice_notes'>;
 
@@ -65,6 +65,10 @@ export function ApplicationKitSection({
     window.addEventListener(RESUME_KEPT, read);
     return () => window.removeEventListener(RESUME_KEPT, read);
   }, []);
+  // The extension keeps its own copy for every RADAR address; hand it one uploaded before it was installed.
+  useEffect(() => {
+    if (extension && resumeFile) void shareKeptResume();
+  }, [extension, resumeFile]);
   // React refuses javascript: links in JSX; the bookmark's href is set on the element directly.
   const bridge = useRef<HTMLAnchorElement>(null);
   useEffect(() => {

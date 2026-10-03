@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { applicationFormUrl, parseGreenhouseForm, parseLeverForm } from './form';
-import { fillFromProfile, YOUR_CALL, type Candidate } from './answers';
+import { answerForm, fillFromProfile, YOUR_CALL, type Candidate } from './answers';
+import { fillPacket } from './bridge';
 
 // Shapes copied from live postings (Greenhouse ?questions=true, a Lever apply page), cut down.
 const greenhouse = {
@@ -187,5 +188,48 @@ describe('applicationFormUrl', () => {
     expect(applicationFormUrl(job('workday', 'https://x.wd5.myworkdayjobs.com/a/job/1'))).toBe(
       'https://x.wd5.myworkdayjobs.com/a/job/1',
     );
+  });
+});
+
+describe('answerForm without drafting (the instant first fill)', () => {
+  it('returns profile facts only and never calls the AI', async () => {
+    const r = await answerForm(
+      [
+        { name: 'q0', label: 'Location', type: 'text', required: true },
+        { name: 'q1', label: 'Why do you want to work here?', type: 'textarea', required: false },
+      ],
+      me,
+      {
+        job: { title: 'x', company: 'y', location: null, description: '' },
+        resumeText: '',
+        tailoredText: null,
+        deadline: 0,
+        draft: false,
+      },
+    );
+    expect(r.fields.map((f) => [f.by, f.value])).toEqual([
+      ['profile', 'Bengaluru'],
+      ['you', ''],
+    ]);
+    expect(r.model).toBeNull();
+  });
+});
+
+describe('fillPacket', () => {
+  it('carries the questions RADAR read and whether more answers follow', () => {
+    const p = fillPacket(
+      'Acme',
+      [{ name: 'email', label: 'Email', type: 'email', required: true, value: 'a@b.c', by: 'profile' }],
+      undefined,
+      {
+        asked: ['Email', 'Why us?'],
+        partial: true,
+      },
+    );
+    expect(p).toMatchObject({
+      asked: ['Email', 'Why us?'],
+      partial: true,
+      fields: [{ name: 'email', value: 'a@b.c' }],
+    });
   });
 });

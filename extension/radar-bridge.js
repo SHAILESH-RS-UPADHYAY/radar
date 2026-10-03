@@ -21,6 +21,11 @@ window.addEventListener('message', (event) => {
       },
       () => void chrome.runtime.lastError,
     );
+  if (msg.type === 'resume')
+    return chrome.runtime.sendMessage(
+      { type: 'resume', name: msg.name, data: msg.data },
+      () => void chrome.runtime.lastError,
+    );
   if (msg.type === 'launch')
     chrome.runtime.sendMessage(
       { type: 'launch', url: msg.url, packet: msg.packet, matchId: msg.matchId, tailoredId: msg.tailoredId },

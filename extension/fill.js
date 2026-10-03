@@ -389,6 +389,10 @@
     setTimeout(() => (target.style.boxShadow = before), 1800);
   }
 
+  // The resume PDF the extension keeps (uploaded in RADAR → Settings → RESUME), asked for once per page.
+  let keptPdf;
+  const keptResume = async () => (keptPdf === undefined ? (keptPdf = await ask({ type: 'resume-file' })) : keptPdf);
+
   function attach(resume) {
     const input = fileInput();
     if (!input || !resume) return 'none';
@@ -479,7 +483,7 @@
       if (status === 'filled' || status === 'kept') pass[status]++;
     }
     pass.filled += await sweep(profileMap(packet), used);
-    pass.pdf = attach(packet.resume);
+    pass.pdf = attach(packet.resume || (await keptResume()));
     return pass;
   }
 
@@ -692,10 +696,10 @@
 
   const LOGGED = 'Logged in RADAR · C2 · OPS. RADAR now watches for the reply.';
   const PDF = {
-    attached: (p) => [`${p.resume.name} attached`, 'ok'],
+    attached: (p) => [`${(p.resume || keptPdf).name} attached`, 'ok'],
     kept: () => ['a resume is already attached', 'ok'],
     none: (p) => [
-      p.resume ? 'no upload field found' : 'no resume PDF: upload yours once in RADAR → Settings → RESUME',
+      p.resume || keptPdf ? 'no upload field found' : 'no resume PDF: upload yours once in RADAR → Settings → RESUME',
       'you',
     ],
   };

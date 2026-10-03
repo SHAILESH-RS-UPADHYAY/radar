@@ -249,6 +249,8 @@ export default function SettingsPage() {
   const [dream, setDream] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState('');
+  // Only a profile that is not there sends you to onboarding; a failed load offers a retry instead.
+  const [missing, setMissing] = useState(false);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [pending, setPending] = useState(0);
   const [failed, setFailed] = useState(false);
@@ -280,7 +282,10 @@ export default function SettingsPage() {
       const r = await api('/api/settings');
       const d = await r.json();
       if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
-      if (!d.profile) setLoadError('No profile yet. Complete onboarding once, then edit everything here.');
+      if (!d.profile) {
+        setMissing(true);
+        setLoadError('No profile yet. Complete onboarding once, then edit everything here.');
+      }
       setProfile(d.profile);
       setName(d.profile?.full_name || '');
       setDream(d.dreamCompanies || []);
@@ -539,14 +544,28 @@ export default function SettingsPage() {
           </div>
         ) : !profile ? (
           <div className="mt-8 max-w-xl">
-            <HudPanel label="CONFIG://ERROR" status="NO PROFILE" tone="alert">
+            <HudPanel label="CONFIG://ERROR" status={missing ? 'NO PROFILE' : 'LOAD FAILED'} tone="alert">
               <p className="text-sm text-hud-red">{loadError || 'No profile found.'}</p>
-              <Link
-                href="/onboarding"
-                className="mt-4 inline-block font-mono text-xs tracking-[0.2em] text-phosphor hover:underline"
-              >
-                → RUN ONBOARDING
-              </Link>
+              {missing ? (
+                <Link
+                  href="/onboarding"
+                  className="mt-4 inline-block font-mono text-xs tracking-[0.2em] text-phosphor hover:underline"
+                >
+                  → RUN ONBOARDING
+                </Link>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoading(true);
+                    setLoadError('');
+                    void load();
+                  }}
+                  className="mt-4 inline-block font-mono text-xs tracking-[0.2em] text-phosphor hover:underline"
+                >
+                  ↻ RETRY · your profile is safe, it just did not load
+                </button>
+              )}
             </HudPanel>
           </div>
         ) : (

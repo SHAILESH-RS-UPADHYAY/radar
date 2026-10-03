@@ -146,10 +146,11 @@ export async function GET() {
     .limit(1)
     .maybeSingle();
 
-  const { data: settings } = await profile;
+  const { data: settings, error: profileError } = await profile;
   return NextResponse.json({
-    // No profile row = onboarding never finished: the page sends you there instead of scanning.
-    hasProfile: !!settings,
+    // No profile row = onboarding never finished: the page sends you there instead of scanning. A lookup that
+    // failed says nothing (null): sending you to onboarding then would make you redo a profile you have.
+    hasProfile: profileError ? null : !!settings,
     pipelineRunAt: lastRun?.finished_at ?? null,
     matches: formatted,
     total: formatted.length,

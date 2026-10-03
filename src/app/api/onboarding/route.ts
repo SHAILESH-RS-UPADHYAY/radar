@@ -7,6 +7,7 @@ import { resolveDreamCompanyIds } from '@/lib/dream-companies';
 import { runScrape } from '@/lib/pipeline/scrape';
 import { extractPdfText } from '@/lib/resume';
 import { resumeProblem } from '@/lib/validate';
+import { onboardingResume } from '@/lib/profile';
 
 export const maxDuration = 60;
 
@@ -61,19 +62,29 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    if (manualSkillsRaw || manualProjects || manualBio) {
-      resumeText += '\n\n--- USER PROVIDED DETAILS ---\n';
-      if (manualSkillsRaw) resumeText += `SKILLS: ${manualSkillsRaw}\n`;
-      if (manualProjects) resumeText += `PROJECTS: ${manualProjects}\n`;
-      if (manualBio) resumeText += `ADDITIONAL BIO: ${manualBio}\n`;
-    }
-
+    const manual = [
+      manualSkillsRaw && `SKILLS: ${manualSkillsRaw}`,
+      manualProjects && `PROJECTS: ${manualProjects}`,
+      manualBio && `ADDITIONAL BIO: ${manualBio}`,
+    ]
+      .filter(Boolean)
+      .map((line) => line + '\n')
+      .join('');
     const parsedManualSkills = manualSkillsRaw
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
-    const extracted = extractSkills(resumeText);
-    const skills = [...new Set([...parsedManualSkills, ...extracted])];
+
+    // Onboarding again never erases: an existing resume stays unless a new PDF came, and skills only grow.
+    const { data: existing, error: existingErr } = await supabase
+      .from('user_profiles')
+      .select('resume_text, skills')
+      .eq('id', userId)
+      .maybeSingle();
+    if (existingErr) return NextResponse.json({ error: existingErr.message }, { status: 500 });
+    const kept = onboardingResume(existing, { text: resumeText, manual, skills: parsedManualSkills });
+    resumeText = kept.resumeText;
+    const skills = [...new Set([...kept.skills, ...extractSkills(resumeText)])];
 
     const embeddingInput = [
       'Career Stage: ' + (isFresher ? careerStage : `Experienced (${experienceYears} years)`),
@@ -108,7 +119,8 @@ export async function POST(req: NextRequest) {
         current_role: currentRole || null,
         skills,
         resume_text: resumeText || null,
-        resume_embedding: resumeEmbedding ? toVectorLiteral(resumeEmbedding) : null,
+        // A failed embedding keeps the vector you had; the next match rebuilds it from resume_text.
+        ...(resumeEmbedding ? { resume_embedding: toVectorLiteral(resumeEmbedding) } : {}),
       },
       { onConflict: 'id' },
     );
@@ -118,9 +130,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: upsertErr.message }, { status: 500 });
     }
 
+    // Your dream companies are replaced only by a new choice, never cleared by a run that brought none.
     const dreamIds = await resolveDreamCompanyIds(supabase, dreamCompanies);
-    await supabase.from('user_dream_companies').delete().eq('user_id', userId);
     if (dreamIds.length > 0) {
+      await supabase.from('user_dream_companies').delete().eq('user_id', userId);
       const { error: dreamErr } = await supabase
         .from('user_dream_companies')
         .insert(dreamIds.map((company_id) => ({ user_id: userId, company_id })));
