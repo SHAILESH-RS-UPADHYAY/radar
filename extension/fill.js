@@ -15,6 +15,8 @@
   window.__radarFill = true;
 
   const TOP = window === window.top;
+  // AUTOPILOT's settings for this tab ({ dryRun, consents }), or null: then you press Submit, as always.
+  let AUTO = null;
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
   const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const ask = (msg) =>
@@ -675,6 +677,7 @@
       on(act, fn) {
         root.querySelector(`[data-act="${act}"]`).addEventListener('click', fn);
       },
+      note: (text) => ($('.note').textContent = text),
       hideSubmitJump: () => (root.querySelector('[data-act="submit"]').hidden = true),
       done(text) {
         api.state('LOGGED', '#00FF41');
@@ -740,6 +743,104 @@
     }, 900);
   }
 
+  // =====================================================================================================
+  // AUTOPILOT: pre-flight, then (unless DRY RUN) the form's own Submit, then the employer's confirmation
+  // =====================================================================================================
+
+  function captchaNow() {
+    const frames = [...document.querySelectorAll('iframe')]
+      .filter((f) => visible(f) && f.getBoundingClientRect().height > 10)
+      .map((f) => ({ src: f.src || '' }));
+    const solved = [
+      ...document.querySelectorAll(
+        '[name="g-recaptcha-response"], [name="h-captcha-response"], [name="cf-turnstile-response"]',
+      ),
+    ].some((t) => t.value);
+    return radarPreflight.captchaIn({ frames, solved });
+  }
+
+  const SUBMIT_TEXT = /^(submit( (my )?application)?|send( application)?|apply( now)?)$/i;
+  function submitCandidates() {
+    const named = [...scope.querySelectorAll('button, input[type=submit]')].filter(
+      (b) => visible(b) && SUBMIT_TEXT.test((b.textContent || b.value || '').trim()),
+    );
+    if (named.length) return named;
+    const b = submitButton();
+    return b ? [b] : [];
+  }
+
+  /** What pre-flight sees: the form as it is now. */
+  function snapshot(packet) {
+    const open = questions().filter((q) => q.required && q.label && !answered(q));
+    const fields = packet.fields.filter((f) => f.type !== 'file' && [].concat(f.value).filter(Boolean).length);
+    const found = fields.filter((f) => {
+      const el = byNameOrId(f.name) || byLabel(f.label);
+      const q = el && questionOf(el);
+      return q && answered(q);
+    }).length;
+    const input = fileInput();
+    return {
+      https: location.protocol === 'https:',
+      host: location.hostname,
+      hasForm: hasForm(packet),
+      needs: open.filter((q) => q.kind !== 'checkbox' && q.kind !== 'file').map((q) => q.label),
+      consents: open.filter((q) => q.kind === 'checkbox').map((q) => q.label),
+      fileInput: !!input,
+      resume: input && input.files && input.files.length ? 'attached' : 'none',
+      captcha: captchaNow(),
+      password: [...document.querySelectorAll('input[type=password]')].some(visible),
+      submits: submitCandidates().length,
+      // Only measurable on a form RADAR read ahead (its own field names): is this the form the answers are for?
+      coverage: packet.asked && packet.asked.length && fields.length ? found / fields.length : null,
+    };
+  }
+
+  function park(hud, reasons) {
+    ask({ type: 'autopilot', state: 'parked', reasons });
+    if (!hud) return;
+    hud.state('NEEDS YOU', '#FACC15');
+    for (const r of reasons) hud.log('YOU', r, 'you');
+    hud.note('AUTOPILOT left this one to you. Fix what is listed, then press Submit; RADAR logs it.');
+  }
+
+  async function autoFinish(packet, hud) {
+    // Only the consent classes you pre-approved are ticked; arbitration and anything else never are.
+    for (const q of questions()) {
+      const pre = AUTO.consents.includes(radarPreflight.consentClass(q.label));
+      if (q.kind === 'checkbox' && q.required && !answered(q) && pre) q.el.click();
+    }
+    await sleep(600);
+    const verdict = radarPreflight.preflight(snapshot(packet));
+    if (!verdict.submit) return park(hud, verdict.reasons);
+    if (AUTO.dryRun) {
+      ask({ type: 'autopilot', state: 'ready' });
+      if (hud) {
+        hud.state('DRY RUN ✓', '#00FF41');
+        hud.log('OK', 'every check passed: AUTOPILOT would press Submit now (DRY RUN is on)', 'ok');
+      }
+      return;
+    }
+    const go = await ask({ type: 'may-submit' });
+    if (!go || !go.ok) return park(hud, ['AUTOPILOT was stopped before Submit']);
+    ask({ type: 'autopilot', state: 'submitting' });
+    await ask({ type: 'armed' });
+    if (hud) hud.log('SYS', "every check passed: pressing the form's Submit", 'dim');
+    submitCandidates()[0].click();
+    for (let i = 0; i < 60; i++) {
+      await sleep(1000);
+      if (confirmed()) {
+        const text = (pageText().match(CONFIRM) || [''])[0];
+        const res = await ask({ type: 'submitted', confirmation: { url: location.href, text } });
+        if (hud && res && res.ok) hud.done(LOGGED);
+        return;
+      }
+      if (captchaNow()) return park(hud, ['a CAPTCHA appeared after Submit: finish it in this tab']);
+      if ([...scope.querySelectorAll('[aria-invalid="true"]')].some(visible))
+        return park(hud, ['the form showed an error after Submit: check this tab']);
+    }
+    park(hud, ['no confirmation 60 s after Submit: check this tab']);
+  }
+
   /**
    * Fill the form with what has arrived, ask RADAR about the questions it has not seen, then stay with the form for
    * 30 minutes: answers that arrive later (the AI's) and new steps of a multi-step form are filled as they come.
@@ -776,12 +877,17 @@
     void askMore();
 
     let fields = visibleFields().length;
+    const startedAt = Date.now();
     for (const until = Date.now() + 30 * 60_000; Date.now() < until;) {
       await sleep(1200);
       const entry = await ask({ type: 'packet' });
       if (!entry || entry.done) return;
       const arrived = entry.version !== version && entry.packet;
       const newStep = visibleFields().length !== fields;
+      // AUTOPILOT decides once every answer is in (or after 5 minutes without them).
+      if (AUTO && !arrived && !newStep && asking === 0 && !packet.partial)
+        return exclusive(() => autoFinish(packet, hud));
+      if (AUTO && Date.now() - startedAt > 5 * 60_000) return park(hud, ['the answers did not arrive in time']);
       if (!arrived && !newStep) continue;
       if (arrived) [packet, version] = [entry.packet, entry.version];
       const pass = await exclusive(() => fillPass(packet));
@@ -815,8 +921,10 @@
   async function runInFrame() {
     let entry = await ask({ type: 'packet' });
     if (!entry || entry.done) return;
+    AUTO = entry.auto;
     entry = await waitForAnswers(entry, null);
-    if (entry && entry.packet && (await formAppears(entry.packet))) await session(entry.packet, entry.version, null);
+    if (entry && entry.packet && (await formAppears(entry.packet, () => false, AUTO ? 90 : 600)))
+      await session(entry.packet, entry.version, null);
   }
 
   /** The page: the panel, and the form when it is here. */
@@ -848,6 +956,15 @@
       if (b) b.scrollIntoView({ behavior: still ? 'auto' : 'smooth', block: 'center' });
     });
 
+    AUTO = entry.auto;
+    if (AUTO) {
+      hud.state('AUTOPILOT', '#22D3EE');
+      hud.note(
+        AUTO.dryRun
+          ? 'AUTOPILOT · DRY RUN: fills and checks everything, never presses Submit.'
+          : "AUTOPILOT presses the form's Submit only when every pre-flight check passes; otherwise it leaves it to you.",
+      );
+    }
     if (entry.done) return hud.done('Already logged in RADAR · C2 · OPS.');
     // Back after pressing the employer's Submit (a new page load): log it if the employer confirmed it.
     if (entry.armedAt && Date.now() - entry.armedAt < 5 * 60_000 && confirmed()) {
@@ -866,6 +983,7 @@
     if (!entry || !entry.packet) {
       hud.state('NO ANSWERS', '#FF5555');
       hud.log('ERR', (entry && entry.error) || 'the answers did not arrive. Launch again from RADAR.', 'err');
+      if (AUTO) park(null, [(entry && entry.error) || 'the answers did not arrive']);
       return;
     }
     hud.job(entry.packet.job);
@@ -887,8 +1005,9 @@
         'dim',
       );
     }
-    if (!(await formAppears(entry.packet, inFrame))) {
+    if (!(await formAppears(entry.packet, inFrame, AUTO ? 90 : 600))) {
       if (fromFrame) return;
+      if (AUTO) return park(hud, ['the form did not appear']);
       hud.state('NO FORM', '#FF5555');
       return hud.log('ERR', 'no application form appeared on this page', 'err');
     }

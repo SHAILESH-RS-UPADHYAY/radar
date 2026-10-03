@@ -26,9 +26,19 @@ window.addEventListener('message', (event) => {
       { type: 'resume', name: msg.name, data: msg.data },
       () => void chrome.runtime.lastError,
     );
+  // AUTOPILOT's controls: plain relays to the worker.
+  if (['switch', 'focus', 'close', 'badge', 'schedule'].includes(msg.type))
+    return chrome.runtime.sendMessage(msg, () => void chrome.runtime.lastError);
   if (msg.type === 'launch')
     chrome.runtime.sendMessage(
-      { type: 'launch', url: msg.url, packet: msg.packet, matchId: msg.matchId, tailoredId: msg.tailoredId },
+      {
+        type: 'launch',
+        url: msg.url,
+        packet: msg.packet,
+        matchId: msg.matchId,
+        tailoredId: msg.tailoredId,
+        auto: msg.auto,
+      },
       (res) => {
         void chrome.runtime.lastError;
         toPage({ type: 'launched', matchId: msg.matchId, ok: !!(res && res.ok), error: res && res.error });
@@ -37,7 +47,8 @@ window.addEventListener('message', (event) => {
 });
 
 chrome.runtime.onMessage.addListener((msg) => {
-  if (msg && (msg.type === 'filled' || msg.type === 'applied' || msg.type === 'questions')) toPage(msg);
+  if (msg && (msg.type === 'filled' || msg.type === 'applied' || msg.type === 'questions' || msg.type === 'autopilot'))
+    toPage(msg);
 });
 
 toPage({ type: 'pong', version: VERSION });

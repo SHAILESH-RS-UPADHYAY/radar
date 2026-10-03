@@ -2,7 +2,7 @@
 // API routes check auth themselves so they can answer 401 instead of redirecting.
 import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/onboarding(.*)', '/settings(.*)']);
+const isProtectedRoute = createRouteMatcher(['/dashboard(.*)', '/onboarding(.*)', '/settings(.*)', '/autopilot(.*)']);
 
 export default clerkMiddleware(
   async (auth, req) => {

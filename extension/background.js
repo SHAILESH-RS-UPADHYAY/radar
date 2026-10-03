@@ -32,10 +32,10 @@ const tellRadar = (entry, message) =>
 const tellPage = (tabId, message) => chrome.tabs.sendMessage(tabId, message, { frameId: 0 }).catch(() => {});
 
 /** The tabs RADAR opened for this match that are still waiting to be sent. */
-async function tabsForMatch(matchId) {
+async function tabsForMatch(matchId, includeDone = false) {
   const all = await chrome.storage.session.get(null);
   return Object.entries(all)
-    .filter(([k, v]) => k.startsWith('tab:') && v && v.matchId === matchId && !v.done)
+    .filter(([k, v]) => k.startsWith('tab:') && v && v.matchId === matchId && (includeDone || !v.done))
     .map(([k]) => Number(k.slice(4)));
 }
 
@@ -52,7 +52,10 @@ async function inject(tabId, frameId) {
       .getAllFrames({ tabId })
       .then((all) => all.filter((f) => f.frameId === frameId));
     if (frame && NEVER.test(frame.url)) return;
-    await chrome.scripting.executeScript({ target: { tabId, frameIds: [frameId] }, files: ['fill.js'] });
+    await chrome.scripting.executeScript({
+      target: { tabId, frameIds: [frameId] },
+      files: ['preflight.js', 'fill.js'],
+    });
   } catch {
     // A page the browser keeps scripts out of (chrome://, the Web Store): nothing to fill there.
   }
@@ -73,7 +76,13 @@ async function openForm(msg, sender) {
   }
   if (url.protocol !== 'https:') return { ok: false, error: 'only https forms are opened' };
   if (msg.packet && msg.packet.radar !== 1) return { ok: false, error: 'not a RADAR fill packet' };
-  const tab = await chrome.tabs.create({ url: url.href, index: sender.tab.index + 1, openerTabId: sender.tab.id });
+  // AUTOPILOT opens forms in the background, so they never steal your screen.
+  const tab = await chrome.tabs.create({
+    url: url.href,
+    index: sender.tab.index + 1,
+    openerTabId: sender.tab.id,
+    active: !msg.auto,
+  });
   await write(tab.id, {
     packet: msg.packet || null,
     version: msg.packet ? 1 : 0,
@@ -86,6 +95,8 @@ async function openForm(msg, sender) {
     armedAt: 0,
     report: null,
     done: false,
+    // AUTOPILOT: { dryRun, consents }. Absent for ↯ HACK and INFILTRATE (you submit).
+    auto: msg.auto || null,
   });
   // A fast page can finish loading before the entry above existed; fill it now in that case.
   const now = await chrome.tabs.get(tab.id).catch(() => null);
@@ -131,8 +142,8 @@ const handlers = {
   async packet(msg, sender) {
     const entry = await read(sender.tab.id);
     if (!entry) return null;
-    const { packet, version, error, note, more, done, armedAt, report } = entry;
-    return { packet, version, error, note, more, done, armedAt, report };
+    const { packet, version, error, note, more, done, armedAt, report, auto } = entry;
+    return { packet, version, error, note, more, done, armedAt, report, auto };
   },
   // From the form page: questions RADAR could not read ahead. RADAR's tab answers them (arm with `more`).
   async questions(msg, sender) {
@@ -174,6 +185,56 @@ const handlers = {
     if (!(await read(sender.tab.id))) return null;
     return (await chrome.storage.local.get('resume')).resume || null;
   },
+  // From an AUTOPILOT form tab: ready (checks passed), submitting, or parked with the reasons. Relayed to RADAR.
+  async autopilot(msg, sender) {
+    const entry = await read(sender.tab.id);
+    if (!entry || !entry.auto) return { ok: false };
+    tellRadar(entry, { type: 'autopilot', state: msg.state, reasons: msg.reasons || [] });
+    return { ok: true };
+  },
+  // From an AUTOPILOT form tab, right before it presses Submit: only while the run is on (the kill switch).
+  async 'may-submit'(msg, sender) {
+    const entry = await read(sender.tab.id);
+    const { autopilotOn } = await chrome.storage.session.get('autopilotOn');
+    return { ok: !!(entry && entry.auto && !entry.auto.dryRun && autopilotOn) };
+  },
+  // From RADAR: START (on) or PAUSE / KILL SWITCH (off). Off stops every Submit at once.
+  async switch(msg) {
+    await chrome.storage.session.set({ autopilotOn: !!msg.on });
+    return { ok: true };
+  },
+  // From RADAR: bring a job's tab to the front (JUMP TO TAB), or close it (done, or skipped).
+  async focus(msg) {
+    const [tabId] = await tabsForMatch(msg.matchId, true);
+    if (tabId === undefined) return { ok: false, error: 'that tab was closed' };
+    const tab = await chrome.tabs.update(tabId, { active: true });
+    await chrome.windows.update(tab.windowId, { focused: true });
+    return { ok: true };
+  },
+  async close(msg) {
+    for (const tabId of await tabsForMatch(msg.matchId, true)) await chrome.tabs.remove(tabId).catch(() => {});
+    return { ok: true };
+  },
+  // From RADAR: how many jobs need you, on the extension's icon.
+  async badge(msg) {
+    await chrome.action.setBadgeBackgroundColor({ color: '#FACC15' });
+    await chrome.action.setBadgeText({ text: msg.count ? String(msg.count) : '' });
+    return { ok: true };
+  },
+  // From RADAR: the daily AUTOPILOT alarm (your local time), or none.
+  async schedule(msg, sender) {
+    await chrome.alarms.clear('autopilot');
+    if (!msg.enabled || !RADAR_PAGE.test(sender.url || '')) return { ok: true };
+    const [h, m] = String(msg.time || '10:00')
+      .split(':')
+      .map(Number);
+    const at = new Date();
+    at.setHours(h, m, 0, 0);
+    if (at.getTime() <= Date.now()) at.setDate(at.getDate() + 1);
+    chrome.alarms.create('autopilot', { when: at.getTime(), periodInMinutes: 24 * 60 });
+    await chrome.storage.local.set({ autopilotUrl: new URL('/autopilot?autostart=1', sender.url).href });
+    return { ok: true };
+  },
   // You pressed the employer's Submit: remembered across the confirmation page load.
   async armed(msg, sender) {
     return { ok: !!(await update(sender.tab.id, { armedAt: Date.now() })) };
@@ -183,7 +244,7 @@ const handlers = {
     const entry = await read(sender.tab.id);
     if (!entry || entry.done) return { ok: !!entry, already: !!entry };
     await write(sender.tab.id, { ...entry, done: true });
-    tellRadar(entry, { type: 'applied' });
+    tellRadar(entry, { type: 'applied', confirmation: msg.confirmation || null });
     if (sender.frameId !== 0) tellPage(sender.tab.id, { type: 'frame-report', done: true });
     return { ok: true };
   },
@@ -194,6 +255,16 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
   if (!handler) return false;
   handler(msg, sender).then(reply, (err) => reply({ ok: false, error: String((err && err.message) || err) }));
   return true; // the reply is async
+});
+
+// The daily alarm opens (or brings back) the /autopilot tab; the page starts the run itself.
+chrome.alarms.onAlarm.addListener(async (alarm) => {
+  if (alarm.name !== 'autopilot') return;
+  const { autopilotUrl } = await chrome.storage.local.get('autopilotUrl');
+  if (!autopilotUrl) return;
+  const [open] = await chrome.tabs.query({ url: autopilotUrl.split('?')[0] + '*' });
+  if (open) await chrome.tabs.update(open.id, { active: true, url: autopilotUrl });
+  else await chrome.tabs.create({ url: autopilotUrl, pinned: true });
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove(key(tabId)));

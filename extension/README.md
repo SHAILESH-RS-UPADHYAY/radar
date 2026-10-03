@@ -35,7 +35,7 @@ RADAR dashboard tab open while forms fill: it answers the questions the form tab
 
 | Does                                                                                  | Never                                                                               |
 | ------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| fills text, dropdowns (also React selects), search-and-pick boxes, radios, checkboxes | presses Submit, Next or Apply                                                       |
+| fills text, dropdowns (also React selects), search-and-pick boxes, radios, checkboxes | presses Submit (only AUTOPILOT may, below)                                          |
 | presses Yes/No buttons, with the form's submission blocked while it does              | touches a CAPTCHA                                                                   |
 | reads the questions RADAR could not read ahead, and gets each one its own answer      | runs in a tab RADAR did not open                                                    |
 | attaches your resume PDF (tailored, else the one kept in this browser)                | fills LinkedIn or Indeed (their terms forbid automation)                            |
@@ -43,6 +43,27 @@ RADAR dashboard tab open while forms fill: it answers the questions the form tab
 | waits for a form that opens late (an Apply button, a modal), up to 10 minutes         | sends anything anywhere: answers go from RADAR to your page                         |
 | fills a form embedded in a frame, and each step of a multi-step form                  | logs an application the employer did not confirm, unless you press ✓ I SUBMITTED IT |
 | lists the required questions still empty, with a jump to each                         |                                                                                     |
+
+## AUTOPILOT (v1.3, DRY RUN)
+
+`/autopilot` in RADAR picks today's jobs in your exact cities (no Workday or Amazon: they need an account), drafts each
+form's answers and opens it in a background tab with `auto: { dryRun, consents }`. `fill.js` fills it, ticks only the
+consent classes you pre-approved (arbitration never), then `preflight.js` checks the form:
+
+| Check    | Parks the job when                                                        |
+| -------- | ------------------------------------------------------------------------- |
+| form     | no application form, not https, LinkedIn or Indeed                        |
+| answers  | a required question is still empty                                        |
+| resume   | the form has an upload field and no PDF is attached                       |
+| CAPTCHA  | a visible widget or a challenge (an invisible reCAPTCHA is not one)       |
+| account  | a password field                                                          |
+| consent  | a required consent you did not pre-approve, or any arbitration agreement  |
+| Submit   | none, or more than one                                                    |
+| coverage | under 90% of RADAR's answers found their field on a form RADAR read ahead |
+
+This build runs in **DRY RUN only**: a job that passes every check is marked READY and its tab closes; nothing is
+submitted. A parked job keeps its tab open, listed in NEEDS YOU with the reason (and counted on the extension icon).
+The KILL switch stops every tab at once. A daily alarm (your time) opens `/autopilot` when you turn it on.
 
 ## Where it works
 
@@ -64,6 +85,7 @@ cannot answer stay with you; the panel lists them.
 | `manifest.json`   | Manifest V3; permissions below                                                                                              |
 | `background.js`   | service worker: opens the form tab, merges its answers as they arrive (session memory), injects `fill.js` into it           |
 | `radar-bridge.js` | runs only on RADAR's own pages; relays between the page (`window.postMessage`) and the worker                               |
+| `preflight.js`    | AUTOPILOT's checks before Submit: pure functions, also run by the repo's tests                                              |
 | `fill.js`         | in the form tab: reads every question, fills it, asks RADAR about the unknown ones, the panel, watches for the confirmation |
 | `icons/`          | the radar mark, 16–128 px                                                                                                   |
 

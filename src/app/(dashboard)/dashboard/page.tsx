@@ -617,6 +617,13 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
+              href="/autopilot"
+              title="AUTOPILOT: today's jobs filled and checked one after another"
+              className="hidden border border-phosphor/20 px-3 py-2 font-mono text-[11px] tracking-[0.2em] text-dim transition-colors hover:border-phosphor/60 hover:text-phosphor md:inline-block"
+            >
+              ⟳ AUTOPILOT
+            </Link>
+            <Link
               href="/settings"
               className="group flex items-center gap-2 border border-phosphor/20 px-3 py-2 font-mono text-[11px] tracking-[0.2em] text-dim transition-colors hover:border-phosphor/60 hover:text-phosphor"
             >

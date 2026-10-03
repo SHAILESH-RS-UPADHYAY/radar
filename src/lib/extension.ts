@@ -16,7 +16,7 @@ export interface PageQuestion {
 }
 
 export interface ExtensionEvent {
-  type: 'pong' | 'launched' | 'filled' | 'applied' | 'questions';
+  type: 'pong' | 'launched' | 'filled' | 'applied' | 'questions' | 'autopilot';
   version?: string;
   matchId?: string;
   tailoredId?: string | null;
@@ -27,6 +27,11 @@ export interface ExtensionEvent {
   /** questions: one request from the form tab, answered with armInExtension({ more: { id, … } }). */
   id?: number;
   fields?: PageQuestion[];
+  /** autopilot: what an AUTOPILOT tab reached (ready = every check passed in DRY RUN), and why it parked. */
+  state?: 'ready' | 'submitting' | 'parked';
+  reasons?: string[];
+  /** applied: how the employer confirmed it. */
+  confirmation?: { url: string; text: string } | null;
 }
 
 const send = (message: Record<string, unknown>) =>
@@ -62,9 +67,21 @@ export function launchInExtension(launch: {
   matchId: string;
   tailoredId: string | null;
   packet?: FillPacket;
+  /** AUTOPILOT: open in the background, run pre-flight and, unless dryRun, press the form's Submit. */
+  auto?: { dryRun: boolean; consents: string[] };
 }) {
   send({ type: 'launch', ...launch });
 }
+
+/** AUTOPILOT's controls in the extension. */
+export const autopilotExtension = {
+  /** On = START; off = PAUSE or KILL SWITCH (no tab may press Submit). */
+  run: (on: boolean) => send({ type: 'switch', on }),
+  focus: (matchId: string) => send({ type: 'focus', matchId }),
+  close: (matchId: string) => send({ type: 'close', matchId }),
+  badge: (count: number) => send({ type: 'badge', count }),
+  schedule: (enabled: boolean, time: string) => send({ type: 'schedule', enabled, time }),
+};
 
 /** Your resume PDF for the extension to keep (on this computer only), so forms get it on every RADAR address. */
 export function keepResumeInExtension(resume: { name: string; data: string }) {
