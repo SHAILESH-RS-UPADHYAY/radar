@@ -52,6 +52,8 @@ const WINDOWED = new Set(['workday', 'amazon', 'smartrecruiters']);
 const WINDOW_GRACE_MS = 7 * 24 * 3600_000;
 /** One slow company (a hung API, a huge board) must never hold the whole run. */
 const COMPANY_TIMEOUT_MS = Number(process.env.RADAR_COMPANY_TIMEOUT_MS || 60_000);
+/** Search APIs run many queries (each country, each of your cities): they get longer. */
+const BOARD_TIMEOUT_MS = 150_000;
 
 // Whitespace is normalised, so a formatting-only change (e.g. keeping paragraph breaks) does not re-embed a job.
 const squash = (s: string | null) => (s || '').replace(/\s+/g, ' ').trim();
@@ -299,17 +301,20 @@ async function scrapeWithin(
   embedBudget: { left: number; until: number },
   atsKeys: () => Promise<Set<string>>,
 ): Promise<CompanyScrapeResult> {
+  const limit = (BOARD_PROVIDERS as readonly string[]).includes(company.ats_provider)
+    ? BOARD_TIMEOUT_MS
+    : COMPANY_TIMEOUT_MS;
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timedOut = new Promise<CompanyScrapeResult>((resolve) => {
     timer = setTimeout(async () => {
-      const error = 'timed out after ' + COMPANY_TIMEOUT_MS / 1000 + 's';
+      const error = 'timed out after ' + limit / 1000 + 's';
       console.error('[SCRAPE]', company.name, error);
       await supabase.from('scrape_logs').insert({
         company_id: company.id,
         status: 'failed',
         jobs_found: 0,
         error_message: error,
-        duration_ms: COMPANY_TIMEOUT_MS,
+        duration_ms: limit,
       });
       await supabase.from('companies').update({ last_scraped_at: new Date().toISOString() }).eq('id', company.id);
       resolve({
@@ -318,11 +323,11 @@ async function scrapeWithin(
         jobs: 0,
         embedded: 0,
         deactivated: 0,
-        durationMs: COMPANY_TIMEOUT_MS,
+        durationMs: limit,
         status: 'failed',
         error,
       });
-    }, COMPANY_TIMEOUT_MS);
+    }, limit);
   });
   try {
     return await Promise.race([scrapeOne(supabase, company, embedBudget, atsKeys), timedOut]);

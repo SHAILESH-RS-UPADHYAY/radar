@@ -76,6 +76,25 @@ export async function fetchJobVector(id: string): Promise<number[] | null> {
   return values?.length ? Array.from(values) : null;
 }
 
+/** Cosine similarity of a resume to specific jobs (by their stored vectors); jobs never embedded are left out. */
+export async function similarityTo(embedding: number[], ids: string[]): Promise<Map<string, number>> {
+  const norm = (v: ArrayLike<number>) => Math.sqrt(Array.from(v).reduce((s, x) => s + x * x, 0)) || 1;
+  const mine = norm(embedding);
+  const out = new Map<string, number>();
+  // Small batches: fetch puts the ids in the URL, and a long one fails.
+  for (let i = 0; i < ids.length; i += 100) {
+    const { records } = await getIndex().fetch({ ids: ids.slice(i, i + 100) });
+    for (const [id, r] of Object.entries(records)) {
+      const v = r.values;
+      if (!v?.length) continue;
+      let dot = 0;
+      for (let k = 0; k < v.length; k++) dot += v[k] * (embedding[k] || 0);
+      out.set(id, dot / (norm(v) * mine));
+    }
+  }
+  return out;
+}
+
 /** Drop vectors of closed jobs so they stop taking top-K slots in searchSimilarJobs. */
 export async function deleteJobVectors(ids: string[]) {
   const index = getIndex();

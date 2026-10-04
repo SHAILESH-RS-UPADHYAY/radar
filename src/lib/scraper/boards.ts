@@ -415,14 +415,19 @@ const ADZUNA_CURRENCY: Record<string, string> = {
 
 /**
  * The Indian cities in your preferences (Mohali, Bangalore…), for city searches: country-wide results rarely reach
- * smaller cities. At most 8, so a run stays well inside Adzuna's free daily limit.
+ * smaller cities. At most 12 (one search each), so a run stays well inside Adzuna's free daily limit.
  */
 async function preferenceCities(): Promise<string[]> {
   const { data } = await createServerClient().from('user_profiles').select('location').not('location', 'is', null);
+  // Search terms are cities in India: skip places abroad and words that are not a city ("Worldwide", "test").
+  const notHere = new Set(
+    ['san francisco', 'new york', 'london', 'toronto', 'singapore', 'dubai'].flatMap((c) => cityAliases(c)),
+  );
   const seen = new Map<string, string>();
   for (const city of (data || []).flatMap((p) => splitList(p.location as string)))
-    if (!/^remote$/i.test(city)) seen.set(cityAliases(city)[0], city);
-  return [...seen.values()].slice(0, 8);
+    if (!/^(remote|worldwide|anywhere|global|india|test)$/i.test(city) && !notHere.has(city.toLowerCase()))
+      seen.set(city.toLowerCase(), city);
+  return [...seen.values()].slice(0, 12);
 }
 
 async function scrapeAdzuna(): Promise<ScrapedJob[]> {
@@ -439,12 +444,12 @@ async function scrapeAdzuna(): Promise<ScrapedJob[]> {
   );
   for (const city of await preferenceCities().catch(() => [])) searches.push(['in', city]);
   for (const [country, where] of searches) {
-    for (const term of searchTerms()) {
+    // A city gets one search for any of the terms' words (what_or), so a run stays fast and inside the free limit.
+    for (const term of where ? [searchTerms().join(' ')] : searchTerms()) {
       const params = new URLSearchParams({
         app_id: id,
         app_key: key,
-        what: term,
-        ...(where ? { where } : {}),
+        ...(where ? { what_or: term, where } : { what: term }),
         results_per_page: '50',
         max_days_old: '30',
         'content-type': 'application/json',

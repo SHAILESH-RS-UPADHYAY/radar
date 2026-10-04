@@ -6,10 +6,11 @@
 // removed from the Vault is never re-added: only rows still in status 'new' are promoted.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { embedText, parseEmbedding, searchSimilarJobs, toVectorLiteral } from '@/lib/ai/embeddings';
+import { embedText, parseEmbedding, searchSimilarJobs, similarityTo, toVectorLiteral } from '@/lib/ai/embeddings';
 import { computeMatchScore, type MatchInput } from '@/lib/ai/matcher';
 import { extractSkills } from '@/lib/scraper/utils';
 import { splitList } from '@/lib/profile';
+import { cityAliases } from '@/lib/geo/city-companies';
 import { gateForVault } from './verify';
 import type { ScanEvent } from '@/lib/scan-events';
 
@@ -177,6 +178,26 @@ export async function matchUser(
     for (const j of data || []) if (!simById.has(j.id)) dreamJobIds.push(j.id);
   }
 
+  // Jobs in your cities always get scored too, with their real similarity: local listings (short Adzuna snippets)
+  // rarely reach the vector top-K, which is why Mohali showed nothing.
+  const aliases = [...new Set(splitList(profile.location).flatMap((c) => cityAliases(c)))].filter(
+    (a) => a.length > 2 && !/[,()%]/.test(a),
+  );
+  if (aliases.length) {
+    const { data } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('is_active', true)
+      .or(aliases.map((a) => `location.ilike.%${a}%`).join(','))
+      .limit(2000);
+    const local = (data || []).map((j) => j.id as string).filter((id) => !simById.has(id));
+    const sims = await similarityTo(embedding, local).catch((e) => {
+      console.error('[MATCH] city jobs not scored:', e instanceof Error ? e.message : e);
+      return new Map<string, number>();
+    });
+    for (const [id, sim] of sims) simById.set(id, sim);
+  }
+
   type JobRow = {
     id: string;
     title: string;
@@ -190,7 +211,7 @@ export async function matchUser(
     companies: { category: string; name: string } | { category: string; name: string }[];
   };
   const jobs: JobRow[] = [];
-  const allIds = [...ids, ...dreamJobIds];
+  const allIds = [...new Set([...ids, ...simById.keys(), ...dreamJobIds])];
   for (let i = 0; i < allIds.length; i += 100) {
     const { data, error } = await supabase
       .from('jobs')
