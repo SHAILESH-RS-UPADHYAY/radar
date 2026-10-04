@@ -28,6 +28,7 @@ export const BOARD_PROVIDERS = [
   'jooble',
   'weworkremotely',
   'workingnomads',
+  'hasjob',
 ] as const;
 export type BoardProvider = (typeof BOARD_PROVIDERS)[number];
 export type Provider = AtsProvider | BoardProvider | 'custom';

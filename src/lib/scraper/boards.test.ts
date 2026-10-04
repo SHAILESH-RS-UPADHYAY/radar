@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mockFetch } from '@/test/mock-fetch';
-import { parseHnPost, parseWwrItem, scrapeBoard } from './boards';
+import { adzunaSearchCity, parseHasjobEntry, parseHnPost, parseWwrItem, scrapeBoard } from './boards';
 
 describe('parseHnPost', () => {
   it('parses the standard "Company | Role | Location | Salary | url" header', () => {
@@ -133,5 +133,49 @@ describe('parseWwrItem', () => {
       link: 'https://weworkremotely.com/remote-jobs/samsara-1',
     });
     expect(new Date(Date.parse(item.posted)).toISOString()).toBe('2026-09-30T10:00:00.000Z');
+  });
+});
+
+describe('adzunaSearchCity', () => {
+  it('maps Gurugram to Gurgaon for Adzuna geographical index', () => {
+    expect(adzunaSearchCity('Gurugram')).toBe('Gurgaon');
+    expect(adzunaSearchCity('gurugram')).toBe('Gurgaon');
+    expect(adzunaSearchCity('gurgaon')).toBe('Gurgaon');
+  });
+
+  it('maps Bengaluru to Bangalore', () => {
+    expect(adzunaSearchCity('Bengaluru')).toBe('Bangalore');
+    expect(adzunaSearchCity('banglore')).toBe('Bangalore');
+  });
+
+  it('maps SAS Nagar to Mohali', () => {
+    expect(adzunaSearchCity('SAS Nagar')).toBe('Mohali');
+  });
+
+  it('keeps other cities intact', () => {
+    expect(adzunaSearchCity('Mohali')).toBe('Mohali');
+    expect(adzunaSearchCity('Chandigarh')).toBe('Chandigarh');
+    expect(adzunaSearchCity('Noida')).toBe('Noida');
+  });
+});
+
+describe('parseHasjobEntry', () => {
+  it('parses Atom XML entry with title, company, location and application link', () => {
+    const entry = `<entry>
+      <title type="text">Senior Python Developer</title>
+      <id>https://hasjob.co/acme.ai/xyz123</id>
+      <link href="https://hasjob.co/acme.ai/xyz123"/>
+      <published>2026-10-04T10:00:00Z</published>
+      <location>Mohali, Punjab</location>
+      <content type="html">&lt;p&gt;&lt;strong&gt;&lt;a href="https://acme.ai"&gt;Acme AI Labs&lt;/a&gt;&lt;/strong&gt;&lt;/p&gt;&lt;p&gt;Build LLM agent systems with FastAPI.&lt;/p&gt;</content>
+    </entry>`;
+    const parsed = parseHasjobEntry(entry);
+    expect(parsed).toMatchObject({
+      title: 'Senior Python Developer',
+      employer: 'Acme AI Labs',
+      location: 'Mohali, Punjab',
+      link: 'https://hasjob.co/acme.ai/xyz123',
+    });
+    expect(parsed.description).toContain('Build LLM agent systems with FastAPI.');
   });
 });

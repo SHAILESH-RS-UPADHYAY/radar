@@ -28,6 +28,7 @@ export const SOURCE_NAMES: Record<Exclude<Provider, 'custom'>, string> = {
   jooble: 'Jooble',
   weworkremotely: 'We Work Remotely',
   workingnomads: 'Working Nomads',
+  hasjob: 'Hasjob',
 };
 
 const isBoard = (c: CompanySeed) => (BOARD_PROVIDERS as readonly string[]).includes(c.ats_provider);

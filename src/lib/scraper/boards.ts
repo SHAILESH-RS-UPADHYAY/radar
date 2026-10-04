@@ -60,6 +60,8 @@ export async function scrapeBoard(provider: string): Promise<ScrapedJob[]> {
       return scrapeWeWorkRemotely();
     case 'workingnomads':
       return scrapeWorkingNomads();
+    case 'hasjob':
+      return scrapeHasjob();
     default:
       throw new Error('Unknown board: ' + provider);
   }
@@ -414,19 +416,44 @@ const ADZUNA_CURRENCY: Record<string, string> = {
 };
 
 /**
- * The Indian cities in your preferences (Mohali, Bangalore…), for city searches: country-wide results rarely reach
- * smaller cities. At most 12 (one search each), so a run stays well inside Adzuna's free daily limit.
+ * Adzuna's geographical database uses legacy or specific spellings for some Indian cities.
+ * For example, "Gurugram" returns 0 jobs while "Gurgaon" returns 2,600+ jobs.
  */
-async function preferenceCities(): Promise<string[]> {
+export function adzunaSearchCity(city: string): string {
+  const c = city.trim().toLowerCase();
+  if (c === 'gurugram' || c === 'gurgaon') return 'Gurgaon';
+  if (c === 'bengaluru' || c === 'banglore' || c === 'bangalore') return 'Bangalore';
+  if (c === 'sas nagar') return 'Mohali';
+  return city.trim();
+}
+
+/** Targeted tech skills for Indian city queries so results score high against modern developer resumes. */
+export function citySearchTerms(): string[] {
+  return splitEnvList(process.env.RADAR_CITY_SEARCH_TERMS || 'python,react,node,full stack,developer');
+}
+
+/**
+ * The Indian cities in your preferences (Mohali, Chandigarh, Gurgaon, Bangalore…), for localized searches.
+ * Tricity neighbors (Chandigarh/Mohali) are included so local engineering clusters are not missed.
+ */
+export async function preferenceCities(): Promise<string[]> {
   const { data } = await createServerClient().from('user_profiles').select('location').not('location', 'is', null);
   // Search terms are cities in India: skip places abroad and words that are not a city ("Worldwide", "test").
   const notHere = new Set(
     ['san francisco', 'new york', 'london', 'toronto', 'singapore', 'dubai'].flatMap((c) => cityAliases(c)),
   );
   const seen = new Map<string, string>();
-  for (const city of (data || []).flatMap((p) => splitList(p.location as string)))
-    if (!/^(remote|worldwide|anywhere|global|india|test)$/i.test(city) && !notHere.has(city.toLowerCase()))
-      seen.set(city.toLowerCase(), city);
+  for (const rawCity of (data || []).flatMap((p) => splitList(p.location as string))) {
+    if (/^(remote|worldwide|anywhere|global|india|test)$/i.test(rawCity) || notHere.has(rawCity.toLowerCase()))
+      continue;
+    const mapped = adzunaSearchCity(rawCity);
+    seen.set(mapped.toLowerCase(), mapped);
+    // If Mohali or Chandigarh is present, ensure both are searched in the Tricity job market
+    if (/^(mohali|chandigarh|sas nagar)$/i.test(rawCity)) {
+      seen.set('mohali', 'Mohali');
+      seen.set('chandigarh', 'Chandigarh');
+    }
+  }
   return [...seen.values()].slice(0, 12);
 }
 
@@ -444,19 +471,25 @@ async function scrapeAdzuna(): Promise<ScrapedJob[]> {
   );
   for (const city of await preferenceCities().catch(() => [])) searches.push(['in', city]);
   for (const [country, where] of searches) {
-    // A city gets one search for any of the terms' words (what_or), so a run stays fast and inside the free limit.
-    for (const term of where ? [searchTerms().join(' ')] : searchTerms()) {
+    // For specific Indian cities, query skill pillars (python, react, node, etc.) so returned jobs match user profile
+    const terms = where ? citySearchTerms() : searchTerms();
+    for (const term of terms) {
+      const cityQuery = where ? adzunaSearchCity(where) : undefined;
       const params = new URLSearchParams({
         app_id: id,
         app_key: key,
-        ...(where ? { what_or: term, where } : { what: term }),
+        what: term,
+        ...(cityQuery ? { where: cityQuery } : {}),
         results_per_page: '50',
         max_days_old: '30',
         'content-type': 'application/json',
       });
       const data = await fetchJson<any>(
         'https://api.adzuna.com/v1/api/jobs/' + encodeURIComponent(country) + '/search/1?' + params,
-      );
+      ).catch((e) => {
+        console.warn('[SCRAPE] Adzuna search failed for', country, where || 'all', term, ':', e.message);
+        return { results: [] };
+      });
       for (const job of data.results || []) {
         if (!job.id || !job.redirect_url) continue;
         // A predicted salary is Adzuna's estimate, not the employer's figure.
@@ -467,7 +500,7 @@ async function scrapeAdzuna(): Promise<ScrapedJob[]> {
             external_id: country + ':' + job.id,
             title: htmlToText(job.title),
             description: htmlToText(job.description) + '\n\nSource: Adzuna',
-            location: job.location?.display_name || country.toUpperCase(),
+            location: job.location?.display_name || where || country.toUpperCase(),
             apply_url: job.redirect_url,
             department: job.category?.label || null,
             salary_min: stated ? Math.round(job.salary_min) : null,
@@ -490,10 +523,13 @@ async function scrapeJooble(): Promise<ScrapedJob[]> {
     console.warn('[SCRAPE] Jooble skipped: set JOOBLE_API_KEY to enable it.');
     return [];
   }
-  const locations = splitEnvList(
-    process.env.RADAR_JOOBLE_LOCATIONS || 'India|United Kingdom|Germany|Netherlands|Remote',
-    '|',
-  );
+  const envLocs = process.env.RADAR_JOOBLE_LOCATIONS;
+  const pref = await preferenceCities().catch(() => []);
+  const locations = envLocs
+    ? splitEnvList(envLocs, '|')
+    : pref.length
+      ? ['India', ...pref.slice(0, 4).map((c) => c + ', India')]
+      : splitEnvList('India|United Kingdom|Germany|Netherlands|Remote', '|');
   const jobs = new Map<string, ScrapedJob>();
   for (const location of locations) {
     for (const term of searchTerms()) {
@@ -501,6 +537,9 @@ async function scrapeJooble(): Promise<ScrapedJob[]> {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ keywords: term, location, page: '1' }),
+      }).catch((e) => {
+        console.warn('[SCRAPE] Jooble search failed for', location, term, ':', e.message);
+        return { jobs: [] };
       });
       for (const job of data.jobs || []) {
         if (!job.id || !job.link) continue;
@@ -525,4 +564,61 @@ async function scrapeJooble(): Promise<ScrapedJob[]> {
     }
   }
   return [...jobs.values()];
+}
+
+// ---------- Hasjob (HasGeek official Atom feed, pure Indian tech jobs) ----------
+export function parseHasjobEntry(block: string) {
+  const tag = (name: string) => {
+    const m = block.match(new RegExp('<' + name + '(?:\\s+[^>]*)?>([\\s\\S]*?)</' + name + '>'));
+    return m ? decodeEntities(m[1].replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')).trim() : '';
+  };
+  const title = tag('title');
+  const linkMatch = block.match(/<link[^>]+href="([^"]+)"/);
+  const link = linkMatch ? linkMatch[1] : tag('id');
+  const location = tag('location') || 'India';
+  const content = tag('content');
+  const empMatch =
+    content.match(/<strong[^>]*><a[^>]*>([^<]+)<\/a><\/strong>/i) || content.match(/<strong[^>]*>([^<]+)<\/strong>/i);
+  const employer = empMatch ? decodeEntities(empMatch[1]).trim() : 'Startup';
+  const published = tag('published') || tag('updated');
+
+  return {
+    external_id: tag('id') || link,
+    title,
+    employer,
+    location,
+    description: htmlToText(content) + '\n\nSource: Hasjob',
+    link,
+    posted_at: toIso(published),
+  };
+}
+
+async function scrapeHasjob(): Promise<ScrapedJob[]> {
+  const xml = await fetchText('https://hasjob.co/feed').catch((e) => {
+    console.warn('[SCRAPE] Hasjob feed fetch failed:', e.message);
+    return '';
+  });
+  if (!xml) return [];
+  const entries = xml.match(/<entry>[\s\S]*?<\/entry>/g) || [];
+  const jobs: ScrapedJob[] = [];
+  for (const block of entries) {
+    const item = parseHasjobEntry(block);
+    if (!item.link || !isRelevantTitle(item.title)) continue;
+    jobs.push(
+      finalizeJob({
+        external_id: item.external_id,
+        title: item.title,
+        description: item.description,
+        location: item.location,
+        apply_url: item.link,
+        department: null,
+        salary_min: null,
+        salary_max: null,
+        salary_currency: null,
+        posted_at: item.posted_at,
+        employer: item.employer,
+      }),
+    );
+  }
+  return jobs;
 }

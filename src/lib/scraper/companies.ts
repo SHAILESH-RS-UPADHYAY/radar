@@ -260,4 +260,5 @@ export const COMPANY_SEEDS: CompanySeed[] = [
   c('Jooble', 'https://jooble.org/', 'jooble', null, 'Board', null, 'Global'),
   c('We Work Remotely', 'https://weworkremotely.com/', 'weworkremotely', null, 'Board', 'Remote', 'Global'),
   c('Working Nomads', 'https://www.workingnomads.com/', 'workingnomads', null, 'Board', 'Remote', 'Global'),
+  c('Hasjob', 'https://hasjob.co/', 'hasjob', null, 'Board', null, 'India'),
 ];
