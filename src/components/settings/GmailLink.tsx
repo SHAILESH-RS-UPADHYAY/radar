@@ -55,11 +55,12 @@ export function GmailLink({ onNotice }: { onNotice: (n: Notice) => void }) {
       const r = await api('/api/gmail', { method: kind === 'sync' ? 'POST' : 'DELETE' });
       const d = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status);
+      const indeedMsg = d.indeedJobs ? ` · ${d.indeedJobs} Indeed jobs ingested.` : '.';
       onNotice(
         kind === 'sync'
           ? {
               tone: 'ok',
-              text: `Read ${d.scanned} new messages · ${d.matched} about your applications · ${d.updated} stages moved.`,
+              text: `Read ${d.scanned} new messages · ${d.matched} about applications · ${d.updated} moved${indeedMsg}`,
             }
           : { tone: 'info', text: 'Gmail disconnected and access revoked at Google.' },
       );

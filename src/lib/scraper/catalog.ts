@@ -29,6 +29,9 @@ export const SOURCE_NAMES: Record<Exclude<Provider, 'custom'>, string> = {
   weworkremotely: 'We Work Remotely',
   workingnomads: 'Working Nomads',
   hasjob: 'Hasjob',
+  indeed_email: 'Indeed (Gmail Alerts)',
+  jsearch: 'JSearch (Indeed & LinkedIn)',
+  googlejobs: 'Google Jobs',
 };
 
 const isBoard = (c: CompanySeed) => (BOARD_PROVIDERS as readonly string[]).includes(c.ats_provider);

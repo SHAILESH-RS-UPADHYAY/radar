@@ -261,4 +261,15 @@ export const COMPANY_SEEDS: CompanySeed[] = [
   c('We Work Remotely', 'https://weworkremotely.com/', 'weworkremotely', null, 'Board', 'Remote', 'Global'),
   c('Working Nomads', 'https://www.workingnomads.com/', 'workingnomads', null, 'Board', 'Remote', 'Global'),
   c('Hasjob', 'https://hasjob.co/', 'hasjob', null, 'Board', null, 'India'),
+  c('Indeed Email Alerts', 'https://indeed.com/', 'indeed_email', null, 'Board', null, 'India'),
+  c(
+    'JSearch (Indeed & LinkedIn)',
+    'https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch',
+    'jsearch',
+    null,
+    'Board',
+    null,
+    'India',
+  ),
+  c('Google Jobs (Indeed & Direct)', 'https://serper.dev/', 'googlejobs', null, 'Board', null, 'India'),
 ];

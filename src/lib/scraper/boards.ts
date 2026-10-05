@@ -16,9 +16,11 @@
 //   weworkremotely  weworkremotely.com category RSS (robots.txt allows it); link back to the WWR listing
 //   workingnomads   workingnomads.com/api/exposed_jobs (robots.txt allows everything); link back to Working Nomads
 
+import { createHash } from 'node:crypto';
 import { createServerClient } from '@/lib/supabase/client';
 import { splitList } from '@/lib/profile';
 import { cityAliases } from '@/lib/geo/city-companies';
+import { scrapeIndeedEmail } from './indeed-email';
 import {
   decodeEntities,
   fetchJson,
@@ -62,6 +64,12 @@ export async function scrapeBoard(provider: string): Promise<ScrapedJob[]> {
       return scrapeWorkingNomads();
     case 'hasjob':
       return scrapeHasjob();
+    case 'indeed_email':
+      return scrapeIndeedEmail();
+    case 'jsearch':
+      return scrapeJSearch();
+    case 'googlejobs':
+      return scrapeGoogleJobs();
     default:
       throw new Error('Unknown board: ' + provider);
   }
@@ -621,4 +629,130 @@ async function scrapeHasjob(): Promise<ScrapedJob[]> {
     );
   }
   return jobs;
+}
+
+// ---------- JSearch (RapidAPI: aggregated Indeed, Glassdoor & LinkedIn) ----------
+async function scrapeJSearch(): Promise<ScrapedJob[]> {
+  const key = process.env.RAPIDAPI_KEY?.trim() || process.env.JSEARCH_API_KEY?.trim();
+  if (!key) {
+    console.info('[SCRAPE] JSearch skipped: set RAPIDAPI_KEY or JSEARCH_API_KEY to enable it.');
+    return [];
+  }
+  const cities = await preferenceCities().catch(() => []);
+  const targetCities = cities.length ? cities.slice(0, 4) : ['Mohali', 'Chandigarh', 'Gurgaon', 'Bangalore'];
+  const terms = citySearchTerms().slice(0, 2);
+  const jobs = new Map<string, ScrapedJob>();
+
+  for (const city of targetCities) {
+    for (const term of terms) {
+      const query = `${term} in ${city}, India`;
+      const data = await fetchJson<any>(
+        'https://jsearch.p.rapidapi.com/search?' +
+          new URLSearchParams({
+            query,
+            page: '1',
+            num_pages: '1',
+            date_posted: 'month',
+          }),
+        {
+          headers: {
+            'x-rapidapi-key': key,
+            'x-rapidapi-host': 'jsearch.p.rapidapi.com',
+          },
+          timeoutMs: 15_000,
+        },
+      ).catch((e) => {
+        console.warn('[SCRAPE] JSearch search failed for', query, ':', e.message);
+        return { data: [] };
+      });
+
+      for (const item of data.data || []) {
+        if (!item.job_id || !item.job_title || !isRelevantTitle(item.job_title)) continue;
+        const loc = [item.job_city, item.job_state, item.job_country].filter(Boolean).join(', ') || city;
+        const externalId = `jsearch:${item.job_id}`;
+        jobs.set(
+          externalId,
+          finalizeJob({
+            external_id: externalId,
+            title: htmlToText(item.job_title),
+            description:
+              htmlToText(item.job_description || '') + `\n\nSource: JSearch (${item.job_publisher || 'Indeed/Web'})`,
+            location: loc,
+            apply_url: item.job_apply_link || '',
+            department: null,
+            salary_min: item.job_min_salary ? Math.round(Number(item.job_min_salary)) : null,
+            salary_max: item.job_max_salary ? Math.round(Number(item.job_max_salary)) : null,
+            salary_currency: item.job_salary_currency || (item.job_min_salary ? 'INR' : null),
+            posted_at: item.job_posted_at_timestamp ? toIso(item.job_posted_at_timestamp) : new Date().toISOString(),
+            employer: item.employer_name || null,
+          }),
+        );
+      }
+    }
+  }
+
+  return [...jobs.values()];
+}
+
+// ---------- Google Jobs (via Serper.dev: indexes Indeed India postings) ----------
+async function scrapeGoogleJobs(): Promise<ScrapedJob[]> {
+  const key = process.env.SERPER_API_KEY?.trim();
+  if (!key) {
+    console.info('[SCRAPE] Google Jobs skipped: set SERPER_API_KEY to enable it.');
+    return [];
+  }
+  const cities = await preferenceCities().catch(() => []);
+  const targetCities = cities.length ? cities.slice(0, 4) : ['Mohali', 'Chandigarh', 'Gurgaon', 'Bangalore'];
+  const terms = citySearchTerms().slice(0, 2);
+  const jobs = new Map<string, ScrapedJob>();
+
+  for (const city of targetCities) {
+    for (const term of terms) {
+      const q = `${term} developer jobs in ${city}`;
+      const data = await fetchJson<any>('https://google.serper.dev/jobs', {
+        method: 'POST',
+        headers: {
+          'X-API-KEY': key,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          q,
+          gl: 'in',
+          hl: 'en',
+          location: `${city}, India`,
+        }),
+        timeoutMs: 15_000,
+      }).catch((e) => {
+        console.warn('[SCRAPE] Google Jobs search failed for', q, ':', e.message);
+        return { jobs: [] };
+      });
+
+      for (const item of data.jobs || []) {
+        const link = item.link || item.jobProviders?.[0]?.link;
+        if (!item.title || !link || !isRelevantTitle(item.title)) continue;
+        const externalId = `googlejobs:${createHash('sha1').update(`${item.companyName}:${item.title}:${link}`).digest('hex').slice(0, 16)}`;
+        const pay = parseSalaryRange(item.description);
+
+        jobs.set(
+          externalId,
+          finalizeJob({
+            external_id: externalId,
+            title: htmlToText(item.title),
+            description:
+              htmlToText(item.description || '') + `\n\nSource: Google Jobs (${item.via || 'Indeed/Direct'})`,
+            location: item.location || city,
+            apply_url: link,
+            department: null,
+            salary_min: pay.min,
+            salary_max: pay.max,
+            salary_currency: pay.currency,
+            posted_at: new Date().toISOString(),
+            employer: item.companyName || null,
+          }),
+        );
+      }
+    }
+  }
+
+  return [...jobs.values()];
 }

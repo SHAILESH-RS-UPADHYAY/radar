@@ -32,13 +32,19 @@ describe('keyed job APIs', () => {
     vi.unstubAllEnvs();
   });
 
-  it('skip Adzuna and Jooble without calling out when their keys are missing', async () => {
+  it('skip Adzuna, Jooble, JSearch and Google Jobs without calling out when their keys are missing', async () => {
     vi.stubEnv('ADZUNA_APP_ID', '');
     vi.stubEnv('JOOBLE_API_KEY', '');
+    vi.stubEnv('RAPIDAPI_KEY', '');
+    vi.stubEnv('JSEARCH_API_KEY', '');
+    vi.stubEnv('SERPER_API_KEY', '');
     vi.spyOn(console, 'warn').mockImplementation(() => {});
+    vi.spyOn(console, 'info').mockImplementation(() => {});
     const fetch = mockFetch({});
     expect(await scrapeBoard('adzuna')).toEqual([]);
     expect(await scrapeBoard('jooble')).toEqual([]);
+    expect(await scrapeBoard('jsearch')).toEqual([]);
+    expect(await scrapeBoard('googlejobs')).toEqual([]);
     expect(fetch).not.toHaveBeenCalled();
   });
 

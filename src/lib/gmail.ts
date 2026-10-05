@@ -205,10 +205,11 @@ export interface GmailSyncResult {
   scanned: number;
   matched: number;
   updated: number;
+  indeedJobs?: number;
   error?: string;
 }
 
-/** Read new application mail for one user and apply what it says to C2 · OPS. */
+/** Read new application mail for one user and apply what it says to C2 · OPS, and ingest Indeed alert jobs. */
 export async function syncGmail(supabase: SupabaseClient, userId: string): Promise<GmailSyncResult> {
   const cfg = gmailConfig();
   if (!cfg) return { scanned: 0, matched: 0, updated: 0, error: 'Gmail is not configured on the server.' };
@@ -242,6 +243,15 @@ export async function syncGmail(supabase: SupabaseClient, userId: string): Promi
 
   // A Gmail or database failure mid-sync is recorded on the link, so Settings can show it.
   try {
+    // 1. Ingest any fresh Indeed Job Alert digest emails into RADAR jobs pipeline
+    let indeedJobs = 0;
+    try {
+      const { syncIndeedAlertsForUser } = await import('@/lib/scraper/indeed-email');
+      indeedJobs = await syncIndeedAlertsForUser(supabase, userId, accessToken);
+    } catch (e) {
+      console.warn('[GMAIL] Indeed alerts sync error:', e instanceof Error ? e.message : e);
+    }
+
     const { data: rows } = await supabase
       .from('match_scores')
       .select('id, stage, applied_at, jobs!inner(title, employer, companies!inner(name))')
@@ -262,7 +272,7 @@ export async function syncGmail(supabase: SupabaseClient, userId: string): Promi
         applied_at: r.applied_at,
       };
     });
-    if (!apps.length) return finish({ scanned: 0, matched: 0, updated: 0 });
+    if (!apps.length) return finish({ scanned: 0, matched: 0, updated: 0, indeedJobs });
 
     const days = link.last_synced_at
       ? Math.min(30, Math.max(1, Math.ceil((Date.now() - Date.parse(link.last_synced_at)) / 86_400_000) + 1))
@@ -324,7 +334,7 @@ export async function syncGmail(supabase: SupabaseClient, userId: string): Promi
         }
       }
     }
-    return finish({ scanned: ids.length, matched, updated });
+    return finish({ scanned: ids.length, matched, updated, indeedJobs });
   } catch (err) {
     console.error('[GMAIL]', userId, err instanceof Error ? err.message : err);
     return finish({
