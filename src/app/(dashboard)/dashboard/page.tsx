@@ -28,6 +28,16 @@ import { Toast, type Notice } from '@/components/hud/Toast';
 import { OpsCard } from '@/components/dashboard/OpsCard';
 import { DiscoveryCard } from '@/components/dashboard/DiscoveryCard';
 import { VaultCard } from '@/components/dashboard/VaultCard';
+import { VaultFiltersBar } from '@/components/dashboard/VaultFiltersBar';
+import {
+  DEFAULT_FILTERS,
+  LANES,
+  applyVaultFilters,
+  parseFilters,
+  vaultFacets,
+  type StatedExperience,
+  type VaultFilters,
+} from '@/lib/vault-filters';
 import { OverclockCard } from '@/components/dashboard/OverclockCard';
 import { RunPanel } from '@/components/dashboard/RunPanel';
 import { ParkedPanel } from '@/components/autopilot/ParkedPanel';
@@ -64,6 +74,7 @@ interface VaultSettings {
 }
 
 const PLACE_KEY = 'radar:place';
+const VAULT_FILTERS_KEY = 'radar:vault-filters';
 const LEGACY_CITY_FILTER_KEY = 'radar:only-my-cities';
 const STALE_MS = 48 * 3600_000;
 
@@ -161,6 +172,8 @@ export default function DashboardPage() {
   const [scanNote, setScanNote] = useState('');
   const [notice, setNotice] = useState<Notice | null>(null);
   const [vaultSettings, setVaultSettings] = useState<VaultSettings | null>(null);
+  const [vaultFilters, setVaultFilters] = useState<VaultFilters>(DEFAULT_FILTERS);
+  const [vaultExp, setVaultExp] = useState<Record<string, StatedExperience>>({});
   const [primaryTab, setPrimaryTab] = useState<PrimaryTab>('DISCOVERY');
   const [activeTab, setActiveTab] = useState<Section>('recommended');
   // C2 · OPS: which stage's pill is open (APPLIED by default: the biggest pile).
@@ -356,6 +369,52 @@ export default function DashboardPage() {
     }
   };
 
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem(VAULT_FILTERS_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- restoring saved filters after mount
+      if (stored) setVaultFilters(parseFilters(stored));
+    } catch {
+      // storage unavailable
+    }
+  }, []);
+
+  const updateVaultFilters = useCallback((next: VaultFilters) => {
+    setVaultFilters(next);
+    try {
+      localStorage.setItem(VAULT_FILTERS_KEY, JSON.stringify(next));
+    } catch {
+      // storage unavailable
+    }
+  }, []);
+
+  const resetVaultFilters = useCallback(() => {
+    setVaultFilters(DEFAULT_FILTERS);
+    try {
+      localStorage.removeItem(VAULT_FILTERS_KEY);
+    } catch {
+      // storage unavailable
+    }
+  }, []);
+
+  const fetchVaultExp = useCallback(async () => {
+    try {
+      const res = await api('/api/vault');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.experience) setVaultExp(data.experience);
+    } catch (err) {
+      console.warn('[VAULT] experience fetch failed:', err);
+    }
+  }, [api]);
+
+  useEffect(() => {
+    if (primaryTab === 'VAULT') {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- async background load of JD experience
+      void fetchVaultExp();
+    }
+  }, [primaryTab, fetchVaultExp]);
+
   /** Tailor the resume for one match; a projection that clears the Vault bar moves it to the Vault server-side. */
   const tailor = useCallback(
     async (matchId: string, force = false) => {
@@ -489,6 +548,8 @@ export default function DashboardPage() {
   const saved = shown
     .filter((m) => m.status === 'saved' && m.job.is_active && !(m.auto_saved && m.score < bar))
     .sort((a, b) => sunk(a) - sunk(b) || byScore(a, b));
+  const facets = vaultFacets(saved, vaultFilters, vaultExp);
+  const filteredSaved = applyVaultFilters(saved, vaultFilters, vaultExp);
   const today = todaysTen(saved, undefined, sunk);
   const archived = applied.filter((m) => CLOSED_STAGES.includes(m.stage || 'applied'));
   const activeOps = applied.filter((m) => !CLOSED_STAGES.includes(m.stage || 'applied'));
@@ -976,6 +1037,49 @@ export default function DashboardPage() {
               className="grid items-start gap-6 lg:grid-cols-[280px_minmax(0,1fr)] xl:gap-8"
             >
               <aside className={'min-w-0 ' + SIDEBAR}>
+                <HudPanel label="LANES" status={saved.length + ' SAVED'} bodyClassName="p-0">
+                  <div className="grid grid-cols-3 lg:grid-cols-1">
+                    {LANES.map((lane) => {
+                      const active = vaultFilters.lane === lane.key;
+                      const count = facets.lanes[lane.key] ?? 0;
+                      return (
+                        <button
+                          key={lane.key}
+                          type="button"
+                          onClick={() => updateVaultFilters({ ...vaultFilters, lane: lane.key })}
+                          aria-pressed={active}
+                          className={
+                            'relative flex flex-col gap-0.5 border-phosphor/10 px-4 py-3.5 text-left transition-colors max-lg:border-r max-lg:last:border-r-0 lg:flex-row lg:items-center lg:justify-between lg:border-b lg:last:border-b-0 ' +
+                            (active ? 'bg-phosphor/[0.08]' : 'hover:bg-phosphor/[0.03]')
+                          }
+                        >
+                          {active && (
+                            <span className="absolute inset-y-0 left-0 hidden w-0.5 bg-phosphor shadow-[0_0_10px_#00FF41] lg:block" />
+                          )}
+                          <span>
+                            <span
+                              className={
+                                'block font-mono text-[11px] font-bold tracking-[0.25em] ' +
+                                (active ? 'text-phosphor' : 'text-ink/80')
+                              }
+                            >
+                              {lane.label}
+                            </span>
+                            <span className="hidden text-[11px] text-dim lg:block">{lane.hint}</span>
+                          </span>
+                          <span
+                            className={
+                              'font-mono text-xl font-extrabold ' + (active ? 'text-phosphor' : 'text-white/80')
+                            }
+                          >
+                            {count}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </HudPanel>
+
                 <HudPanel label="VAULT://STATUS" status={autoVault ? 'AUTO' : 'MANUAL'} bodyClassName="p-5">
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-5 font-mono">
                     {vaultStats.map(([k, v]) => (
@@ -1006,15 +1110,15 @@ export default function DashboardPage() {
                 <PageTitle
                   title="Your shortlist"
                   action={
-                    saved.length > 1 && (
+                    filteredSaved.length > 1 && (
                       <button
                         type="button"
-                        onClick={() => startRun(saved.map((m) => m.id))}
+                        onClick={() => startRun(filteredSaved.map((m) => m.id))}
                         className="group/run flex w-full shrink-0 items-center justify-center gap-3 rounded-full border border-phosphor bg-phosphor/10 py-3.5 font-mono text-xs font-bold tracking-[0.35em] text-phosphor shadow-[0_0_28px_rgba(0,255,65,0.3)] transition-all hover:bg-phosphor hover:text-black sm:w-auto sm:px-10"
                       >
                         <span className="h-2 w-2 animate-pulse rounded-full bg-phosphor group-hover/run:bg-black" />
-                        <span className="glitch" data-text={'INFILTRATE ALL · ' + saved.length}>
-                          INFILTRATE ALL · {saved.length}
+                        <span className="glitch" data-text={'INFILTRATE ALL · ' + filteredSaved.length}>
+                          INFILTRATE ALL · {filteredSaved.length}
                         </span>
                       </button>
                     )
@@ -1024,19 +1128,48 @@ export default function DashboardPage() {
                     ? `Matches scoring ${minScore}%+ land here automatically after every scan.`
                     : 'Auto-vault is off. Save jobs from Discovery to keep them here.'}
                 </PageTitle>
+
+                {saved.length > 0 && (
+                  <VaultFiltersBar
+                    filters={vaultFilters}
+                    facets={facets}
+                    total={saved.length}
+                    filteredCount={filteredSaved.length}
+                    onChange={updateVaultFilters}
+                    onReset={resetVaultFilters}
+                  />
+                )}
+
                 {saved.length === 0 ? (
                   <EmptyState
                     label="VAULT://EMPTY"
                     title="The Vault is empty."
                     body="Strong matches are saved automatically after each scan, or save jobs from Discovery yourself."
                   />
+                ) : filteredSaved.length === 0 ? (
+                  <EmptyState
+                    label="VAULT://NO_MATCHES"
+                    title="No jobs match your active filters."
+                    body="Try clearing some filters or switching lanes to see more shortlisted postings."
+                  >
+                    <div className="mt-8 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={resetVaultFilters}
+                        className="border border-phosphor/40 px-4 py-2 font-mono text-[11px] font-bold tracking-[0.2em] text-phosphor hover:bg-phosphor/10"
+                      >
+                        RESET FILTERS
+                      </button>
+                    </div>
+                  </EmptyState>
                 ) : (
                   <div className="space-y-4">
                     <AnimatePresence>
-                      {saved.map((m) => (
+                      {filteredSaved.map((m) => (
                         <VaultCard
                           key={m.id}
                           match={m}
+                          statedExp={vaultExp[m.job.id]?.text}
                           onAction={onAction}
                           onInfiltrate={(id) => startRun([id])}
                           onOpen={setBriefingId}

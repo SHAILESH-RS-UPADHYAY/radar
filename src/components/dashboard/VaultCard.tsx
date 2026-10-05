@@ -11,12 +11,14 @@ const badge = 'border px-2 py-1 font-mono text-[10px] font-bold tracking-[0.2em]
 
 export function VaultCard({
   match,
+  statedExp,
   onAction,
   onInfiltrate,
   onOpen,
   onHack,
 }: {
   match: MatchedJob;
+  statedExp?: string | null;
   onAction: (id: string, action: MatchAction) => void;
   /** INFILTRATE: the step-by-step run for this job (tailored resume, the form's answers, then the form). */
   onInfiltrate: (id: string) => void;
@@ -47,6 +49,20 @@ export function VaultCard({
             <span className={badge + ' border-phosphor/40 bg-phosphor/10 text-phosphor'}>
               {job.company.name.toUpperCase()}
             </span>
+            {job.company.category && job.company.category !== 'Board' && (
+              <span
+                className={
+                  badge +
+                  (job.company.category === 'Startup'
+                    ? ' border-[#22D3EE]/50 bg-[#22D3EE]/10 text-[#22D3EE]'
+                    : job.company.category === 'Growth'
+                      ? ' border-[#c792ea]/50 bg-[#c792ea]/10 text-[#c792ea]'
+                      : ' border-phosphor/40 bg-phosphor/10 text-phosphor')
+                }
+              >
+                {job.company.category.toUpperCase()}
+              </span>
+            )}
             {postedTag(match) === 'NEW' && (
               <span className={badge + ' border-hud-amber/50 text-hud-amber'}>NEW · APPLY EARLY</span>
             )}
@@ -54,7 +70,7 @@ export function VaultCard({
             {!job.is_active && <span className={badge + ' border-hud-red/40 text-hud-red'}>POSTING CLOSED</span>}
           </div>
           <JobTitle title={job.title} onOpen={open} className="text-lg font-bold leading-snug text-white sm:text-xl" />
-          <JobFacts job={job} />
+          <JobFacts job={job} statedExp={statedExp} />
           <SkillChips matching={match.matching_skills} missing={match.missing_skills} maxMatching={8} maxMissing={5} />
           <p className="mt-4 text-sm leading-relaxed text-dim">
             <span className="text-phosphor">&gt; </span>

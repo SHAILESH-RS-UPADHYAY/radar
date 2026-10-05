@@ -77,13 +77,19 @@ const FACT = 'inline-flex max-w-full items-center gap-1.5 border px-2 py-0.5 fon
  * A job's facts, each in its own colour so none melts into the green: where (cyan), pay (amber), experience (violet),
  * how fresh (green when new, red when old) and where RADAR read it (pink).
  */
-export function JobFacts({ job }: { job: MatchedJob['job'] }) {
+export function JobFacts({ job, statedExp }: { job: MatchedJob['job']; statedExp?: string | null }) {
   const days = ageDays(job.posted_at);
-  const exp = job.experience_required;
+  const exp = statedExp
+    ? statedExp.toUpperCase()
+    : job.experience_required
+      ? job.experience_required === 'fresher'
+        ? 'FRESHER'
+        : job.experience_required + ' YRS'
+      : null;
   const facts: [string, string | null, string][] = [
     ['⌖', job.location || null, 'border-hud-cyan/60 text-hud-cyan'],
     ['PAY', formatSalary(job), 'border-hud-amber/60 text-hud-amber'],
-    ['EXP', exp ? (exp === 'fresher' ? 'FRESHER' : exp + ' YRS') : null, 'border-[#c792ea]/60 text-[#c792ea]'],
+    ['EXP', exp, 'border-[#c792ea]/60 text-[#c792ea]'],
     [
       '◷',
       job.posted_at ? timeAgo(job.posted_at) : null,

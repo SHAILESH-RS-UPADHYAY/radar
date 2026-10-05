@@ -34,3 +34,45 @@ export async function PATCH(req: NextRequest) {
   if (error) return NextResponse.json({ error }, { status: 500 });
   return NextResponse.json({ updated });
 }
+
+// GET — returns the exact stated experience strings read from each saved/applied job's JD,
+// extracted with statedExperience(). Lightweight ({ [jobId]: { text, min } }), called
+// in the background so the main dashboard payload stays small.
+export async function GET() {
+  const { userId } = await auth();
+  if (!userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const supabase = createServerClient();
+  const { data: rows, error } = await supabase
+    .from('match_scores')
+    .select('jobs!inner(id, title, experience_required, description)')
+    .eq('user_id', userId)
+    .in('status', ['saved', 'applied'])
+    .limit(1000);
+
+  if (error) {
+    console.error('[VAULT] Experience fetch failed:', error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  interface JobRow {
+    jobs: {
+      id: string;
+      title: string | null;
+      experience_required: string | null;
+      description: string | null;
+    } | null;
+  }
+
+  // Import dynamically or directly from vault-filters
+  const { statedExperience } = await import('@/lib/vault-filters');
+  const experience: Record<string, { text: string | null; min: number | null }> = {};
+  for (const row of (rows as unknown as JobRow[]) || []) {
+    const j = row.jobs;
+    if (j?.id) {
+      experience[j.id] = statedExperience(j.title || '', j.description || '', j.experience_required);
+    }
+  }
+
+  return NextResponse.json({ experience });
+}
