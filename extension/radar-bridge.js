@@ -82,7 +82,8 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
       msg.type === 'applied' ||
       msg.type === 'questions' ||
       msg.type === 'autopilot' ||
-      msg.type === 'learn')
+      msg.type === 'learn' ||
+      msg.type === 'landed')
   )
     toPage(msg);
 });

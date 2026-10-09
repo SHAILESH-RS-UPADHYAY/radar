@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { verifyWebhook } from '@clerk/nextjs/webhooks';
 import { createServerClient } from '@/lib/supabase/client';
+import { serverError } from '@/lib/api';
 
 // Clerk → Supabase user sync. Clerk retries failed deliveries for hours, so every branch is
 // idempotent, and a 5xx is returned only when a retry could help.
+export const dynamic = 'force-dynamic';
+
 export async function POST(req: NextRequest) {
   let evt: Awaited<ReturnType<typeof verifyWebhook>>;
   try {
@@ -30,7 +33,7 @@ export async function POST(req: NextRequest) {
     );
     if (error) {
       console.error('[WEBHOOK]', evt.type, 'failed:', error.message);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      return serverError('API /webhook/clerk', error);
     }
     return NextResponse.json({ success: true });
   }
@@ -41,7 +44,7 @@ export async function POST(req: NextRequest) {
       const { error } = await supabase.from('user_profiles').delete().eq('id', evt.data.id);
       if (error) {
         console.error('[WEBHOOK] user.deleted failed:', error.message);
-        return NextResponse.json({ error: error.message }, { status: 500 });
+        return serverError('API /webhook/clerk', error);
       }
     }
     return NextResponse.json({ success: true });

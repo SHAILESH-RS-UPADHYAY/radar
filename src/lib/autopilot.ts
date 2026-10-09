@@ -13,6 +13,7 @@ import { applicationFormUrl } from '@/lib/apply/form';
 import { jobKey } from '@/lib/scraper/utils';
 import { splitList } from '@/lib/profile';
 import { isSchemaMissing } from '@/lib/supabase/errors';
+import { PER_COMPANY } from '@/types';
 
 /** Consents you can pre-approve, one class at a time. Arbitration and anything else always stay yours. */
 export const CONSENTS = ['privacy', 'accurate', 'talent_pool'] as const;
@@ -106,8 +107,12 @@ export interface PickOptions {
   years: number;
   /** Company + title of everything applied to in the last 60 days. */
   applied: { company: string; title: string }[];
+  /** Applications per company (lowercase name), all time: at PER_COMPANY a company is done. */
+  appliedPerCompany: Map<string, number>;
   limit: number;
 }
+
+const companyOf = (c: { company: string }) => c.company.trim().toLowerCase();
 
 /** Why a match is not for autopilot today, or null when it is. Pure. */
 export function notEligible(c: QueueCandidate, o: Omit<PickOptions, 'limit'>): string | null {
@@ -120,10 +125,14 @@ export function notEligible(c: QueueCandidate, o: Omit<PickOptions, 'limit'>): s
   if (c.score < o.bar && !(c.tailored && c.score >= 50)) return 'below your bar';
   const key = jobKey(c.company, c.title);
   if (o.applied.some((a) => jobKey(a.company, a.title) === key)) return 'applied in the last 60 days';
+  if ((o.appliedPerCompany.get(companyOf(c)) || 0) >= PER_COMPANY) return `${PER_COMPANY} applications there already`;
   return null;
 }
 
-/** Today's queue: eligible matches, best first, one per company + title, at most `perCompany` per company. Pure. */
+/**
+ * Today's queue: eligible matches, best first, one per company + title, at most `perCompany` per company today, and
+ * never past PER_COMPANY applications at a company in all. Pure.
+ */
 export function pickQueue(candidates: QueueCandidate[], o: PickOptions): QueueCandidate[] {
   const ranked = candidates
     .filter((c) => !notEligible(c, o))
@@ -133,8 +142,10 @@ export function pickQueue(candidates: QueueCandidate[], o: PickOptions): QueueCa
   const picks: QueueCandidate[] = [];
   for (const c of ranked) {
     const key = jobKey(c.company, c.title);
-    const company = c.company.trim().toLowerCase();
-    if (seen.has(key) || (perCompany.get(company) || 0) >= o.settings.perCompany) continue;
+    const company = companyOf(c);
+    const today = perCompany.get(company) || 0;
+    if (seen.has(key) || today >= o.settings.perCompany) continue;
+    if ((o.appliedPerCompany.get(company) || 0) + today >= PER_COMPANY) continue;
     seen.add(key);
     perCompany.set(company, (perCompany.get(company) || 0) + 1);
     picks.push(c);
@@ -235,7 +246,11 @@ export async function loadAutopilot(supabase: SupabaseClient, userId: string) {
     applied: rows
       .filter((r) => r.status === 'applied' && (!r.applied_at || Date.parse(r.applied_at) >= since))
       .map((r) => ({ company: company(r), title: r.jobs.title })),
+    appliedPerCompany: new Map<string, number>(),
   };
+  for (const c of candidates)
+    if (c.status === 'applied')
+      options.appliedPerCompany.set(companyOf(c), (options.appliedPerCompany.get(companyOf(c)) || 0) + 1);
   return { settings, cities, candidates, options, tailoredByJob };
 }
 

@@ -202,6 +202,18 @@ export async function adoptPage(
   return job;
 }
 
+/** A job board's link led to the employer's page in your browser: RADAR keeps it. Returns the page's host. */
+export async function reportLanded(api: Api, matchId: string, url: string): Promise<string | null> {
+  const res = await api('/api/apply/landed', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ matchId, url }),
+  }).catch(() => null);
+  if (!res?.ok) return null;
+  const d = (await res.json().catch(() => ({}))) as { host?: string };
+  return d.host ?? null;
+}
+
 /** Remember an answer you gave in the extension's panel: every later form that asks the same question gets it. */
 export async function rememberAnswer(api: Api, question: string, answer: string): Promise<void> {
   await api('/api/settings/learn', {

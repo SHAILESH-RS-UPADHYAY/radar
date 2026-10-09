@@ -8,6 +8,7 @@ import { loadSettingsProfile, splitList } from '@/lib/profile';
 import { resumeProblem } from '@/lib/validate';
 
 export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
 
 const fail = (error: string, status: number) => NextResponse.json({ error }, { status });
 

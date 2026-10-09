@@ -72,8 +72,8 @@ export default function ArchitecturePage() {
             <div className="grid items-center gap-3 lg:grid-cols-[1fr_auto_1.35fr_auto_1fr] lg:gap-4">
               <div className="space-y-3">
                 <p className="font-mono text-[10px] tracking-[0.3em] text-dim">TRIGGERS</p>
-                <Node title="GITHUB ACTIONS" sub="every 6h · 15 */6 * * *" />
-                <Node title="VERCEL CRON" sub="daily · discover 01:30 · pipeline 02:30 · autopilot 03:30" />
+                <Node title="VERCEL CRON" sub="every 6h · pipeline 02:30 · 08:30 · 14:30 · 20:30, autopilot +1h" />
+                <Node title="GITHUB ACTIONS" sub="on demand · the same three routes" />
               </div>
               <Flow label="BEARER" />
               <div>
@@ -156,7 +156,7 @@ export default function ArchitecturePage() {
               ],
               [
                 'after',
-                '/api/cron/autopilot re-checks Vault postings, reads linked Gmail inboxes and runs auto-OVERCLOCK within its daily cap.',
+                '/api/cron/autopilot re-checks the postings in every Vault and Discovery list, brings back reopened ones, reads linked Gmail inboxes and runs auto-OVERCLOCK within its daily cap.',
               ],
             ]}
           />

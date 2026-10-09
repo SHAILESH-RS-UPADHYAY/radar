@@ -12,6 +12,7 @@ import { completeJson, unfence } from '@/lib/ai/tailor';
 import type { FormField } from './form';
 import { learnKey } from '@/lib/validate';
 import { humanize, STOCK_PHRASES, type HumanizeReport } from './humanize';
+import { locatedInIndia } from '@/lib/geo/city-companies';
 
 export interface Candidate {
   fullName: string;
@@ -70,11 +71,21 @@ const pickOption = (options: string[] | undefined, wanted: string): string => {
 };
 const yesNo = (options: string[] | undefined, v: '' | 'yes' | 'no') => (v ? pickOption(options, v) : '');
 
+/**
+ * Whether you need visa sponsorship for this job: yes for a job abroad, no for one in India, and your Application
+ * Kit's answer when the posting does not say where (remote, unstated). Pure.
+ */
+export function sponsorshipFor(location: string | null | undefined, kit: '' | 'yes' | 'no'): '' | 'yes' | 'no' {
+  const india = locatedInIndia(location);
+  return india === false ? 'yes' : india === true ? 'no' : kit;
+}
+
 /** A fact from your profile for one field, or null when the profile does not say. Pure, for tests. */
 export function fillFromProfile(
   field: FormField,
   c: Candidate,
   resumeText: string,
+  job: { location?: string | null } = {},
 ): Pick<FilledField, 'value' | 'note'> | null {
   const label = (field.label + ' ' + field.name).toLowerCase();
   const text = (value: string) => (value ? { value } : null);
@@ -82,6 +93,15 @@ export function fillFromProfile(
   const [first, ...rest] = c.fullName.trim().split(/\s+/);
 
   if (field.type === 'file') return /cover/.test(label) ? null : { value: 'resume.pdf', note: 'your resume PDF' };
+  // Sponsorship depends on where the job is, so it outranks an answer taught on another form.
+  if (/sponsor/.test(label)) {
+    const need = sponsorshipFor(job.location, c.needsSponsorship);
+    if (!need) return null;
+    const value = field.options?.length ? yesNo(field.options, need) : need === 'yes' ? 'Yes' : 'No';
+    return value
+      ? { value, note: need === 'yes' ? 'a job abroad: sponsorship needed' : 'no sponsorship needed' }
+      : null;
+  }
   // A question you answered on an earlier form: your own words, before any rule or the AI.
   const taught = c.learned?.[learnKey(field.label)];
   if (taught) {
@@ -99,7 +119,6 @@ export function fillFromProfile(
   if (/\b(website|personal site|blog)\b/.test(label)) return text(c.website || c.portfolio);
 
   if (field.type === 'select' || field.type === 'multiselect') {
-    if (/sponsor/.test(label)) return option(yesNo(field.options, c.needsSponsorship));
     if (/relocat/.test(label) && c.willingToRelocate === 'yes') return option(pickOption(field.options, 'yes'));
     const eeo: [RegExp, string][] = [
       [/\bgender\b/, c.gender],
@@ -181,7 +200,7 @@ export async function answerForm(
 ): Promise<{ fields: FilledField[]; model: string | null; aiError: string | null; humanized: HumanizeReport | null }> {
   const filled: FilledField[] = fields.map((f) => {
     if (YOUR_CALL.test(f.label)) return { ...f, value: '', by: 'you', note: 'a legal consent: your decision' };
-    const fact = fillFromProfile(f, c, ctx.resumeText);
+    const fact = fillFromProfile(f, c, ctx.resumeText, ctx.job);
     if (fact && (Array.isArray(fact.value) ? fact.value.length : fact.value)) return { ...f, ...fact, by: 'profile' };
     return { ...f, value: '', by: 'you' };
   });
@@ -200,7 +219,9 @@ export async function answerForm(
     c.skills.length ? `SKILLS: ${c.skills.join(', ')}` : '',
     c.city ? `BASED IN: ${c.city}` : '',
     c.workAuthorization ? `WORK AUTHORIZATION: ${c.workAuthorization}` : '',
-    c.needsSponsorship ? `NEEDS VISA SPONSORSHIP: ${c.needsSponsorship}` : '',
+    sponsorshipFor(ctx.job.location, c.needsSponsorship)
+      ? `NEEDS VISA SPONSORSHIP FOR THIS JOB: ${sponsorshipFor(ctx.job.location, c.needsSponsorship)}`
+      : '',
     c.willingToRelocate ? `WILLING TO RELOCATE: ${c.willingToRelocate}` : '',
     c.noticePeriod ? `NOTICE PERIOD: ${c.noticePeriod}` : '',
     c.expectedCtc ? `EXPECTED PAY: ${c.expectedCtc} ${c.currency}` : '',

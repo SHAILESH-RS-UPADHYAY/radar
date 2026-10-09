@@ -4,6 +4,7 @@ import { auth } from '@clerk/nextjs/server';
 import { z } from 'zod';
 import { createServerClient } from '@/lib/supabase/client';
 import { employerFromPage, findsCompanyId } from '@/lib/apply/adopt';
+import { serverError } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
   try {
     companyId = await findsCompanyId(supabase);
   } catch (err) {
-    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+    return serverError('API /apply/adopt', err);
   }
 
   const employer = employerFromPage(url, page.siteName, page.title);
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
     )
     .select('id')
     .single();
-  if (jobError) return NextResponse.json({ error: jobError.message }, { status: 500 });
+  if (jobError) return serverError('API /apply/adopt', jobError);
 
   // An existing match keeps its status: opening a page you already applied from must not undo that.
   const { data: had } = await supabase
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
       .insert({ user_id: userId, job_id: job.id, score: 0, section: 'recommended', status: 'saved' })
       .select('id')
       .single();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) return serverError('API /apply/adopt', error);
     matchId = match.id;
   }
   return NextResponse.json({ matchId, company: employer, title });

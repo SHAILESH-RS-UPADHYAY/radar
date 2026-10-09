@@ -230,14 +230,14 @@ export function classifyEmail(subject: string, snippet: string, body = ''): Mail
   return RULES.slice(2).find(([, re]) => re.test(head))?.[0] ?? null;
 }
 
-// Mail sent by an applicant-tracking system, or about an application, can open one in C2 · OPS. A newsletter that
-// says "thank you for your interest" cannot.
+// Mail sent by an applicant-tracking system, or that speaks of an application, can open one in C2 · OPS. A newsletter
+// that says "thank you for your interest", or offers a "free skills assessment", cannot.
 const ATS_MAIL =
   /@([a-z0-9-]+\.)*(greenhouse(-mail)?\.io|lever\.co|hire\.lever\.co|ashbyhq\.com|myworkday(jobs)?\.com|workday\.com|smartrecruiters\.com|workablemail\.com|workable\.com|icims\.com|jobvite\.com|teamtailor(-mail)?\.com|recruitee\.com|bamboohr\.com|breezy(mail)?\.(hr|com)|personio\.(de|com)|rippling\.com|dover\.com|gem\.com|successfactors\.(com|eu)|taleo\.net|oraclecloud\.com|linkedin\.com|indeed\.com|indeedemail\.com|wellfound\.com|naukri\.com|instahyre\.com)>?\s*$/i;
-const ABOUT_APPLYING = /\b(appl(y|ying|ied|ication)|candidacy|interview|offer|assessment)\b/i;
+const ABOUT_APPLYING = /\b(appl(y|ying|ied|ication)|candidacy)\b/i;
 
-export const isRecruitingMail = (from: string, subject: string) =>
-  ATS_MAIL.test(from.trim()) || ABOUT_APPLYING.test(subject);
+/** Whether mail can open an application: sent by an ATS, or its subject or first lines speak of applying. */
+export const isRecruitingMail = (from: string, text: string) => ATS_MAIL.test(from.trim()) || ABOUT_APPLYING.test(text);
 
 const ROLE_WORDS =
   /\b(recruit(ing|ment|er)?|talent( acquisition)?|careers?|hiring( team)?|team|hr|jobs?|people( ops)?|notifications?|no-?reply|do-?not-?reply|via \w+)\b/gi;
@@ -487,7 +487,9 @@ export async function syncGmail(supabase: SupabaseClient, userId: string): Promi
       const role = roleFromMail(subject, body);
       let app = matchApplication([from, subject, msg.snippet].join('\n'), apps, role);
       if (!app) {
-        const company = isRecruitingMail(from, subject) ? employerFromMail(from, subject) : null;
+        const company = isRecruitingMail(from, subject + '\n' + (msg.snippet || ''))
+          ? employerFromMail(from, subject)
+          : null;
         if (!company) continue;
         app = await openApplication(supabase, userId, {
           company,

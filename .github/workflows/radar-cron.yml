@@ -1,12 +1,11 @@
 name: RADAR pipeline
-# Every 6 hours (Vercel Hobby cron runs each route only once a day):
+# Runs the whole loop once, on demand (Actions → RADAR pipeline → Run workflow). The 6-hour loop itself runs on
+# Vercel Cron (vercel.json: every route four times a day), so this is the manual trigger and the fallback:
 #   discover  → StartupMap (48h cadence, resumes each run) + your imports → their ATS boards
-#   cron      → scrape every tracked feed → match → verified 80%+ into the Vault
-#   autopilot → re-check Vault postings, Gmail replies, auto-OVERCLOCK
+#   cron      → scrape every tracked feed and your job-alert emails → match → verified 80%+ into the Vault
+#   autopilot → re-check open postings, Gmail replies, auto-OVERCLOCK
 # Needs repo secrets: RADAR_URL (e.g. https://your-app.vercel.app) and CRON_SECRET.
 on:
-  schedule:
-    - cron: '15 */6 * * *'
   workflow_dispatch:
 
 jobs:

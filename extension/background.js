@@ -68,7 +68,11 @@ async function inject(tabId, frameId) {
     if (frame && NEVER.test(frame.url)) return;
     if (frameId === 0 && frame && AGGREGATOR.test(frame.url)) {
       const [{ result: href }] = await chrome.scripting.executeScript({ target: { tabId }, func: boardApplyLink });
-      if (href && /^https:/.test(href) && href !== frame.url) await chrome.tabs.update(tabId, { url: href });
+      if (href && /^https:/.test(href) && href !== frame.url) {
+        // Where the board's link ends up is told to RADAR on arrival (see onCompleted), so next time it opens there.
+        await update(tabId, { fromBoard: true });
+        await chrome.tabs.update(tabId, { url: href });
+      }
       return;
     }
     await chrome.scripting.executeScript({
@@ -81,7 +85,13 @@ async function inject(tabId, frameId) {
 }
 
 chrome.webNavigation.onCompleted.addListener(async ({ tabId, frameId, url }) => {
-  if (!/^https?:/.test(url) || !(await read(tabId))) return;
+  const entry = /^https?:/.test(url) ? await read(tabId) : null;
+  if (!entry) return;
+  // Arrived from a job board's link (the redirects in between never complete): the employer's page, for RADAR.
+  if (frameId === 0 && entry.fromBoard && !AGGREGATOR.test(url)) {
+    await update(tabId, { fromBoard: false });
+    if (entry.matchId && entry.radarTab) tellRadar(entry, { type: 'landed', url });
+  }
   if (frameId === 0 || FORM_FRAME.test(url)) inject(tabId, frameId);
 });
 

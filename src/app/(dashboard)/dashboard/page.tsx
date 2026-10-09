@@ -7,8 +7,8 @@ import { UserButton, useUser } from '@clerk/nextjs';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useApi } from '@/lib/use-api';
 import { onExtension, useExtension } from '@/lib/extension';
-import { adoptPage, answerPageQuestions, oneClickApply, rememberAnswer } from '@/lib/apply/client';
-import type { MatchStatus, Stage } from '@/types';
+import { adoptPage, answerPageQuestions, oneClickApply, rememberAnswer, reportLanded } from '@/lib/apply/client';
+import { PER_COMPANY, type MatchStatus, type Stage } from '@/types';
 
 type OpsLane = Stage | 'closed' | 'attention';
 /** Each lane's colour: APPLIED is cyan, the pipeline warms up towards OFFER. */
@@ -28,15 +28,14 @@ import { Toast, type Notice } from '@/components/hud/Toast';
 import { OpsCard } from '@/components/dashboard/OpsCard';
 import { DiscoveryCard } from '@/components/dashboard/DiscoveryCard';
 import { VaultCard } from '@/components/dashboard/VaultCard';
-import { VaultFiltersBar } from '@/components/dashboard/VaultFiltersBar';
+import { FilterRail, QueryBar, useStoredFilters } from '@/components/dashboard/SignalFilters';
 import {
   DEFAULT_FILTERS,
   LANES,
-  applyVaultFilters,
-  parseFilters,
-  vaultFacets,
+  applyFilters,
+  companyKey,
+  signalFacets,
   type StatedExperience,
-  type VaultFilters,
 } from '@/lib/vault-filters';
 import { OverclockCard } from '@/components/dashboard/OverclockCard';
 import { RunPanel } from '@/components/dashboard/RunPanel';
@@ -75,6 +74,7 @@ interface VaultSettings {
 
 const PLACE_KEY = 'radar:place';
 const VAULT_FILTERS_KEY = 'radar:vault-filters';
+const DISCOVERY_FILTERS_KEY = 'radar:discovery-filters';
 const LEGACY_CITY_FILTER_KEY = 'radar:only-my-cities';
 const STALE_MS = 48 * 3600_000;
 
@@ -172,7 +172,10 @@ export default function DashboardPage() {
   const [scanNote, setScanNote] = useState('');
   const [notice, setNotice] = useState<Notice | null>(null);
   const [vaultSettings, setVaultSettings] = useState<VaultSettings | null>(null);
-  const [vaultFilters, setVaultFilters] = useState<VaultFilters>(DEFAULT_FILTERS);
+  const [vaultFilters, setVaultFilters] = useStoredFilters(VAULT_FILTERS_KEY);
+  const [discoveryFilters, setDiscoveryFilters] = useStoredFilters(DISCOVERY_FILTERS_KEY);
+  // Discovery roles the server held back per company: past its share, or two applications there.
+  const [heldBack, setHeldBack] = useState<Record<string, number>>({});
   const [vaultExp, setVaultExp] = useState<Record<string, StatedExperience>>({});
   const [primaryTab, setPrimaryTab] = useState<PrimaryTab>('DISCOVERY');
   const [activeTab, setActiveTab] = useState<Section>('recommended');
@@ -310,6 +313,7 @@ export default function DashboardPage() {
         return;
       }
       setMatches(data.matches || []);
+      setHeldBack(data.heldBack || {});
       setVaultSettings(data.settings || null);
       setOpsReady(data.opsReady !== false);
       const at: string | null = data.pipelineRunAt ?? null;
@@ -368,34 +372,6 @@ export default function DashboardPage() {
       // storage unavailable: the choice still applies for this visit
     }
   };
-
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(VAULT_FILTERS_KEY);
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- restoring saved filters after mount
-      if (stored) setVaultFilters(parseFilters(stored));
-    } catch {
-      // storage unavailable
-    }
-  }, []);
-
-  const updateVaultFilters = useCallback((next: VaultFilters) => {
-    setVaultFilters(next);
-    try {
-      localStorage.setItem(VAULT_FILTERS_KEY, JSON.stringify(next));
-    } catch {
-      // storage unavailable
-    }
-  }, []);
-
-  const resetVaultFilters = useCallback(() => {
-    setVaultFilters(DEFAULT_FILTERS);
-    try {
-      localStorage.removeItem(VAULT_FILTERS_KEY);
-    } catch {
-      // storage unavailable
-    }
-  }, []);
 
   const fetchVaultExp = useCallback(async () => {
     try {
@@ -548,13 +524,19 @@ export default function DashboardPage() {
   const saved = shown
     .filter((m) => m.status === 'saved' && m.job.is_active && !(m.auto_saved && m.score < bar))
     .sort((a, b) => sunk(a) - sunk(b) || byScore(a, b));
-  const facets = vaultFacets(saved, vaultFilters, vaultExp);
-  const filteredSaved = applyVaultFilters(saved, vaultFilters, vaultExp);
+  const laneCounts = signalFacets(saved, vaultFilters, vaultExp).lanes;
+  const filteredSaved = applyFilters(saved, vaultFilters, vaultExp);
   const today = todaysTen(saved, undefined, sunk);
   const archived = applied.filter((m) => CLOSED_STAGES.includes(m.stage || 'applied'));
   const activeOps = applied.filter((m) => !CLOSED_STAGES.includes(m.stage || 'applied'));
-  const needsAttention = activeOps.filter((m) => opsSignals(m).length > 0).length;
-  const discovery = available.filter((m) => m.section === activeTab).sort(byScore);
+  const inLane = available.filter((m) => m.section === activeTab).sort(byScore);
+  const discovery = applyFilters(inLane, discoveryFilters);
+  // Companies whose other roles Discovery holds back, most first, and how often you applied to each.
+  const appliedPerCompany = applied.reduce(
+    (count, m) => count.set(companyKey(m.job.company.name), (count.get(companyKey(m.job.company.name)) || 0) + 1),
+    new Map<string, number>(),
+  );
+  const heldList = Object.entries(heldBack).sort((a, b) => b[1] - a[1]);
   const candidates = shown
     .filter(
       (m) =>
@@ -630,6 +612,12 @@ export default function DashboardPage() {
         void rememberAnswer(api, e.question, e.answer);
         setNotice({ tone: 'ok', text: `RADAR learned your answer to "${e.question.slice(0, 60)}".` });
       }
+      // A job board's link led to the employer: from now on HACK opens (and reads ahead) that page directly.
+      if (e.type === 'landed' && e.url)
+        void reportLanded(api, e.matchId, e.url).then(
+          (host) =>
+            host && setNotice({ tone: 'info', text: `This job applies on ${host}. RADAR opens it there from now on.` }),
+        );
       if (e.type === 'launched' && !e.ok)
         setNotice({ tone: 'alert', text: 'The extension could not open the form: ' + e.error });
       if (e.type === 'filled' && runMatch?.id !== e.matchId)
@@ -877,6 +865,15 @@ export default function DashboardPage() {
                   </div>
                 </HudPanel>
 
+                {inLane.length > 0 && (
+                  <FilterRail
+                    list={inLane}
+                    filters={discoveryFilters}
+                    onChange={setDiscoveryFilters}
+                    label="FILTER://DISCOVERY"
+                  />
+                )}
+
                 <HudPanel
                   label="FILTER://LOCATION"
                   status={placeLabel}
@@ -994,6 +991,32 @@ export default function DashboardPage() {
                   ))}
                 </HudPanel>
 
+                {heldList.length > 0 && (
+                  <HudPanel label="CAP://PER COMPANY" status={PER_COMPANY + ' MAX'} tone="info" bodyClassName="p-5">
+                    <p className="text-sm leading-relaxed text-dim">
+                      One employer never floods this list: each shows its best {PER_COMPANY} roles, one fewer per
+                      application you sent there, none after {PER_COMPANY}.
+                    </p>
+                    <ul className="mt-4 space-y-1.5 font-mono text-[11px]">
+                      {heldList.slice(0, 8).map(([company, count]) => {
+                        const sent = appliedPerCompany.get(company) || 0;
+                        return (
+                          <li key={company} className="flex items-baseline justify-between gap-3">
+                            <span className="truncate capitalize text-ink/85">{company}</span>
+                            <span
+                              className={
+                                'shrink-0 tabular-nums ' + (sent >= PER_COMPANY ? 'text-hud-amber' : 'text-dim')
+                              }
+                            >
+                              {sent >= PER_COMPANY ? `APPLIED ×${sent}` : `+${count} HELD`}
+                            </span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </HudPanel>
+                )}
+
                 <div className="hidden lg:block">{tunePanel}</div>
               </aside>
 
@@ -1002,13 +1025,22 @@ export default function DashboardPage() {
                   New matches from the latest scan in the {SECTIONS.find((s) => s.key === activeTab)?.label} lane,
                   strongest first.
                 </PageTitle>
+                {!loading && inLane.length > 0 && (
+                  <QueryBar
+                    filters={discoveryFilters}
+                    scope="discovery"
+                    shown={discovery.length}
+                    total={inLane.length}
+                    onChange={setDiscoveryFilters}
+                  />
+                )}
                 {loading ? (
                   <div className="space-y-3" aria-busy="true">
                     {[0, 1, 2].map((i) => (
                       <div key={i} className="h-40 animate-pulse border border-phosphor/10 bg-phosphor/[0.03]" />
                     ))}
                   </div>
-                ) : discovery.length === 0 ? (
+                ) : inLane.length === 0 ? (
                   <EmptyState
                     label={'SIGNAL://' + activeTab.toUpperCase()}
                     title="No active signals."
@@ -1022,6 +1054,22 @@ export default function DashboardPage() {
                       >
                         TUNE PROFILE
                       </Link>
+                    </div>
+                  </EmptyState>
+                ) : discovery.length === 0 ? (
+                  <EmptyState
+                    label="SIGNAL://FILTERED"
+                    title="No signals match your filters."
+                    body="Drop a filter in the bar above, or clear them all."
+                  >
+                    <div className="mt-8 flex justify-center">
+                      <button
+                        type="button"
+                        onClick={() => setDiscoveryFilters(DEFAULT_FILTERS)}
+                        className="border border-phosphor/40 px-4 py-2 font-mono text-[11px] font-bold tracking-[0.2em] text-phosphor hover:bg-phosphor/10"
+                      >
+                        RESET FILTERS
+                      </button>
                     </div>
                   </EmptyState>
                 ) : (
@@ -1057,12 +1105,12 @@ export default function DashboardPage() {
                   <div className="grid grid-cols-3 lg:grid-cols-1">
                     {LANES.map((lane) => {
                       const active = vaultFilters.lane === lane.key;
-                      const count = facets.lanes[lane.key] ?? 0;
+                      const count = laneCounts[lane.key] ?? 0;
                       return (
                         <button
                           key={lane.key}
                           type="button"
-                          onClick={() => updateVaultFilters({ ...vaultFilters, lane: lane.key })}
+                          onClick={() => setVaultFilters({ ...vaultFilters, lane: lane.key })}
                           aria-pressed={active}
                           className={
                             'relative flex flex-col gap-0.5 border-phosphor/10 px-4 py-3.5 text-left transition-colors max-lg:border-r max-lg:last:border-r-0 lg:flex-row lg:items-center lg:justify-between lg:border-b lg:last:border-b-0 ' +
@@ -1095,6 +1143,16 @@ export default function DashboardPage() {
                     })}
                   </div>
                 </HudPanel>
+
+                {saved.length > 0 && (
+                  <FilterRail
+                    list={saved}
+                    stated={vaultExp}
+                    filters={vaultFilters}
+                    onChange={setVaultFilters}
+                    label="FILTER://VAULT"
+                  />
+                )}
 
                 <HudPanel label="VAULT://STATUS" status={autoVault ? 'AUTO' : 'MANUAL'} bodyClassName="p-5">
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-5 font-mono">
@@ -1146,13 +1204,12 @@ export default function DashboardPage() {
                 </PageTitle>
 
                 {saved.length > 0 && (
-                  <VaultFiltersBar
+                  <QueryBar
                     filters={vaultFilters}
-                    facets={facets}
+                    scope="vault"
+                    shown={filteredSaved.length}
                     total={saved.length}
-                    filteredCount={filteredSaved.length}
-                    onChange={updateVaultFilters}
-                    onReset={resetVaultFilters}
+                    onChange={setVaultFilters}
                   />
                 )}
 
@@ -1171,7 +1228,7 @@ export default function DashboardPage() {
                     <div className="mt-8 flex justify-center">
                       <button
                         type="button"
-                        onClick={resetVaultFilters}
+                        onClick={() => setVaultFilters(DEFAULT_FILTERS)}
                         className="border border-phosphor/40 px-4 py-2 font-mono text-[11px] font-bold tracking-[0.2em] text-phosphor hover:bg-phosphor/10"
                       >
                         RESET FILTERS

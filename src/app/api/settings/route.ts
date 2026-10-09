@@ -6,6 +6,7 @@ import { normalizeSkill } from '@/lib/scraper/utils';
 import { loadSettingsProfile } from '@/lib/profile';
 import { isSchemaMissing } from '@/lib/supabase/errors';
 import { cleanKit, cleanPortfolio, MAX_DREAM_COMPANIES } from '@/lib/validate';
+import { serverError } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,7 @@ export async function GET() {
       .map((c) => c!.name);
     return NextResponse.json({ profile, dreamCompanies });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+    return serverError('API /settings', err);
   }
 }
 
@@ -107,7 +108,7 @@ export async function PATCH(req: Request) {
           },
           { status: 503 },
         );
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      if (error) return serverError('API /settings', error);
     }
 
     if (dream) {
@@ -117,12 +118,12 @@ export async function PATCH(req: Request) {
         const { error } = await supabase
           .from('user_dream_companies')
           .insert(ids.map((company_id) => ({ user_id: userId, company_id })));
-        if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+        if (error) return serverError('API /settings', error);
       }
     }
     // Echo the saved profile so the page shows exactly what was stored (e.g. normalised skills).
     return NextResponse.json({ ok: true, profile: await loadSettingsProfile(supabase, userId) });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 });
+    return serverError('API /settings', err);
   }
 }

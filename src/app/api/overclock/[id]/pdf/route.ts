@@ -5,6 +5,7 @@ import { isSchemaMissing } from '@/lib/supabase/errors';
 import { isUuid } from '@/lib/validate';
 import { MIGRATION_HINT, pdfFileName, toView } from '@/lib/overclock';
 import { renderResumePdf } from '@/lib/resume-pdf';
+import { serverError } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -22,7 +23,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
     .eq('id', id)
     .maybeSingle();
   if (isSchemaMissing(error)) return NextResponse.json({ error: MIGRATION_HINT }, { status: 503 });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverError('API /overclock/[id]/pdf', error);
   if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const view = toView(data);

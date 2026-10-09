@@ -41,7 +41,7 @@ src/lib/discovery/startupmap.ts   sitemap · /jobs/<city>/engineering (your citi
 src/lib/discovery/ats.ts          link → board: Ashby · Greenhouse · Lever · Workable · Teamtailor · Workday …
 src/lib/discovery/run.ts          48h cadence · queue with retries · verifies guesses · links to `companies`
 src/lib/discovery/targets.ts      your imports: a CSV (e.g. FundedStartupsDaily's export) or pasted websites
-/api/cron/discover                runs it: 01:30 UTC daily + every 6h
+/api/cron/discover                runs it: 01:30 UTC daily
 ```
 
 ---
@@ -126,9 +126,10 @@ gaps and projects the new score with the same scorer as a scan. Pick any provide
 automatic fallback:
 
 ```bash
-AI_PROVIDER=gemini            # anthropic | gemini | grok — who writes first
+AI_PROVIDER=gemini            # gemini | groq | anthropic | grok — who writes first
+GEMINI_API_KEY=…              # free tier on a no-billing AI Studio project; GEMINI_MODEL (default gemini-3.8-flash)
+GROQ_API_KEY=…                # free plan; GROQ_MODEL (default openai/gpt-oss-120b)
 ANTHROPIC_API_KEY=…           # optional ANTHROPIC_MODEL (default claude-opus-5)
-GEMINI_API_KEY=…              # optional GEMINI_MODEL    (default gemini-3.1-pro-preview, then 3.8-flash)
 XAI_API_KEY=…                 # optional XAI_MODEL       (default grok-4.7)
 ```
 
@@ -233,13 +234,14 @@ In **Vercel → Settings → Environment Variables** (Production), paste values 
 | `NEXT_PUBLIC_SUPABASE_URL` · `NEXT_PUBLIC_SUPABASE_ANON_KEY` · `SUPABASE_SERVICE_ROLE_KEY` | ✅          | Supabase → Project Settings → API                                                |
 | `PINECONE_API_KEY`                                                                         | ✅          | app.pinecone.io (the same key that works locally)                                |
 | `CRON_SECRET`                                                                              | ✅          | any long random string (`openssl rand -hex 32`); without it every run is refused |
-| `AI_PROVIDER` + `ANTHROPIC_API_KEY` / `GEMINI_API_KEY` / `XAI_API_KEY`                     | OVERCLOCK   | at least one key; the others become fallbacks                                    |
+| `AI_PROVIDER` + `GEMINI_API_KEY` / `GROQ_API_KEY` / `ANTHROPIC_API_KEY` / `XAI_API_KEY`    | AI          | at least one key (Gemini Flash and Groq are free); the others become fallbacks   |
 | `GOOGLE_CLIENT_ID` · `GOOGLE_CLIENT_SECRET` · `GMAIL_TOKEN_KEY`                            | Gmail link  | Google Cloud OAuth (redirect `https://<domain>/api/gmail/callback`)              |
 | `NEXT_PUBLIC_SITE_URL`                                                                     | recommended | your public URL                                                                  |
 | `ADZUNA_APP_ID` · `ADZUNA_APP_KEY` · `JOOBLE_API_KEY`                                      | optional    | more job-board reach                                                             |
 
-- **Crons:** `vercel.json` runs all three routes daily. For every 6h, add the GitHub secrets `RADAR_URL` and
-  `CRON_SECRET`.
+- **Crons:** `vercel.json` runs the loop every 6 hours: `/api/cron` at 02:30, 08:30, 14:30, 20:30 UTC and
+  `/api/cron/autopilot` an hour after each; `/api/cron/discover` daily. `.github/workflows/radar-cron.yml` runs it on
+  demand (secrets `RADAR_URL`, `CRON_SECRET`).
 - **Clerk:** sign-in URLs are set in code. For a login that never hops through `*.clerk.accounts.dev`, use a Clerk
   production instance on your own domain.
 - **Health:** `GET /api/health` shows `pipeline.stale: false` when the loop is alive.

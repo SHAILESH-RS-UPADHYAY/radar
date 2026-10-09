@@ -9,6 +9,7 @@ import { loadSettingsProfile, splitList } from '@/lib/profile';
 import { applicationFormUrl, readApplicationForm, type ApplicationForm } from '@/lib/apply/form';
 import { answerForm, type Candidate } from '@/lib/apply/answers';
 import { resumeToText, type TailorOutput } from '@/lib/ai/tailor';
+import { serverError } from '@/lib/api';
 
 // Drafting plus HUMANIZE's validate → fix rounds on a slow model can take a few minutes.
 export const maxDuration = 300;
@@ -56,7 +57,7 @@ export async function POST(req: NextRequest) {
     supabase.from('user_profiles').select('resume_text').eq('id', userId).maybeSingle(),
     currentUser(),
   ]);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverError('API /apply/prepare', error);
   if (!match || !profile) return NextResponse.json({ error: 'Match not found' }, { status: 404 });
   const job = (Array.isArray(match.jobs) ? match.jobs[0] : match.jobs) as any;
   const company = Array.isArray(job.companies) ? job.companies[0] : job.companies;

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applicationFormUrl, parseGreenhouseForm, parseLeverForm } from './form';
-import { answerForm, fillFromProfile, YOUR_CALL, type Candidate } from './answers';
+import { answerForm, fillFromProfile, sponsorshipFor, YOUR_CALL, type Candidate } from './answers';
 import { fillPacket } from './bridge';
 
 // Shapes copied from live postings (Greenhouse ?questions=true, a Lever apply page), cut down.
@@ -162,6 +162,39 @@ describe('fillFromProfile', () => {
     expect(YOUR_CALL.test('Please double-check the information above and confirm it is accurate')).toBe(true);
     expect(fillFromProfile(field('location', 'Current location'), me, '')?.value).toBe('Bengaluru');
     expect(fillFromProfile(field('q', 'What is your preferred work location?'), me, '')).toBeNull();
+  });
+});
+
+describe('visa sponsorship', () => {
+  const field = (name: string, label: string, type: string, options?: string[]) =>
+    ({ name, label, type, required: false, ...(options ? { options } : {}) }) as Parameters<typeof fillFromProfile>[0];
+  const ask = (type: 'select' | 'text', location: string | null, kit = me) =>
+    fillFromProfile(
+      field(
+        'q',
+        'Will you now or in the future require visa sponsorship?',
+        type,
+        type === 'select' ? ['Yes', 'No'] : undefined,
+      ),
+      kit,
+      '',
+      { location },
+    )?.value;
+
+  it('answers yes for a job abroad and no for one in India, on dropdowns and text boxes', () => {
+    expect(ask('select', 'London, United Kingdom')).toBe('Yes');
+    expect(ask('select', 'Toronto, ON (Hybrid)')).toBe('Yes');
+    expect(ask('text', 'Remote - US')).toBe('Yes');
+    expect(ask('select', 'Bengaluru, Karnataka, India')).toBe('No');
+    expect(ask('text', 'Gurgaon')).toBe('No');
+  });
+
+  it('falls back to your Application Kit when the posting does not say where, and beats a taught answer', () => {
+    expect(ask('select', 'Remote')).toBe('No');
+    expect(ask('select', null, { ...me, needsSponsorship: '' })).toBeUndefined();
+    const taught = { ...me, learned: { 'will you now or in the future require visa sponsorship': 'No' } };
+    expect(ask('select', 'Berlin, Germany', taught)).toBe('Yes');
+    expect(sponsorshipFor('Singapore', '')).toBe('yes');
   });
 });
 

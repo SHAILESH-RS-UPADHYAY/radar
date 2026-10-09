@@ -106,6 +106,7 @@ describe('mail from an application RADAR never saw', () => {
     expect(isRecruitingMail('Cohere Talent <no-reply@ashbyhq.com>', 'Thank you for your interest')).toBe(true);
     expect(isRecruitingMail('Acme <news@acme.com>', 'Your application was received')).toBe(true);
     expect(isRecruitingMail('Acme <news@acme.com>', 'Thank you for your interest in our webinar')).toBe(false);
+    expect(isRecruitingMail('Coursera <no-reply@coursera.org>', 'Take a free skills assessment')).toBe(false);
   });
 });
 

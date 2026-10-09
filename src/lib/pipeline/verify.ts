@@ -1,20 +1,27 @@
 // ============================
 // RADAR — Is this posting still open?
 // ============================
-// Company ATS feeds are the source of truth: a job that leaves the feed is closed by the next scrape.
-// Job boards are not — they keep listing roles the employer already filled. So before a board job enters
-// your Vault, and every day while it sits there, RADAR opens its apply link and reads the answer.
+// Company ATS feeds are the source of truth: a job that leaves the feed is closed by the scrape (scrape.ts).
+// Job boards are not — they keep listing roles the employer already filled. So before a board job enters a Vault,
+// and every 6 hours while it sits in Discovery or a Vault, RADAR opens its page and reads the answer.
 // Only clear signals mark a job closed; a page RADAR cannot read (blocked, timeout) stays "unknown".
+//
+// Some sources are never opened: search APIs whose terms and rate limits are for the API, not their site (Adzuna,
+// Jooble, JSearch, Google Jobs), and LinkedIn and Indeed, which forbid automated access. Their jobs are judged by
+// their feed or alert (scrape.ts), or by the employer page they lead to once you opened one (`resolved_url`).
+// A match hidden because its posting closed is marked (retired_at), and comes back if the posting reopens.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { BOARD_PROVIDERS } from '@/types';
 import { deleteJobVectors } from '@/lib/ai/embeddings';
 import { mapLimit } from '@/lib/scraper/utils';
 import { politeFetcher, SiteBlockedError, type PoliteFetcher } from '@/lib/discovery/polite';
+import { isSchemaMissing } from '@/lib/supabase/errors';
 
 export type PostingState = 'live' | 'closed' | 'unknown';
 
-const VERIFY_TTL_MS = 24 * 3600_000;
+/** A board job confirmed open this recently is not checked again. */
+export const VERIFY_TTL_MS = 6 * 3600_000;
 
 // What employers and boards show on a filled or removed job.
 const CLOSED_TEXT =
@@ -57,14 +64,56 @@ export async function checkPosting(http: PoliteFetcher, url: string): Promise<Po
   }
 }
 
-// Hacker News posts are comments (always "live"); every other board can list a filled role.
-const CHECKABLE = new Set<string>(BOARD_PROVIDERS.filter((p) => p !== 'hackernews'));
-export const needsLinkCheck = (provider: string | null | undefined) => !!provider && CHECKABLE.has(provider);
+// Boards whose job pages RADAR may open. Hacker News posts are comments (always "live"); the rest are never opened.
+const NEVER_OPENED = new Set([
+  'hackernews',
+  'adzuna',
+  'jooble',
+  'jsearch',
+  'googlejobs',
+  'indeed_email',
+  'linkedin_email',
+]);
+const LINK_CHECKED = new Set<string>(BOARD_PROVIDERS.filter((p) => !NEVER_OPENED.has(p)));
 
-type JobRef = { id: string; apply_url: string; companies: { ats_provider: string } | { ats_provider: string }[] };
+// Pages RADAR never opens, wherever a link led: sites that forbid automated access, and job boards' own pages.
+const NEVER_OPENED_HOSTS =
+  /(^|\.)(linkedin\.com|indeed\.[a-z.]+|adzuna\.[a-z.]+|jooble\.org|glassdoor\.[a-z.]+|naukri\.com|foundit\.in|monsterindia\.com|shine\.com|timesjobs\.com)$/i;
+
+/** Whether RADAR may open this page to check a posting. Pure. */
+export function mayOpen(url: string): boolean {
+  try {
+    return !NEVER_OPENED_HOSTS.test(new URL(url).hostname);
+  } catch {
+    return false;
+  }
+}
+
+export interface CheckableJob {
+  apply_url: string;
+  resolved_url?: string | null;
+}
+
+/**
+ * The page that tells whether a job is open: the employer page a board link led to once you opened it, else the
+ * board's own page where RADAR may open it, else none (the feed decides). Pure.
+ */
+export function checkUrl(job: CheckableJob, provider: string | null | undefined): string | null {
+  if (job.resolved_url && mayOpen(job.resolved_url)) return job.resolved_url;
+  return provider && LINK_CHECKED.has(provider) ? job.apply_url : null;
+}
+
+/** Whether a job is judged by opening a page (true) rather than by its feed. */
+export const needsLinkCheck = (job: CheckableJob, provider: string | null | undefined) => !!checkUrl(job, provider);
+
+type JobRef = CheckableJob & {
+  id: string;
+  verified_at?: string | null;
+  companies: { ats_provider: string } | { ats_provider: string }[];
+};
 const providerOf = (j: JobRef) => (Array.isArray(j.companies) ? j.companies[0] : j.companies)?.ats_provider;
 
-/** Record checks. `verified_at` arrives with migration 007; before it, closing jobs still works. */
+/** Record checks: confirmed-open jobs get verified_at; closed ones leave every list and the vector index. */
 export async function recordChecks(supabase: SupabaseClient, live: string[], closed: string[]) {
   if (live.length) {
     const { error } = await supabase.from('jobs').update({ verified_at: new Date().toISOString() }).in('id', live);
@@ -76,43 +125,67 @@ export async function recordChecks(supabase: SupabaseClient, live: string[], clo
   }
 }
 
+const CHUNK = 100;
+
 /**
- * Matches still in Discovery or the Vault whose posting has closed leave both lists (status 'dismissed'), so
- * they stay clean; applied ones stay in C2 · OPS. Runs on every scan: the loop, the autopilot and SCAN NOW.
+ * Matches still in Discovery or a Vault whose posting has closed leave both lists, marked as RADAR's doing
+ * (retired_at, retired_from) so they come back if the posting reopens. Applied ones stay in C2 · OPS.
+ * Runs on every cycle and scan.
  */
 export async function retireClosedMatches(supabase: SupabaseClient, userId?: string): Promise<number> {
   let query = supabase
     .from('match_scores')
-    .select('id, jobs!inner(is_active)')
+    .select('id, status, jobs!inner(is_active)')
     .in('status', ['new', 'saved'])
     .eq('jobs.is_active', false);
   if (userId) query = query.eq('user_id', userId);
   const { data, error } = await query.limit(2000);
-  if (error) console.warn('[VERIFY] closed-match cleanup skipped:', error.message);
-  const ids = (data || []).map((r) => r.id as string);
-  for (let i = 0; i < ids.length; i += 100)
-    await supabase
-      .from('match_scores')
-      .update({ status: 'dismissed' })
-      .in('id', ids.slice(i, i + 100));
-  return ids.length;
+  if (error) {
+    console.warn('[VERIFY] closed-match cleanup skipped:', error.message);
+    return 0;
+  }
+  const now = new Date().toISOString();
+  for (const status of ['new', 'saved'] as const) {
+    const ids = (data || []).filter((r) => r.status === status).map((r) => r.id as string);
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const slice = ids.slice(i, i + CHUNK);
+      const { error: e } = await supabase
+        .from('match_scores')
+        .update({ status: 'dismissed', retired_at: now, retired_from: status })
+        .in('id', slice);
+      // Before migration 012 there is nowhere to mark it: hide it all the same.
+      if (isSchemaMissing(e)) await supabase.from('match_scores').update({ status: 'dismissed' }).in('id', slice);
+    }
+  }
+  return (data || []).length;
 }
 
-/** Board jobs among `ids` that nobody confirmed live in the last 24h. */
-async function unverified(supabase: SupabaseClient, jobs: JobRef[]): Promise<JobRef[]> {
-  const board = jobs.filter((j) => needsLinkCheck(providerOf(j)));
-  if (!board.length) return [];
-  const { data, error } = await supabase
-    .from('jobs')
-    .select('id')
-    .in(
-      'id',
-      board.map((j) => j.id),
-    )
-    .gt('verified_at', new Date(Date.now() - VERIFY_TTL_MS).toISOString());
-  const fresh = new Set(error ? [] : (data || []).map((r) => r.id));
-  return board.filter((j) => !fresh.has(j.id));
+/** Matches RADAR hid whose posting is open again go back where they were (Discovery or the Vault). */
+export async function reviveReopenedMatches(supabase: SupabaseClient, userId?: string): Promise<number> {
+  let query = supabase
+    .from('match_scores')
+    .select('id, retired_from, jobs!inner(is_active)')
+    .eq('status', 'dismissed')
+    .not('retired_at', 'is', null)
+    .eq('jobs.is_active', true);
+  if (userId) query = query.eq('user_id', userId);
+  const { data, error } = await query.limit(2000);
+  if (error) {
+    if (!isSchemaMissing(error)) console.warn('[VERIFY] reopened-match restore skipped:', error.message);
+    return 0;
+  }
+  for (const status of ['new', 'saved'] as const) {
+    const ids = (data || []).filter((r) => (r.retired_from || 'new') === status).map((r) => r.id as string);
+    for (let i = 0; i < ids.length; i += CHUNK)
+      await supabase
+        .from('match_scores')
+        .update({ status, retired_at: null, retired_from: null })
+        .in('id', ids.slice(i, i + CHUNK));
+  }
+  return (data || []).length;
 }
+
+const isStale = (j: JobRef, now: number) => !j.verified_at || now - Date.parse(j.verified_at) > VERIFY_TTL_MS;
 
 async function checkAll(supabase: SupabaseClient, jobs: JobRef[], stopAt: number) {
   const http = politeFetcher({ minIntervalMs: 500, timeoutMs: 8_000 });
@@ -120,7 +193,7 @@ async function checkAll(supabase: SupabaseClient, jobs: JobRef[], stopAt: number
   const closed: string[] = [];
   await mapLimit(jobs, 6, async (j) => {
     if (Date.now() > stopAt) return;
-    const state = await checkPosting(http, j.apply_url);
+    const state = await checkPosting(http, checkUrl(j, providerOf(j))!);
     if (state === 'live') live.push(j.id);
     if (state === 'closed') closed.push(j.id);
   });
@@ -128,9 +201,11 @@ async function checkAll(supabase: SupabaseClient, jobs: JobRef[], stopAt: number
   return { live, closed };
 }
 
+const JOB_REF = 'id, apply_url, resolved_url, verified_at, companies!inner(ats_provider)';
+
 /**
  * Auto-vault gate: of the jobs about to enter a Vault, those whose posting is not known to be closed.
- * Board jobs are checked first (bounded, so a scan stays fast); closed ones are deactivated everywhere.
+ * Link-checked jobs not confirmed open in the last 6 hours are checked first (bounded, so a scan stays fast).
  */
 export async function gateForVault(
   supabase: SupabaseClient,
@@ -138,27 +213,37 @@ export async function gateForVault(
   { max = 15, budgetMs = 12_000 } = {},
 ): Promise<Set<string>> {
   if (!jobIds.length) return new Set();
-  const { data } = await supabase.from('jobs').select('id, apply_url, companies!inner(ats_provider)').in('id', jobIds);
-  const toCheck = (await unverified(supabase, (data || []) as JobRef[])).slice(0, max);
-  const { closed } = await checkAll(supabase, toCheck, Date.now() + budgetMs);
+  const { data } = await supabase.from('jobs').select(JOB_REF).in('id', jobIds);
+  const now = Date.now();
+  const toCheck = ((data || []) as JobRef[])
+    .filter((j) => needsLinkCheck(j, providerOf(j)) && isStale(j, now))
+    .slice(0, max);
+  const { closed } = await checkAll(supabase, toCheck, now + budgetMs);
   const gone = new Set(closed);
   return new Set(jobIds.filter((id) => !gone.has(id)));
 }
 
-/** Daily: re-check every board job sitting in a Vault. Closed ones show POSTING CLOSED there. */
-export async function reverifyVault(supabase: SupabaseClient, deadline: number) {
-  const { data } = await supabase
-    .from('match_scores')
-    .select('jobs!inner(id, apply_url, is_active, companies!inner(ats_provider))')
-    .eq('status', 'saved')
-    .eq('jobs.is_active', true)
-    .limit(1000);
-  const jobs = new Map<string, JobRef>();
-  for (const row of (data || []) as unknown as { jobs: JobRef | JobRef[] }[]) {
-    const j = Array.isArray(row.jobs) ? row.jobs[0] : row.jobs;
-    if (j) jobs.set(j.id, j);
-  }
-  const toCheck = (await unverified(supabase, [...jobs.values()])).slice(0, 200);
-  const { live, closed } = await checkAll(supabase, toCheck, deadline);
-  return { checked: live.length + closed.length, closed: closed.length };
+/**
+ * Every cycle: re-check the open postings people can see, Vault first, then Discovery by score, until the
+ * deadline. Each is checked at most once per VERIFY_TTL_MS; closed ones leave the lists via retireClosedMatches.
+ */
+export async function reverifyOpenMatches(supabase: SupabaseClient, deadline: number) {
+  const rows = async (status: 'saved' | 'new', limit: number) => {
+    const { data, error } = await supabase
+      .from('match_scores')
+      .select(`score, jobs!inner(${JOB_REF}, is_active)`)
+      .eq('status', status)
+      .eq('jobs.is_active', true)
+      .order('score', { ascending: false })
+      .limit(limit);
+    if (error) throw new Error('Reading open matches failed: ' + error.message);
+    return (data || []).map((r) => (Array.isArray(r.jobs) ? r.jobs[0] : r.jobs) as unknown as JobRef);
+  };
+  const now = Date.now();
+  const seen = new Set<string>();
+  const queue = [...(await rows('saved', 1000)), ...(await rows('new', 2000))].filter(
+    (j) => !seen.has(j.id) && seen.add(j.id) && needsLinkCheck(j, providerOf(j)) && isStale(j, now),
+  );
+  const { live, closed } = await checkAll(supabase, queue.slice(0, 600), deadline);
+  return { due: queue.length, checked: live.length + closed.length, closed: closed.length };
 }

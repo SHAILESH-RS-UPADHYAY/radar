@@ -132,7 +132,7 @@ export default function ProtocolPage() {
             items={[
               [
                 'CADENCE',
-                'Every 6 hours through GitHub Actions (discover → scrape and match → autopilot), plus daily through Vercel Cron at 01:30, 02:30 and 03:30 UTC. Startup directories are re-read every 48h.',
+                'Every 6 hours through Vercel Cron: scrape and match at 02:30, 08:30, 14:30 and 20:30 UTC, then the posting checks, Gmail and auto-OVERCLOCK an hour later. Discovery runs daily at 01:30; startup directories are re-read every 48h.',
               ],
               [
                 'CHANGE DETECTION',

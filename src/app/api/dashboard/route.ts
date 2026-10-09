@@ -6,27 +6,39 @@ import type { SupabaseClient } from '@supabase/supabase-js';
 import { createServerClient } from '@/lib/supabase/client';
 import { isSchemaMissing } from '@/lib/supabase/errors';
 import type { OpsEvent } from '@/components/dashboard/types';
-import { applicationFormUrl } from '@/lib/apply/form';
+import { applicationFormUrl, atsFromUrl } from '@/lib/apply/form';
+import { capPerCompany, companyKey } from '@/lib/vault-filters';
+import { jobKey } from '@/lib/scraper/utils';
+import { serverError } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
-const JOB = `
+const NO_ATS = { provider: null, identifier: null, externalId: '' };
+
+const job = (extra: string) => `
   jobs!inner (
     id, external_id, title, location, work_type, skills, apply_url, department, employer, posted_at, is_active,
-    experience_required, salary_min, salary_max, salary_currency,
+    experience_required, salary_min, salary_max, salary_currency,${extra}
     companies!inner ( name, category, ats_provider, ats_identifier )
   )`;
 const BASE =
   'id, score, reasoning, matching_skills, missing_skills, section, status, auto_saved, status_changed_at, first_seen_at,';
 const OPS = ' stage, stage_changed_at, applied_at, notes,';
 const VERSION = ' resume_version_id,';
-// Newest schema first: migration 006 (resume versions) builds on 005 (C2 · OPS). Each tier drops what a
+// Newest schema first: 012 (where board links lead), 006 (resume versions), 005 (C2 · OPS). Each tier drops what a
 // database without that migration does not have yet, so the dashboard works at every step.
-const TIERS = [BASE + OPS + VERSION, BASE + OPS, BASE];
+const TIERS = [
+  BASE + OPS + VERSION + job(' resolved_url,'),
+  BASE + OPS + VERSION + job(''),
+  BASE + OPS + job(''),
+  BASE + job(''),
+];
+/** Discovery shows the best this many, after each company is held to its share (capPerCompany). */
+const DISCOVERY_SHOWN = 300;
+const DISCOVERY_READ = 1000;
 
 /** Vault + applied: everything, even if the posting has since closed. Discovery: the best open jobs not yet acted on. */
-function load(supabase: SupabaseClient, userId: string, columns: string) {
-  const select = columns + JOB;
+function load(supabase: SupabaseClient, userId: string, select: string) {
   return Promise.all([
     supabase
       .from('match_scores')
@@ -42,7 +54,7 @@ function load(supabase: SupabaseClient, userId: string, columns: string) {
       .eq('status', 'new')
       .eq('jobs.is_active', true)
       .order('score', { ascending: false })
-      .limit(200),
+      .limit(DISCOVERY_READ),
   ]);
 }
 
@@ -65,16 +77,31 @@ export async function GET() {
     tier += 1;
     [tracked, discovery] = await load(supabase, userId, TIERS[tier]);
   }
-  const opsReady = tier <= 1;
-  const versionsReady = tier === 0;
+  const versionsReady = tier <= 1;
+  const opsReady = tier <= 2;
 
   const error = tracked.error || discovery.error;
   if (error) {
     console.error('[DASHBOARD] Error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return serverError('API /dashboard', error);
   }
 
-  const formatted = [...(tracked.data || []), ...(discovery.data || [])].map((m: any) => ({
+  // One employer never floods Discovery: each company keeps its best roles up to its share, fewer once you have
+  // applied there, none after two applications. What each company had beyond that is counted for the cards.
+  const nameOf = (m: any) => companyKey(m.jobs.employer || m.jobs.companies.name);
+  const appliedRows = ((tracked.data || []) as any[]).filter((m) => m.status === 'applied');
+  const applications = new Map<string, number>();
+  for (const m of appliedRows) applications.set(nameOf(m), (applications.get(nameOf(m)) || 0) + 1);
+  // A role you applied to that another source lists again (the company's feed and an alert) is not a new signal.
+  const appliedRoles = new Set(appliedRows.map((m) => jobKey(nameOf(m), m.jobs.title)));
+  const fresh = (m: any) => m.status === 'applied' || !appliedRoles.has(jobKey(nameOf(m), m.jobs.title));
+  const { kept, hidden } = capPerCompany(
+    ((discovery.data || []) as any[]).filter(fresh).map((m) => ({ ...m, company: nameOf(m) })),
+    applications,
+  );
+
+  const tracking = ((tracked.data || []) as any[]).filter(fresh);
+  const formatted = [...tracking, ...kept.slice(0, DISCOVERY_SHOWN)].map((m: any) => ({
     id: m.id,
     score: m.score,
     reasoning: m.reasoning,
@@ -98,12 +125,16 @@ export async function GET() {
       work_type: m.jobs.work_type,
       skills: m.jobs.skills || [],
       apply_url: m.jobs.apply_url,
-      form_url: applicationFormUrl({
-        provider: m.jobs.companies.ats_provider,
-        identifier: m.jobs.companies.ats_identifier,
-        externalId: m.jobs.external_id,
-        applyUrl: m.jobs.apply_url,
-      }),
+      // A board job whose employer page RADAR learned opens there directly (and as that ATS's form when it is one).
+      form_url: m.jobs.resolved_url
+        ? applicationFormUrl(atsFromUrl(m.jobs.resolved_url) ?? { ...NO_ATS, applyUrl: m.jobs.resolved_url })
+        : applicationFormUrl({
+            provider: m.jobs.companies.ats_provider,
+            identifier: m.jobs.companies.ats_identifier,
+            externalId: m.jobs.external_id,
+            applyUrl: m.jobs.apply_url,
+          }),
+      resolved_url: m.jobs.resolved_url ?? null,
       department: m.jobs.department,
       posted_at: m.jobs.posted_at,
       is_active: m.jobs.is_active,
@@ -155,6 +186,8 @@ export async function GET() {
     pipelineRunAt: lastRun?.finished_at ?? null,
     matches: formatted,
     total: formatted.length,
+    /** Discovery roles held back per company (lowercase name): past its share, or two applications there. */
+    heldBack: Object.fromEntries(hidden),
     opsReady,
     versionsReady,
     settings: settings || { vault_min_score: 80, auto_vault: true, last_matched_at: null, location: null },

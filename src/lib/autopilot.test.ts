@@ -26,7 +26,15 @@ const job = (over: Partial<QueueCandidate>): QueueCandidate => ({
   tailored: false,
   ...over,
 });
-const opts: PickOptions = { settings: DEFAULT_AUTOPILOT, cities: ['Pune'], bar: 80, years: 1, applied: [], limit: 50 };
+const opts: PickOptions = {
+  settings: DEFAULT_AUTOPILOT,
+  cities: ['Pune'],
+  bar: 80,
+  years: 1,
+  applied: [],
+  appliedPerCompany: new Map(),
+  limit: 50,
+};
 
 describe('notEligible', () => {
   it('lets a strong, open, local, account-free match through', () => {
@@ -72,6 +80,19 @@ describe('pickQueue', () => {
     );
     expect(picks.map((p) => p.matchId)).toEqual(['b', 'c', 'e']);
   });
+  it('never takes a company past two applications in all', () => {
+    const list = [
+      job({ matchId: 'a', company: 'Acme', title: 'Backend Engineer', score: 95 }),
+      job({ matchId: 'b', company: 'Acme', title: 'Data Engineer', score: 90 }),
+      job({ matchId: 'e', company: 'Globex', title: 'Backend Engineer', score: 82 }),
+    ];
+    const once = { ...opts, appliedPerCompany: new Map([['acme', 1]]) };
+    expect(pickQueue(list, once).map((p) => p.matchId)).toEqual(['a', 'e']);
+    const twice = { ...opts, appliedPerCompany: new Map([['acme', 2]]) };
+    expect(notEligible(list[0], twice)).toBe('2 applications there already');
+    expect(pickQueue(list, twice).map((p) => p.matchId)).toEqual(['e']);
+  });
+
   it('stops at the limit', () => {
     const many = Array.from({ length: 10 }, (_, i) => job({ company: 'Co' + i, score: 80 + i }));
     expect(pickQueue(many, { ...opts, limit: 3 }).map((p) => p.company)).toEqual(['Co9', 'Co8', 'Co7']);

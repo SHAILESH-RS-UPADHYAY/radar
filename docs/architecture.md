@@ -12,8 +12,10 @@
 
 ## Pipeline
 
-Three routes, each time-boxed and resumable, all behind `Bearer CRON_SECRET`. Vercel Cron calls them daily
-(01:30, 02:30, 03:30 UTC); GitHub Actions calls all three every 6 hours.
+Three routes, each time-boxed and resumable, all behind `Bearer CRON_SECRET`. Vercel Cron runs the loop every 6
+hours: `/api/cron` at 02:30, 08:30, 14:30 and 20:30 UTC, `/api/cron/autopilot` an hour after each, and
+`/api/cron/discover` daily at 01:30 (Hobby allows each cron entry once a day, so each route has four entries). The
+GitHub Actions workflow runs all three on demand.
 
 ```
 /api/cron/discover                  src/lib/discovery/run.ts
@@ -33,7 +35,10 @@ Three routes, each time-boxed and resumable, all behind `Bearer CRON_SECRET`. Ve
 │      scrapeCompany()              src/lib/scraper/adapters.ts → one adapter per ATS/board
 │      upsert jobs                  keyed by (company_id, external_id)
 │      embed new/changed only       sha1 content_hash; unchanged jobs are not re-embedded
-│      close missing jobs           is_active = false when a posting disappears
+│      close missing jobs           closurePolicy(): ATS feeds after two misses (10 h); boards and search APIs
+│                                   after 5 days unseen, alert emails after 21, unless a link check proved
+│                                   them open; quota-limited APIs (Adzuna, Jooble) run once or twice a day
+│    alert emails                   src/lib/scraper/alert-email.ts: Indeed, LinkedIn, Welcome to the Jungle
 │
 └─ matchAllUsers()                  src/lib/pipeline/match.ts
      for each user with a resume/profile:
@@ -46,9 +51,13 @@ Three routes, each time-boxed and resumable, all behind `Bearer CRON_SECRET`. Ve
 ```
 
 ```
-/api/cron/autopilot                 daily after the pipeline
-├─ reverifyVault()                  src/lib/pipeline/verify.ts   board postings in a Vault, re-checked every 24h
-├─ syncAllGmail()                   src/lib/gmail.ts             recruiter replies → ops_events → C2 · OPS stage
+/api/cron/autopilot                 every 6 hours, after the pipeline
+├─ reverifyOpenMatches()            src/lib/pipeline/verify.ts   Vault, then Discovery by score: board pages RADAR
+│                                                                may open (never LinkedIn, Indeed or search APIs'
+│                                                                sites), or the employer page a board led to
+├─ retire / reviveReopenedMatches() closed postings leave both lists; reopened ones come back
+├─ syncAllGmail()                   src/lib/gmail.ts             recruiter replies → ops_events → C2 · OPS stage;
+│                                                                an application RADAR never saw is opened from mail
 └─ autoOverclockAll()               src/lib/overclock.ts         opt-in, daily cap, 50–79% matches → tailored CV
 ```
 

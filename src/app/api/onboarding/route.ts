@@ -8,8 +8,10 @@ import { runScrape } from '@/lib/pipeline/scrape';
 import { extractPdfText } from '@/lib/resume';
 import { resumeProblem } from '@/lib/validate';
 import { onboardingResume } from '@/lib/profile';
+import { serverError } from '@/lib/api';
 
 export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
 
 function parseJsonArray(value: FormDataEntryValue | null): string[] {
   if (!value || typeof value !== 'string') return [];
@@ -81,7 +83,7 @@ export async function POST(req: NextRequest) {
       .select('resume_text, skills')
       .eq('id', userId)
       .maybeSingle();
-    if (existingErr) return NextResponse.json({ error: existingErr.message }, { status: 500 });
+    if (existingErr) return serverError('API /onboarding', existingErr);
     const kept = onboardingResume(existing, { text: resumeText, manual, skills: parsedManualSkills });
     resumeText = kept.resumeText;
     const skills = [...new Set([...kept.skills, ...extractSkills(resumeText)])];
@@ -127,7 +129,7 @@ export async function POST(req: NextRequest) {
 
     if (upsertErr) {
       console.error('[ONBOARDING] DB Error:', upsertErr);
-      return NextResponse.json({ error: upsertErr.message }, { status: 500 });
+      return serverError('API /onboarding', upsertErr);
     }
 
     // Your dream companies are replaced only by a new choice, never cleared by a run that brought none.
@@ -166,6 +168,6 @@ export async function POST(req: NextRequest) {
   } catch (error: unknown) {
     const err = error as { message?: string };
     console.error('[ONBOARDING] General Error:', err);
-    return NextResponse.json({ error: err.message || 'Onboarding failed' }, { status: 500 });
+    return serverError('API /onboarding', err);
   }
 }

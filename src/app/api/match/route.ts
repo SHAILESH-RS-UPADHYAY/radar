@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/client';
 import { matchUser, MatchError } from '@/lib/pipeline/match';
-import { retireClosedMatches } from '@/lib/pipeline/verify';
+import { retireClosedMatches, reviveReopenedMatches } from '@/lib/pipeline/verify';
 import { explainVectorError } from '@/lib/ai/embeddings';
 import type { ScanEvent } from '@/lib/scan-events';
 
@@ -37,9 +37,10 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Closed postings leave your lists first, so the scan shows only live jobs.
+  // Closed postings leave your lists first, and reopened ones come back, so the scan shows only live jobs.
   const run = async (report: (e: ScanEvent) => void) => {
     const retired = await retireClosedMatches(supabase, userId);
+    await reviveReopenedMatches(supabase, userId);
     report({ stage: 'retire', closed: retired });
     return { summary: await matchUser(supabase, userId, report), retired };
   };

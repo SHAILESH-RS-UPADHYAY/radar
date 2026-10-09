@@ -1,9 +1,9 @@
 // ============================
 // RADAR — Scrape pipeline
 // ============================
-// Pulls every scrapeable company/source, upserts jobs, embeds only new or changed jobs,
-// and deactivates jobs that disappeared from their source. Runs within a time budget and
-// starts with the least recently scraped companies, so a cut-short run resumes next time.
+// Pulls every scrapeable company/source, upserts jobs, embeds only new or changed jobs, and closes jobs that left
+// their source (see closurePolicy). Runs within a time budget and starts with the least recently scraped companies,
+// so a cut-short run resumes next time; search APIs with quotas run only as often as their quota allows.
 
 import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
@@ -39,21 +39,53 @@ interface CompanyRow {
   name: string;
   ats_provider: string;
   ats_identifier: string | null;
+  last_scraped_at: string | null;
 }
 
 const CONCURRENCY = Number(process.env.RADAR_SCRAPE_CONCURRENCY || 4);
 const UPSERT_CHUNK = 50;
+const HOUR = 3600_000;
+const DAY = 24 * HOUR;
+
+// Read as a search window capped at RADAR_MAX_JOBS_PER_COMPANY, not as the full list.
+const WINDOWED_ATS = new Set(['workday', 'amazon', 'smartrecruiters']);
+const ALERTS = new Set(['indeed_email', 'linkedin_email', 'wttj_email']);
+
 /**
- * Workday, Amazon and SmartRecruiters are read as a search window capped at RADAR_MAX_JOBS_PER_COMPANY, not as the
- * full list: a job missing from one run's window is closed only after a week of not being seen.
+ * When a job missing from this run's results counts as closed.
+ *   · Company ATS feeds list every open job: closed after two misses (10 h at the 6-hour cadence), so one short or
+ *     failed feed never hides live jobs.
+ *   · Windowed ATS reads (Workday, Amazon, SmartRecruiters): after a week unseen.
+ *   · Job boards and search APIs show only their newest results: after 5 days unseen, unless a link check
+ *     confirmed the posting open in the last 2 days.
+ *   · Job-alert emails carry new jobs only: after 21 days unseen, with the same link-check exception.
+ * The link checks in verify.ts close board jobs sooner when their page says so.
  */
-// ponytail: a fixed grace period; a per-posting link check if closures there must be exact.
-const WINDOWED = new Set(['workday', 'amazon', 'smartrecruiters']);
-const WINDOW_GRACE_MS = 7 * 24 * 3600_000;
+// ponytail: fixed grace periods per source kind; per-source tuning if one board's postings live much shorter.
+export function closurePolicy(provider: string): { graceMs: number; liveProofMs: number | null } {
+  if (WINDOWED_ATS.has(provider)) return { graceMs: 7 * DAY, liveProofMs: null };
+  if (ALERTS.has(provider)) return { graceMs: 21 * DAY, liveProofMs: 2 * DAY };
+  if ((BOARD_PROVIDERS as readonly string[]).includes(provider)) return { graceMs: 5 * DAY, liveProofMs: 2 * DAY };
+  return { graceMs: 10 * HOUR, liveProofMs: null };
+}
+
+/** Search APIs with daily or monthly quotas (Adzuna: 250 a day, 2,500 a month) run at most this often. */
+const QUOTA_INTERVAL: Record<string, number> = {
+  adzuna: 23 * HOUR,
+  jsearch: 23 * HOUR,
+  googlejobs: 23 * HOUR,
+  jooble: 11 * HOUR,
+};
+
+/** Whether a company's feed is due this run: always, except quota-limited APIs inside their interval. Pure. */
+export function dueForScrape(company: Pick<CompanyRow, 'ats_provider' | 'last_scraped_at'>, now = Date.now()) {
+  const every = QUOTA_INTERVAL[company.ats_provider];
+  return !every || !company.last_scraped_at || now - Date.parse(company.last_scraped_at) >= every;
+}
 /** One slow company (a hung API, a huge board) must never hold the whole run. */
 const COMPANY_TIMEOUT_MS = Number(process.env.RADAR_COMPANY_TIMEOUT_MS || 60_000);
-/** Search APIs run many queries (each country, each of your cities): they get longer. */
-const BOARD_TIMEOUT_MS = 150_000;
+/** Search APIs run many queries (each country, each of your cities, paced to their rate limits): they get longer. */
+const BOARD_TIMEOUT_MS = 170_000;
 
 // Whitespace is normalised, so a formatting-only change (e.g. keeping paragraph breaks) does not re-embed a job.
 const squash = (s: string | null) => (s || '').replace(/\s+/g, ' ').trim();
@@ -250,15 +282,17 @@ async function scrapeOne(
         }
       }
 
-      // Anything from this company we did not see in this run has been taken down (windowed sources: for a week).
-      const windowed = WINDOWED.has(company.ats_provider);
-      const { data: gone, error: staleErr } = await supabase
+      // What this source stopped listing long enough ago is closed (closurePolicy).
+      const { graceMs, liveProofMs } = closurePolicy(company.ats_provider);
+      let stale = supabase
         .from('jobs')
         .update({ is_active: false })
         .eq('company_id', company.id)
         .eq('is_active', true)
-        .lt('scraped_at', windowed ? new Date(start - WINDOW_GRACE_MS).toISOString() : runStartedAt)
-        .select('id');
+        .lt('scraped_at', new Date(start - graceMs).toISOString());
+      if (liveProofMs)
+        stale = stale.or(`verified_at.is.null,verified_at.lt.${new Date(start - liveProofMs).toISOString()}`);
+      const { data: gone, error: staleErr } = await stale.select('id');
       if (staleErr) console.error('[SCRAPE]', company.name, 'stale cleanup failed:', staleErr.message);
       deactivated = gone?.length || 0;
       if (deactivated) {
@@ -342,26 +376,30 @@ export async function runScrape(
 ): Promise<ScrapeSummary> {
   const deadline = Date.now() + (opts.budgetMs ?? 200_000);
   await ensureCompaniesSeeded(supabase);
-  const purged = await purgeSenior(supabase).catch((e) => (console.error('[SCRAPE] senior purge failed:', e), 0));
-  if (purged) console.log('[SCRAPE] removed', purged, 'jobs asking for more than 3 years');
+  // Housekeeping belongs to the full loop; a targeted run (a few sources, on request) skips it.
+  if (!opts.companyIds?.length) {
+    const purged = await purgeSenior(supabase).catch((e) => (console.error('[SCRAPE] senior purge failed:', e), 0));
+    if (purged) console.log('[SCRAPE] removed', purged, 'jobs asking for more than 3 years');
+  }
 
   let query = supabase
     .from('companies')
-    .select('id, name, ats_provider, ats_identifier')
+    .select('id, name, ats_provider, ats_identifier, last_scraped_at')
     .eq('is_active', true)
     .not('ats_provider', 'is', null)
     .neq('ats_provider', 'custom')
     .order('last_scraped_at', { ascending: true, nullsFirst: true });
   if (opts.companyIds?.length) query = query.in('id', opts.companyIds);
 
-  const { data: companies, error } = await query;
-  if (error || !companies) throw new Error('Failed to load companies: ' + (error?.message || 'no data'));
+  const { data: all, error } = await query;
+  if (error || !all) throw new Error('Failed to load companies: ' + (error?.message || 'no data'));
+  const companies = (all as CompanyRow[]).filter((c) => opts.companyIds?.length || dueForScrape(c));
 
   const embedBudget = { left: Number(process.env.RADAR_MAX_EMBEDS_PER_RUN || 2000), until: deadline - 25_000 };
   // Read once per run, and only when a job board is scraped in it.
   let keys: Promise<Set<string>> | null = null;
   const atsKeys = () => (keys ??= atsJobKeys(supabase));
-  const results = await mapLimit(companies as CompanyRow[], CONCURRENCY, async (company) => {
+  const results = await mapLimit(companies, CONCURRENCY, async (company) => {
     // Leave ~25s for the in-flight companies to finish before the function limit.
     if (Date.now() > deadline - 25_000) {
       return {

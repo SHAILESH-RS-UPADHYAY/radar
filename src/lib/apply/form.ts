@@ -146,6 +146,51 @@ export function applicationFormUrl(job: {
   return job.applyUrl;
 }
 
+export interface AtsPosting {
+  provider: string;
+  identifier: string | null;
+  externalId: string;
+  applyUrl: string;
+}
+
+const UUID = /^[0-9a-f-]{36}$/i;
+
+/**
+ * The ATS posting behind a URL, for an employer page a job board led to (Adzuna → Greenhouse): RADAR then opens and
+ * reads ahead that form like any ATS job. Null for any other page. Pure.
+ */
+export function atsFromUrl(raw: string): AtsPosting | null {
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    return null;
+  }
+  const path = url.pathname.split('/').filter(Boolean);
+  if (/(^|\.)greenhouse\.io$/.test(url.hostname)) {
+    const board = url.searchParams.get('for') || (path[1] === 'jobs' ? path[0] : null);
+    const id = url.searchParams.get('token') || (path[1] === 'jobs' ? path[2] : null);
+    return board && id && /^\d+$/.test(id)
+      ? { provider: 'greenhouse', identifier: board, externalId: id, applyUrl: raw }
+      : null;
+  }
+  if (/^jobs\.(eu\.)?lever\.co$/.test(url.hostname) && path[1] && UUID.test(path[1]))
+    return {
+      provider: 'lever',
+      identifier: path[0],
+      externalId: path[1],
+      applyUrl: `https://${url.hostname}/${path[0]}/${path[1]}`,
+    };
+  if (url.hostname === 'jobs.ashbyhq.com' && path[1] && UUID.test(path[1]))
+    return {
+      provider: 'ashby',
+      identifier: path[0],
+      externalId: path[1],
+      applyUrl: `https://jobs.ashbyhq.com/${path[0]}/${path[1]}`,
+    };
+  return null;
+}
+
 /** "https://jobs.lever.co/acme/1234-…" (or its /apply page) → the apply page URL. */
 const leverApplyUrl = (url: string) => {
   const m = url.match(/^https:\/\/jobs\.(eu\.)?lever\.co\/[^/]+\/[0-9a-f-]{36}/i);

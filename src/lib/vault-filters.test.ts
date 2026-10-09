@@ -2,14 +2,20 @@ import { describe, expect, it } from 'vitest';
 import type { MatchedJob } from '@/components/dashboard/types';
 import {
   DEFAULT_FILTERS,
-  applyVaultFilters,
+  PRESETS,
+  applyFilters,
+  arrivalDay,
+  capPerCompany,
   expBucket,
   filterCommand,
+  isPreset,
   lanesOf,
+  originOf,
   parseFilters,
   payLpa,
+  presetFilters,
+  signalFacets,
   statedExperience,
-  vaultFacets,
 } from './vault-filters';
 
 let n = 0;
@@ -20,6 +26,7 @@ function job(over: {
   exp?: string | null;
   pay?: [number | null, number | null, string | null];
   posted?: string | null;
+  seen?: string | null;
   score?: number;
 }): MatchedJob {
   n += 1;
@@ -34,7 +41,7 @@ function job(over: {
     status: 'saved',
     auto_saved: true,
     status_changed_at: null,
-    first_seen_at: null,
+    first_seen_at: over.seen ?? null,
     stage: null,
     stage_changed_at: null,
     applied_at: null,
@@ -110,7 +117,7 @@ describe('pay', () => {
   });
 });
 
-describe('applyVaultFilters and vaultFacets', () => {
+describe('applyFilters and signalFacets', () => {
   const list = [
     job({
       category: 'Startup',
@@ -124,40 +131,110 @@ describe('applyVaultFilters and vaultFacets', () => {
     job({ category: 'Board', provider: 'adzuna', exp: '3-5', pay: [100_000, 140_000, 'USD'] }),
   ];
 
-  it('narrows by lane, experience, source and pay together', () => {
-    expect(applyVaultFilters(list, { ...DEFAULT_FILTERS, lane: 'startup' })).toHaveLength(2);
-    expect(applyVaultFilters(list, { ...DEFAULT_FILTERS, lane: 'startup', exp: ['1'] })).toHaveLength(1);
-    expect(applyVaultFilters(list, { ...DEFAULT_FILTERS, source: 'adzuna' })).toHaveLength(1);
-    expect(applyVaultFilters(list, { ...DEFAULT_FILTERS, pay: 'disclosed' })).toHaveLength(3);
-    expect(applyVaultFilters(list, { ...DEFAULT_FILTERS, pay: 'lpa10' })).toHaveLength(1);
+  it('narrows by lane, experience, sources and pay together', () => {
+    expect(applyFilters(list, { ...DEFAULT_FILTERS, lane: 'startup' })).toHaveLength(2);
+    expect(applyFilters(list, { ...DEFAULT_FILTERS, lane: 'startup', exp: ['1'] })).toHaveLength(1);
+    expect(applyFilters(list, { ...DEFAULT_FILTERS, sources: ['adzuna'] })).toHaveLength(1);
+    expect(applyFilters(list, { ...DEFAULT_FILTERS, sources: ['adzuna', 'lever'] })).toHaveLength(2);
+    expect(applyFilters(list, { ...DEFAULT_FILTERS, pay: 'disclosed' })).toHaveLength(3);
+    expect(applyFilters(list, { ...DEFAULT_FILTERS, pay: 'lpa10' })).toHaveLength(1);
   });
 
   it('sorts by pay (INR first, then other disclosed pay) and by newest', () => {
-    const byPay = applyVaultFilters(list, { ...DEFAULT_FILTERS, sort: 'pay' });
+    const byPay = applyFilters(list, { ...DEFAULT_FILTERS, sort: 'pay' });
     expect(byPay.map((m) => m.job.company.provider)).toEqual(['ashby', 'workday', 'adzuna', 'lever']);
-    const newest = applyVaultFilters(list, { ...DEFAULT_FILTERS, sort: 'newest' });
+    const newest = applyFilters(list, { ...DEFAULT_FILTERS, sort: 'newest' });
     expect(newest[0].job.company.provider).toBe('lever');
   });
 
   it('counts each menu without its own selection, and lists only sources that exist', () => {
-    const f = vaultFacets(list, { ...DEFAULT_FILTERS, lane: 'startup' });
+    const f = signalFacets(list, { ...DEFAULT_FILTERS, lane: 'startup' });
     expect(f.lanes).toMatchObject({ all: 4, startup: 2, mnc: 1, board: 1, growth: 0 });
     expect(f.sources.map((s) => s.key).sort()).toEqual(['ashby', 'lever']);
+    expect(f.origins).toMatchObject({ ats: 2, board: 0, alert: 0 });
     expect(f.exp).toMatchObject({ '1': 1, none: 1, '0': 0 });
+  });
+});
+
+describe('when a job reached you', () => {
+  const now = new Date(2026, 9, 10, 15, 0).getTime();
+  const at = (daysAgo: number, hour = 9) => new Date(2026, 9, 10 - daysAgo, hour, 0).toISOString();
+
+  it('counts calendar days in your timezone, a week or more as one bucket, and falls back to the posting date', () => {
+    expect(arrivalDay(job({ seen: at(0, 0) }), now)).toBe(0);
+    expect(arrivalDay(job({ seen: at(1, 23) }), now)).toBe(1);
+    expect(arrivalDay(job({ seen: at(30) }), now)).toBe(7);
+    expect(arrivalDay(job({ seen: null, posted: at(2) }), now)).toBe(2);
+    expect(arrivalDay(job({ seen: null, posted: null }), now)).toBe(7);
+  });
+
+  it('filters and counts by arrival day, with the alerts of today as one preset', () => {
+    const feed = [
+      job({ provider: 'linkedin_email', seen: at(0) }),
+      job({ provider: 'indeed_email', seen: at(1) }),
+      job({ provider: 'greenhouse', seen: at(0) }),
+    ];
+    const todays = presetFilters(PRESETS[0], 'all');
+    expect(applyFilters(feed, todays, {}, now).map((m) => m.job.company.provider)).toEqual(['linkedin_email']);
+    expect(isPreset(todays, PRESETS[0])).toBe(true);
+    expect(isPreset(DEFAULT_FILTERS, PRESETS[0])).toBe(false);
+    const f = signalFacets(feed, { ...DEFAULT_FILTERS, days: [0] }, {}, now);
+    expect(f.days.slice(0, 2)).toEqual([2, 1]);
+    expect(f.origins).toMatchObject({ alert: 1, ats: 1 });
+  });
+
+  it('groups sources by where they reach RADAR', () => {
+    expect(['linkedin_email', 'greenhouse', 'adzuna', 'custom'].map(originOf)).toEqual([
+      'alert',
+      'ats',
+      'board',
+      'yours',
+    ]);
   });
 });
 
 describe('filterCommand and parseFilters', () => {
   it('prints the filters as a command and survives bad stored values', () => {
     expect(filterCommand(DEFAULT_FILTERS)).toBe('vault');
-    expect(filterCommand({ lane: 'startup', exp: ['1', '5'], source: 'ashby', pay: 'lpa10', sort: 'pay' })).toBe(
-      'vault --lane startup --exp 1,5+ --src ashby --pay 10L+ --sort pay',
-    );
-    expect(parseFilters('{"lane":"nope","exp":["2","x"],"pay":"lpa5"}')).toEqual({
+    expect(
+      filterCommand({
+        lane: 'startup',
+        days: [0],
+        exp: ['1', '5'],
+        sources: ['ashby', 'linkedin_email'],
+        pay: 'lpa10',
+        sort: 'pay',
+      }),
+    ).toBe('vault --lane startup --since today --src ashby,linkedin.mail --exp 1,5+ --pay 10L+ --sort pay');
+    expect(filterCommand({ ...DEFAULT_FILTERS, days: [2, 0, 1] }, 'discovery')).toBe('discovery --since 3d');
+    expect(filterCommand({ ...DEFAULT_FILTERS, days: [3, 7] })).toBe('vault --day 3,7+');
+    expect(parseFilters('{"lane":"nope","exp":["2","x"],"pay":"lpa5","days":[0,9]}')).toEqual({
       ...DEFAULT_FILTERS,
+      days: [0],
       exp: ['2'],
       pay: 'lpa5',
     });
+    // A single source saved by an older version becomes the source list.
+    expect(parseFilters('{"source":"adzuna"}').sources).toEqual(['adzuna']);
     expect(parseFilters('not json')).toEqual(DEFAULT_FILTERS);
+  });
+});
+
+describe('capPerCompany', () => {
+  const m = (id: string, company: string, score: number) => ({ id, company, score });
+  it('keeps the best roles of each company up to its share, fewer after applications, none after two', () => {
+    const list = [
+      m('e1', 'elevenlabs', 99),
+      m('e2', 'elevenlabs', 98),
+      m('e3', 'elevenlabs', 97),
+      m('s1', 'sarvam', 80),
+    ];
+    const free = capPerCompany(list, new Map());
+    expect(free.kept.map((x) => x.id)).toEqual(['e1', 'e2', 's1']);
+    expect(free.hidden.get('elevenlabs')).toBe(1);
+    expect(capPerCompany(list, new Map([['elevenlabs', 1]])).kept.map((x) => x.id)).toEqual(['e1', 's1']);
+    const done = capPerCompany(list, new Map([['elevenlabs', 2]]));
+    expect(done.kept.map((x) => x.id)).toEqual(['s1']);
+    expect(done.hidden.get('elevenlabs')).toBe(3);
   });
 });

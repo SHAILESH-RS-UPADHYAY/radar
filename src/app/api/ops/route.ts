@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/client';
 import { isSchemaMissing } from '@/lib/supabase/errors';
 import { isUuid } from '@/lib/validate';
 import { STAGES, type Stage } from '@/types';
+import { serverError } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,7 +48,7 @@ export async function PATCH(req: NextRequest) {
       { status: 503 },
     );
   }
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverError('API /ops', error);
   if (!data) return NextResponse.json({ error: 'Application not found' }, { status: 404 });
   return NextResponse.json(data);
 }

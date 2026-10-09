@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/client';
 import { isUuid } from '@/lib/validate';
 import { setMatchStatus } from '@/lib/vault';
+import { serverError } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,7 +35,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     .eq('id', id)
     .eq('user_id', userId)
     .maybeSingle();
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverError('API /autopilot/queue/[id]', error);
   if (!row) return NextResponse.json({ error: 'Not in your queue' }, { status: 404 });
 
   const now = new Date().toISOString();
@@ -45,7 +46,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
   if (status === 'submitted' && body?.confirmation && typeof body.confirmation === 'object')
     update.confirmation = { ...(body.confirmation as object), at: now };
   const { error: e } = await supabase.from('apply_queue').update(update).eq('id', id).eq('user_id', userId);
-  if (e) return NextResponse.json({ error: e.message }, { status: 500 });
+  if (e) return serverError('API /autopilot/queue/[id]', e);
 
   const job = (
     row.match_scores as unknown as { jobs: { title: string; employer: string | null; companies: { name: string } } }

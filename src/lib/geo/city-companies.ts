@@ -82,6 +82,35 @@ export function inStrictCity(
   return opts.countryOnly && COUNTRY_ONLY.test(location || '');
 }
 
+/** A city RADAR knows by name or alias ("Gurgaon", "Bengaluru", "SF"). */
+export const isKnownCity = (name: string) => {
+  const lower = name.trim().toLowerCase();
+  return Object.entries(CITY_ALIASES).some(([k, aliases]) => k.toLowerCase() === lower || aliases.includes(lower));
+};
+
+const FOREIGN_CITIES = new Set(['San Francisco', 'New York', 'London', 'Toronto', 'Singapore', 'Dubai']);
+const INDIA_PLACES =
+  /\b(india|bharat|karnataka|maharashtra|telangana|tamil nadu|haryana|uttar pradesh|kerala|gujarat|west bengal|punjab|rajasthan|madhya pradesh|odisha|andhra pradesh|goa|indore|lucknow|bhubaneswar|nagpur|mysuru|mysore|visakhapatnam|vizag|surat|vadodara|bhopal|patna|mangaluru|mangalore|trichy|tiruchirappalli|dehradun|nashik)\b/;
+const NOWHERE_IN_PARTICULAR =
+  /^(remote|anywhere|worldwide|global|multiple locations?|various|flexible|hybrid|on-?site|apac|asia)?$/;
+
+/**
+ * Whether a job's location is in India: true, false (a place abroad), or null when it does not say ("Remote",
+ * "Anywhere", empty). Indian cities count by any alias; "IN" works as a trailing country code.
+ */
+export function locatedInIndia(location: string | null | undefined): boolean | null {
+  const loc = (location || '').toLowerCase();
+  if (INDIA_PLACES.test(loc) || /,\s*in\s*$/.test(loc)) return true;
+  const indian = Object.keys(CITY_ALIASES).filter((k) => !FOREIGN_CITIES.has(k));
+  if (indian.some((k) => CITY_ALIASES[k].some((alias) => hasPlace(loc, alias)))) return true;
+  const rest = loc
+    .replace(/[()[\]]/g, ' ')
+    .split(/[,;/|·•]+|\s+(?:or|and)\s+/)
+    .map((p) => p.trim())
+    .filter((p) => !NOWHERE_IN_PARTICULAR.test(p));
+  return rest.length ? false : null;
+}
+
 export function canonicalCity(city: string): string {
   const lower = city.trim().toLowerCase();
   return (

@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/client';
 import { isUuid } from '@/lib/validate';
 import { setMatchStatus } from '@/lib/vault';
+import { serverError } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,7 +53,7 @@ export async function GET() {
 
   if (error) {
     console.error('[VAULT] Experience fetch failed:', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return serverError('API /vault', error);
   }
 
   interface JobRow {

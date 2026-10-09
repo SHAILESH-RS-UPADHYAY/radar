@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyPosting, needsLinkCheck } from './verify';
+import { checkUrl, classifyPosting, needsLinkCheck } from './verify';
 
 const page = (title: string, body: string) => `<html><head><title>${title}</title></head><body>${body}</body></html>`;
 
@@ -44,11 +44,21 @@ describe('classifyPosting', () => {
     expect(classifyPosting(429, '')).toBe('unknown');
   });
 
-  it('only link-checks board jobs, not ATS feeds or Hacker News threads', () => {
-    expect(needsLinkCheck('remotive')).toBe(true);
-    expect(needsLinkCheck('adzuna')).toBe(true);
-    expect(needsLinkCheck('greenhouse')).toBe(false);
-    expect(needsLinkCheck('hackernews')).toBe(false);
-    expect(needsLinkCheck(null)).toBe(false);
+  it('opens board pages it may open, never ATS feeds, search APIs, LinkedIn, Indeed or Hacker News', () => {
+    const job = { apply_url: 'https://board.example/job/1' };
+    expect(needsLinkCheck(job, 'remotive')).toBe(true);
+    expect(needsLinkCheck(job, 'wttj_email')).toBe(true);
+    for (const provider of ['greenhouse', 'adzuna', 'jooble', 'linkedin_email', 'indeed_email', 'hackernews', null])
+      expect(needsLinkCheck(job, provider)).toBe(false);
+  });
+
+  it('checks the employer page a board link led to, once RADAR knows it', () => {
+    const job = { apply_url: 'https://www.adzuna.in/details/1', resolved_url: 'https://jobs.lever.co/acme/123' };
+    expect(checkUrl(job, 'adzuna')).toBe('https://jobs.lever.co/acme/123');
+    expect(checkUrl({ apply_url: 'https://remotive.com/x' }, 'remotive')).toBe('https://remotive.com/x');
+    expect(checkUrl({ apply_url: 'https://www.adzuna.in/details/1' }, 'adzuna')).toBeNull();
+    // A board that led to LinkedIn or Naukri: still never opened.
+    const walled = { apply_url: 'https://www.adzuna.in/details/2', resolved_url: 'https://www.naukri.com/job/1' };
+    expect(checkUrl(walled, 'adzuna')).toBeNull();
   });
 });

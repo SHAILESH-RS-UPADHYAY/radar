@@ -16,7 +16,7 @@ export interface PageQuestion {
 }
 
 export interface ExtensionEvent {
-  type: 'pong' | 'launched' | 'filled' | 'applied' | 'questions' | 'autopilot' | 'learn' | 'adopt';
+  type: 'pong' | 'launched' | 'filled' | 'applied' | 'questions' | 'autopilot' | 'learn' | 'adopt' | 'landed';
   version?: string;
   matchId?: string;
   tailoredId?: string | null;
@@ -38,6 +38,8 @@ export interface ExtensionEvent {
   /** adopt: you pressed the extension's icon on a careers page RADAR did not open; RADAR takes that tab over. */
   tabId?: number;
   page?: { url: string; title: string; heading: string; siteName: string; text: string };
+  /** landed: the employer page a job board's link led to, in the form tab. */
+  url?: string;
 }
 
 const send = (message: Record<string, unknown>) =>

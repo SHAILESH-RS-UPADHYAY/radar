@@ -1,6 +1,6 @@
 # Database
 
-Postgres on Supabase. Migrations live in `supabase/migrations/` and are applied **in order** (001 → 009) in the
+Postgres on Supabase. Migrations live in `supabase/migrations/` and are applied **in order** (001 → 012) in the
 Supabase SQL editor. Every migration is safe to re-run. Never edit an applied migration; add a new numbered file.
 
 | Migration | Adds                                                                                                                                |
@@ -13,6 +13,9 @@ Supabase SQL editor. Every migration is safe to re-run. Never edit an applied mi
 | 007       | Teamtailor, discovery queue (`discovered_companies`, `source_state`), `jobs.verified_at`, Vault default 80, auto-OVERCLOCK settings |
 | 008       | `user_profiles.portfolio` (links and the projects you built)                                                                        |
 | 009       | Eightfold, We Work Remotely and Working Nomads providers; `user_profiles.application_kit` (answers forms ask for)                   |
+| 010       | ZERO-DAY: `user_profiles.autopilot` settings and the `apply_queue` table                                                            |
+| 011       | Hasjob, Indeed alert emails, JSearch and Google Jobs providers                                                                      |
+| 012       | LinkedIn and Welcome to the Jungle alert emails; `jobs.resolved_url`; `match_scores.retired_at/retired_from` (undo a retirement)    |
 
 | Table                  | Key columns                                                                                                                                                                                                 | Notes                                                                                                                            |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |

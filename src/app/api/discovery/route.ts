@@ -3,6 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { createServerClient } from '@/lib/supabase/client';
 import { isSchemaMissing } from '@/lib/supabase/errors';
 import { MAX_TARGETS, siteDomain } from '@/lib/discovery/targets';
+import { serverError } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +29,7 @@ export async function GET() {
     ),
   ]);
   if (isSchemaMissing(state.error)) return NextResponse.json({ ready: false, hint: MIGRATION_HINT });
-  if (state.error) return NextResponse.json({ error: state.error.message }, { status: 500 });
+  if (state.error) return serverError('API /discovery', state.error);
 
   const totals = Object.fromEntries(SOURCES.map((s) => [s, Object.fromEntries(STATUSES.map((st) => [st, 0]))]));
   cells.forEach(({ source, status }, i) => (totals[source][status] = counts[i].count ?? 0));
@@ -76,7 +77,7 @@ export async function POST(req: Request) {
     .upsert([...rows.values()], { onConflict: 'source,source_ref', ignoreDuplicates: true })
     .select('id');
   if (isSchemaMissing(error)) return NextResponse.json({ error: MIGRATION_HINT }, { status: 503 });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverError('API /discovery', error);
   const queued = data?.length ?? 0;
   return NextResponse.json({ queued, alreadyKnown: rows.size - queued });
 }

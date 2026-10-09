@@ -15,12 +15,13 @@
 //   jooble      jooble.org/api — official API, needs JOOBLE_API_KEY; descriptions are snippets
 //   weworkremotely  weworkremotely.com category RSS (robots.txt allows it); link back to the WWR listing
 //   workingnomads   workingnomads.com/api/exposed_jobs (robots.txt allows everything); link back to Working Nomads
+//   indeed_email / linkedin_email / wttj_email   your own job-alert emails, through the read-only Gmail link
 
 import { createHash } from 'node:crypto';
 import { createServerClient } from '@/lib/supabase/client';
 import { splitList } from '@/lib/profile';
 import { cityAliases } from '@/lib/geo/city-companies';
-import { scrapeIndeedEmail } from './indeed-email';
+import { scrapeAlertEmails } from './alert-email';
 import {
   decodeEntities,
   fetchJson,
@@ -65,7 +66,9 @@ export async function scrapeBoard(provider: string): Promise<ScrapedJob[]> {
     case 'hasjob':
       return scrapeHasjob();
     case 'indeed_email':
-      return scrapeIndeedEmail();
+    case 'linkedin_email':
+    case 'wttj_email':
+      return scrapeAlertEmails(provider);
     case 'jsearch':
       return scrapeJSearch();
     case 'googlejobs':
@@ -465,6 +468,8 @@ export async function preferenceCities(): Promise<string[]> {
   return [...seen.values()].slice(0, 12);
 }
 
+const ADZUNA_GAP_MS = 2_500;
+
 async function scrapeAdzuna(): Promise<ScrapedJob[]> {
   const id = process.env.ADZUNA_APP_ID?.trim();
   const key = process.env.ADZUNA_APP_KEY?.trim();
@@ -473,6 +478,13 @@ async function scrapeAdzuna(): Promise<ScrapedJob[]> {
     return [];
   }
   const jobs = new Map<string, ScrapedJob>();
+  // Adzuna allows 25 calls a minute (and 250 a day): one search every 2.5 s keeps a run under it.
+  let lastCall = 0;
+  const pace = async () => {
+    const wait = lastCall + ADZUNA_GAP_MS - Date.now();
+    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+    lastCall = Date.now();
+  };
   // Country-wide searches, then India city by city for your cities.
   const searches: [string, string][] = splitEnvList(process.env.RADAR_ADZUNA_COUNTRIES || 'in,gb,de,nl,fr,sg,us').map(
     (c) => [c, ''],
@@ -492,6 +504,7 @@ async function scrapeAdzuna(): Promise<ScrapedJob[]> {
         max_days_old: '30',
         'content-type': 'application/json',
       });
+      await pace();
       const data = await fetchJson<any>(
         'https://api.adzuna.com/v1/api/jobs/' + encodeURIComponent(country) + '/search/1?' + params,
       ).catch((e) => {

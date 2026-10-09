@@ -6,7 +6,7 @@ import { createServerClient } from '@/lib/supabase/client';
 import { isSchemaMissing } from '@/lib/supabase/errors';
 import { isUuid } from '@/lib/validate';
 import { politeFetcher } from '@/lib/discovery/polite';
-import { checkPosting, needsLinkCheck, recordChecks, type PostingState } from '@/lib/pipeline/verify';
+import { checkPosting, checkUrl, recordChecks, VERIFY_TTL_MS, type PostingState } from '@/lib/pipeline/verify';
 import { sourceName } from '@/lib/scraper/catalog';
 import { formatDescription } from '@/lib/jd';
 import { greenhousePay } from '@/lib/scraper/adapters';
@@ -16,12 +16,13 @@ export const dynamic = 'force-dynamic';
 
 const BASE =
   'id, external_id, title, description, location, work_type, department, apply_url, is_active, posted_at, scraped_at, salary_min, salary_max, salary_currency, experience_required, employer,';
-// Newest schema first (migration 007 adds verified_at and company provenance), then the one before it.
+// Newest schema first (migration 012 adds resolved_url, 007 verified_at and company provenance), then older ones.
 const TIERS = [
+  BASE +
+    ' verified_at, resolved_url, companies!inner(name, category, ats_provider, ats_identifier, funding_stage, source)',
   BASE + ' verified_at, companies!inner(name, category, ats_provider, ats_identifier, funding_stage, source)',
   BASE + ' companies!inner(name, category, ats_provider, ats_identifier)',
 ];
-const RECHECK_MS = 6 * 3600_000;
 
 export interface PostingCheck {
   state: PostingState;
@@ -42,8 +43,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   const [jobResult, { data: match }, { data: me }] = await Promise.all([
     (async () => {
       let result = await supabase.from('jobs').select(TIERS[0]).eq('id', id).maybeSingle();
-      if (isSchemaMissing(result.error))
-        result = await supabase.from('jobs').select(TIERS[1]).eq('id', id).maybeSingle();
+      for (let i = 1; i < TIERS.length && isSchemaMissing(result.error); i++)
+        result = await supabase.from('jobs').select(TIERS[i]).eq('id', id).maybeSingle();
       return result;
     })(),
     supabase
@@ -59,22 +60,20 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!job) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   const company = Array.isArray(job.companies) ? job.companies[0] : job.companies;
 
+  // Sources RADAR never opens (search APIs, LinkedIn, Indeed) are judged by their feed: listed at the last read.
+  const target = checkUrl(job, company.ats_provider);
   let posting: PostingCheck;
   if (!job.is_active)
-    posting = {
-      state: 'closed',
-      checkedAt: job.verified_at ?? job.scraped_at,
-      via: needsLinkCheck(company.ats_provider) ? 'link' : 'feed',
-    };
-  else if (!needsLinkCheck(company.ats_provider))
+    posting = { state: 'closed', checkedAt: job.verified_at ?? job.scraped_at, via: target ? 'link' : 'feed' };
+  else if (!target)
     posting =
       company.ats_provider === 'hackernews'
         ? { state: 'unknown', checkedAt: null, via: 'none' }
         : { state: 'live', checkedAt: job.scraped_at, via: 'feed' };
-  else if (job.verified_at && Date.now() - Date.parse(job.verified_at) < RECHECK_MS)
+  else if (job.verified_at && Date.now() - Date.parse(job.verified_at) < VERIFY_TTL_MS)
     posting = { state: 'live', checkedAt: job.verified_at, via: 'link' };
   else if (req.nextUrl.searchParams.get('verify') === '1') {
-    const state = await checkPosting(politeFetcher({ minIntervalMs: 0, timeoutMs: 8_000 }), job.apply_url);
+    const state = await checkPosting(politeFetcher({ minIntervalMs: 0, timeoutMs: 8_000 }), target);
     await recordChecks(supabase, state === 'live' ? [id] : [], state === 'closed' ? [id] : []);
     posting = {
       state,

@@ -19,6 +19,19 @@ you         check it, press Submit
 RADAR       C2 · OPS: applied, with the resume that went out
 ```
 
+## On any careers page
+
+- **The icon (or Alt+Shift+R)** on a careers page RADAR did not open: RADAR takes that tab over, registers the job as
+  one of yours and fills it the same way. Submitting it logs it in C2 · OPS, and replies from that company are tracked.
+  LinkedIn and Indeed are never filled: their terms forbid automating them.
+- **Job boards that pass you on** (Adzuna, Jooble): their listing page is never filled. RADAR follows its Apply link in
+  the same tab to the employer's form, and remembers where it led, so next time it opens there directly (and reads an
+  ATS form ahead). A tab that an Apply button opens is RADAR's too.
+- **It learns**: a question RADAR left empty that you answer yourself is learned when you press Submit (never
+  passwords, OTPs, card or ID numbers), and every later form that asks it gets your words.
+- **Sponsorship**: "Will you need visa sponsorship?" is answered Yes for a job outside India, No for one in India, and
+  from your Application Kit when the posting does not say where.
+
 ## Install (2 minutes)
 
 1. Chrome → `chrome://extensions` → switch on **Developer mode** (top right).

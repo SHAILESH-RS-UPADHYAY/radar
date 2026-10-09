@@ -4,6 +4,7 @@ import { createServerClient } from '@/lib/supabase/client';
 import { isSchemaMissing } from '@/lib/supabase/errors';
 import { isUuid } from '@/lib/validate';
 import { loadTailored, MIGRATION_HINT, toView } from '@/lib/overclock';
+import { serverError } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
@@ -16,7 +17,7 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ id:
 
   const { data, error } = await loadTailored(createServerClient(), userId, id);
   if (isSchemaMissing(error)) return NextResponse.json({ error: MIGRATION_HINT }, { status: 503 });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) return serverError('API /overclock/[id]', error);
   if (!data) return NextResponse.json({ error: 'Not found' }, { status: 404 });
   return NextResponse.json(toView(data));
 }

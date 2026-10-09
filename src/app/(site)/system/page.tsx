@@ -43,11 +43,12 @@ const LOOP_LOG = `[discover]  startupmap.one · robots.txt obeyed · sitemap eve
 [discover]  hiring pages, your cities first → startup page → ATS board (verified)
 [scrape]    least recently scraped first · the ATS feed is the source of truth
 [embed]     changed only · sha1(title, location, url, description)
-[close]     postings missing from this run → inactive · vectors deleted
-[match]     every user with a resume → match_scores
+[alerts]    your Indeed, LinkedIn and Welcome to the Jungle alert emails → jobs
+[close]     gone from an ATS feed twice, or unseen on a board for days → inactive
+[match]     every user with a resume → match_scores · 2 roles per company at most
 [verify]    board postings: apply link opened before anything enters the Vault
 [vault]     score ≥ your bar (80% by default) → saved (auto)
-[autopilot] Vault re-check · Gmail replies → C2 · OPS · auto-OVERCLOCK`;
+[autopilot] Vault + Discovery re-check · reopened jobs back · Gmail → C2 · OPS`;
 
 const STEPS: [string, string][] = [
   ['EMBED', 'Your resume and every job become 1024-dimension vectors (multilingual-e5-large on Pinecone).'],
@@ -126,8 +127,8 @@ export default function SystemPage() {
 
         <DocSection id="scan-loop" index="03" kicker="MODULE://C · SCAN_LOOP" title="Automated scan loop">
           <p>
-            Every six hours a GitHub Actions schedule, backed by a daily Vercel Cron, calls the pipeline. One run does
-            everything:
+            Every six hours Vercel Cron calls the pipeline, and an hour later the check that keeps every list clean. One
+            run does everything:
           </p>
           <CodeBlock label="/var/log/radar/cron.log" status="TAIL -F">
             {LOOP_LOG}

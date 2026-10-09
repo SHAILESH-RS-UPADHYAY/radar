@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { canonicalCity, cityAliases, inStrictCity, knownCompaniesIn, placeFit } from './city-companies';
+import {
+  canonicalCity,
+  cityAliases,
+  inStrictCity,
+  isKnownCity,
+  knownCompaniesIn,
+  locatedInIndia,
+  placeFit,
+} from './city-companies';
 
 describe('city aliases', () => {
   it('maps alternate spellings to one city', () => {
@@ -61,5 +69,22 @@ describe('inStrictCity (autopilot)', () => {
     expect(inStrictCity(['Pune'], 'Remote', 'remote', { remote: true, countryOnly: false })).toBe(true);
     expect(inStrictCity(['Pune'], 'India', null, { remote: false, countryOnly: true })).toBe(true);
     expect(inStrictCity(['Pune'], 'Bengaluru, India', null, { remote: false, countryOnly: true })).toBe(false);
+  });
+});
+
+describe('locatedInIndia', () => {
+  it('reads Indian cities, states and the country, places abroad, and says nothing for remote or unstated', () => {
+    for (const loc of ['Bengaluru', 'Gurgaon, Haryana', 'Remote, India', 'Indore', 'Hybrid - Mohali', 'Pune, MH, IN'])
+      expect(locatedInIndia(loc)).toBe(true);
+    for (const loc of ['London', 'Toronto, ON (Hybrid)', 'Remote - US', 'Berlin, Germany', 'EMEA', 'Singapore'])
+      expect(locatedInIndia(loc)).toBe(false);
+    for (const loc of ['Remote', 'Anywhere', '', null, 'Multiple locations', 'APAC'])
+      expect(locatedInIndia(loc)).toBeNull();
+  });
+
+  it('knows cities by any alias', () => {
+    expect(isKnownCity('Gurgaon')).toBe(true);
+    expect(isKnownCity('bengaluru')).toBe(true);
+    expect(isKnownCity('Paris')).toBe(false);
   });
 });

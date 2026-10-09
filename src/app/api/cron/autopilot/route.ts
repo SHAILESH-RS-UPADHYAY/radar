@@ -2,14 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/client';
 import { isCronAuthorized } from '@/lib/pipeline/cron-auth';
 import { syncAllGmail } from '@/lib/gmail';
-import { retireClosedMatches, reverifyVault } from '@/lib/pipeline/verify';
+import { retireClosedMatches, reverifyOpenMatches, reviveReopenedMatches } from '@/lib/pipeline/verify';
 import { autoOverclockAll } from '@/lib/overclock';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
-// Daily autopilot, after /api/cron has scraped and matched:
-//   1. re-check every board posting sitting in a Vault; closed ones leave the Vault;
+// Every 6 hours (vercel.json), an hour after /api/cron has scraped and matched:
+//   1. re-check the board postings people can see (Vault first, then Discovery by score); closed ones leave both
+//      lists, reopened ones come back;
 //   2. read recruiter replies from every linked Gmail and move applications along in C2 · OPS;
 //   3. auto-OVERCLOCK: tailor the best near-miss matches for users who switched it on (daily cap).
 async function handle(req: NextRequest) {
@@ -18,12 +19,13 @@ async function handle(req: NextRequest) {
   const startedAt = Date.now();
   const deadline = startedAt + 285_000;
 
-  const vault = await reverifyVault(supabase, Math.min(deadline, startedAt + 100_000));
+  const checks = await reverifyOpenMatches(supabase, Math.min(deadline, startedAt + 150_000));
   const retired = await retireClosedMatches(supabase);
+  const revived = await reviveReopenedMatches(supabase);
   const gmail = await syncAllGmail(supabase, deadline);
   const overclock = await autoOverclockAll(supabase, deadline);
   const summary = {
-    vault: { ...vault, retired },
+    postings: { ...checks, retired, revived },
     overclock,
     gmail: {
       inboxes: gmail.length,
