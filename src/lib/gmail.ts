@@ -1,14 +1,19 @@
 // ============================
-// RADAR — Gmail link: read recruiter replies, update C2 · OPS
+// RADAR — Gmail link: recruiter replies → C2 · OPS
 // ============================
-// Read-only Google OAuth (gmail.readonly). Each sync reads recent application-related mail, classifies it
-// (rejection, interview, assessment, offer, received), ties it to one of the user's applications by company,
-// records an ops_event and moves the stage forward. Only subject, sender name and the verdict are stored;
-// the body is read in memory to find the verdict and dropped.
+// Read-only Google OAuth (gmail.readonly). Every cycle RADAR reads recent application mail, classifies it (offer,
+// rejection, assessment, interview, received) and applies it to C2 · OPS:
+//   · mail about one of your applications moves its stage (a rejection files it);
+//   · mail about an application RADAR never saw (you applied on your own) becomes one, so C2 · OPS stays complete.
+// Only the subject, the sender's name and the verdict are stored; bodies are read in memory and dropped.
+// Job-alert emails (Indeed, LinkedIn, Welcome to the Jungle) are read as job sources: src/lib/scraper/alert-email.ts.
 
+import { createHash } from 'node:crypto';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { decryptSecret, encryptSecret } from '@/lib/crypto';
 import { SITE_URL } from '@/lib/site';
+import { htmlToText } from '@/lib/scraper/utils';
+import { findsCompanyId } from '@/lib/apply/adopt';
 import type { Stage } from '@/types';
 
 const SCOPES = ['https://www.googleapis.com/auth/gmail.readonly', 'openid', 'email'];
@@ -57,6 +62,7 @@ async function tokenRequest(body: Record<string, string>) {
   const data = (await res.json().catch(() => ({}))) as {
     access_token?: string;
     refresh_token?: string;
+    expires_in?: number;
     error?: string;
     error_description?: string;
   };
@@ -77,13 +83,39 @@ export const exchangeCode = (cfg: GmailConfig, code: string) =>
     grant_type: 'authorization_code',
   });
 
-const refreshAccess = (cfg: GmailConfig, refreshToken: string) =>
-  tokenRequest({
-    refresh_token: refreshToken,
+// One access token per inbox while it is valid: a cycle reads replies and three alert sources with it.
+const accessTokens = new Map<string, { token: string; until: number }>();
+
+/** A working access token for a linked inbox. Throws with `code: 'invalid_grant'` when the link was revoked. */
+export async function accessTokenFor(cfg: GmailConfig, userId: string, refreshTokenEnc: string): Promise<string> {
+  const cached = accessTokens.get(userId);
+  if (cached && cached.until > Date.now()) return cached.token;
+  const data = await tokenRequest({
+    refresh_token: decryptSecret(refreshTokenEnc, cfg.tokenKey),
     client_id: cfg.clientId,
     client_secret: cfg.clientSecret,
     grant_type: 'refresh_token',
   });
+  const token = data.access_token!;
+  accessTokens.set(userId, { token, until: Date.now() + Math.max(60, (data.expires_in ?? 3600) - 300) * 1000 });
+  return token;
+}
+
+// ---- Gmail API ----
+
+export interface MessagePart {
+  mimeType?: string;
+  headers?: { name: string; value: string }[];
+  body?: { data?: string };
+  parts?: MessagePart[];
+}
+
+export interface GmailMessage {
+  id: string;
+  internalDate?: string;
+  snippet?: string;
+  payload?: MessagePart;
+}
 
 async function gmailGet<T>(path: string, accessToken: string): Promise<T> {
   const res = await fetch(GMAIL + path, {
@@ -95,6 +127,45 @@ async function gmailGet<T>(path: string, accessToken: string): Promise<T> {
 }
 
 export const gmailProfile = (accessToken: string) => gmailGet<{ emailAddress: string }>('/profile', accessToken);
+
+/** Ids of the messages a Gmail search finds, newest first. */
+export async function searchMessages(accessToken: string, query: string, max = 50): Promise<string[]> {
+  const list = await gmailGet<{ messages?: { id: string }[] }>(
+    `/messages?maxResults=${max}&q=` + encodeURIComponent(query),
+    accessToken,
+  );
+  return (list.messages || []).map((m) => m.id);
+}
+
+export const getMessage = (accessToken: string, id: string) =>
+  gmailGet<GmailMessage>(`/messages/${encodeURIComponent(id)}?format=full`, accessToken);
+
+export const messageHeader = (msg: GmailMessage, name: string) =>
+  msg.payload?.headers?.find((h) => h.name.toLowerCase() === name)?.value || '';
+
+export const messageDate = (msg: GmailMessage) =>
+  msg.internalDate ? new Date(Number(msg.internalDate)).toISOString() : new Date().toISOString();
+
+const decodePart = (data?: string) => (data ? Buffer.from(data, 'base64url').toString('utf-8') : '');
+
+/** The HTML and plain-text bodies of a message; either may be empty. Pure. */
+export function messageBodies(part: MessagePart | undefined): { html: string; text: string } {
+  const out = { html: '', text: '' };
+  const walk = (p: MessagePart | undefined) => {
+    if (!p) return;
+    if (p.mimeType === 'text/html' && !out.html) out.html = decodePart(p.body?.data);
+    else if (p.mimeType === 'text/plain' && !out.text) out.text = decodePart(p.body?.data);
+    p.parts?.forEach(walk);
+  };
+  walk(part);
+  // A single-part message without a mime type on the part still carries its body.
+  if (!out.html && !out.text && part?.body?.data) {
+    const body = decodePart(part.body.data);
+    if (/<(html|body|div|table|p|a)\b/i.test(body)) out.html = body;
+    else out.text = body;
+  }
+  return out;
+}
 
 export const sealToken = (cfg: GmailConfig, refreshToken: string) => encryptSecret(refreshToken, cfg.tokenKey);
 
@@ -116,6 +187,7 @@ export async function disconnectGmail(supabase: SupabaseClient, userId: string) 
       // A token sealed with an old key cannot be revoked from here; deleting the row still unlinks it.
     }
   }
+  accessTokens.delete(userId);
   const { error } = await supabase.from('gmail_links').delete().eq('user_id', userId);
   if (error) throw new Error(error.message);
 }
@@ -142,7 +214,7 @@ const RULES: [MailKind, RegExp][] = [
   ],
   [
     'received',
-    /(thank(s| you) for (applying|your application|your interest)|application (has been )?(received|submitted)|we (have )?received your application)/i,
+    /(thank(s| you) for (applying|your application|your interest)|application (has been |was )?(received|submitted|sent)|we (have )?received your application)/i,
   ],
 ];
 
@@ -158,6 +230,65 @@ export function classifyEmail(subject: string, snippet: string, body = ''): Mail
   return RULES.slice(2).find(([, re]) => re.test(head))?.[0] ?? null;
 }
 
+// Mail sent by an applicant-tracking system, or about an application, can open one in C2 · OPS. A newsletter that
+// says "thank you for your interest" cannot.
+const ATS_MAIL =
+  /@([a-z0-9-]+\.)*(greenhouse(-mail)?\.io|lever\.co|hire\.lever\.co|ashbyhq\.com|myworkday(jobs)?\.com|workday\.com|smartrecruiters\.com|workablemail\.com|workable\.com|icims\.com|jobvite\.com|teamtailor(-mail)?\.com|recruitee\.com|bamboohr\.com|breezy(mail)?\.(hr|com)|personio\.(de|com)|rippling\.com|dover\.com|gem\.com|successfactors\.(com|eu)|taleo\.net|oraclecloud\.com|linkedin\.com|indeed\.com|indeedemail\.com|wellfound\.com|naukri\.com|instahyre\.com)>?\s*$/i;
+const ABOUT_APPLYING = /\b(appl(y|ying|ied|ication)|candidacy|interview|offer|assessment)\b/i;
+
+export const isRecruitingMail = (from: string, subject: string) =>
+  ATS_MAIL.test(from.trim()) || ABOUT_APPLYING.test(subject);
+
+const ROLE_WORDS =
+  /\b(recruit(ing|ment|er)?|talent( acquisition)?|careers?|hiring( team)?|team|hr|jobs?|people( ops)?|notifications?|no-?reply|do-?not-?reply|via \w+)\b/gi;
+const NOT_A_COMPANY =
+  /^(greenhouse|lever|workday|ashby|smartrecruiters|workable|icims|jobvite|teamtailor|recruitee|bamboohr|linkedin|indeed|gmail|google|mail|info|support|the|my)?$/i;
+const NAME = `([A-Z0-9][\\w&.'’-]*(?: [A-Z0-9&][\\w&.'’-]*){0,4})`;
+const COMPANY_IN_SUBJECT = [
+  new RegExp(`\\b(?:appl(?:ying|ied|ication(?: was sent)?)|interest)\\s+(?:to|at|with|in)\\s+${NAME}`),
+  new RegExp(`\\byour\\s+${NAME}\\s+application\\b`),
+  new RegExp(`\\b(?:interview|offer|assessment)\\s+(?:at|with|from)\\s+${NAME}`),
+];
+
+/** The employer an application email is from: named in the subject, the sender's name, or the sender's domain. */
+export function employerFromMail(from: string, subject: string): string | null {
+  for (const re of COMPANY_IN_SUBJECT) {
+    const name = re
+      .exec(subject)?.[1]
+      ?.replace(/[.!,:;]+$/, '')
+      .trim();
+    if (name && !NOT_A_COMPANY.test(name)) return name.slice(0, 80);
+  }
+  const display = from
+    .replace(/<[^>]*>/, '')
+    .replace(/["']/g, '')
+    .replace(ROLE_WORDS, ' ')
+    .replace(/[@|·,–-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (display && !NOT_A_COMPANY.test(display) && !display.includes('@')) return display.slice(0, 80);
+  const domain = /@([a-z0-9.-]+)>?\s*$/i.exec(from)?.[1]?.toLowerCase();
+  if (!domain || ATS_MAIL.test('@' + domain)) return null;
+  const label = domain.split('.').slice(-2, -1)[0];
+  return label && !NOT_A_COMPANY.test(label) ? label[0].toUpperCase() + label.slice(1) : null;
+}
+
+const ROLE_PATTERNS = [
+  /\b(?:for|to) (?:the|our) (.{3,80}?) (?:position|role|opening|job|vacancy)\b/i,
+  /\bapplication for (?:the )?(.{3,80}?)(?: (?:position|role|opening)\b| at\b|[.,!]|$)/im,
+  /\bapplying (?:for|to) (?:the )?(.{3,80}?)(?: (?:position|role)\b| at\b|[.,!]|$)/im,
+  /\b(?:position|role) of (.{3,80}?)(?: at\b|[.,!]|$)/im,
+];
+
+/** The role an application email names, or null. */
+export function roleFromMail(subject: string, body: string): string | null {
+  for (const re of ROLE_PATTERNS) {
+    const role = re.exec(subject)?.[1] || re.exec(body.slice(0, 3000))?.[1];
+    if (role && !/\b(you|your|our|this|that)\b/i.test(role)) return role.replace(/["“”]/g, '').trim();
+  }
+  return null;
+}
+
 export interface Application {
   id: string;
   stage: Stage | null;
@@ -167,20 +298,27 @@ export interface Application {
 }
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const sameRole = (a: string, b: string) => {
+  const x = a.toLowerCase();
+  const y = b.toLowerCase();
+  return x.includes(y) || y.includes(x);
+};
 
 /**
- * The application an email is about: the company must appear as a whole word in the sender, subject or
- * snippet. With several roles at one company, a mentioned title wins, else the latest application.
+ * The application an email is about: the company must appear as a whole word in the sender, subject or snippet.
+ * With several roles at one company, the role the email names wins, else the latest application. An email that
+ * names a role none of them has is about another application (null), so it is not filed under the wrong one.
  */
-export function matchApplication(text: string, apps: Application[]): Application | null {
+export function matchApplication(text: string, apps: Application[], role: string | null = null): Application | null {
   const hay = text.toLowerCase();
   const hits = apps.filter((a) => {
     const name = a.company.trim().toLowerCase();
     return name.length >= 2 && new RegExp('(^|[^a-z0-9])' + escapeRe(name) + '($|[^a-z0-9])').test(hay);
   });
   if (!hits.length) return null;
-  const byTitle = hits.find((a) => hay.includes(a.title.toLowerCase()));
+  const byTitle = hits.find((a) => hay.includes(a.title.toLowerCase()) || (role && sameRole(a.title, role)));
   if (byTitle) return byTitle;
+  if (role && hits.every((a) => a.title !== 'Application')) return null;
   return [...hits].sort((a, b) => (b.applied_at || '').localeCompare(a.applied_at || ''))[0];
 }
 
@@ -200,33 +338,105 @@ export function nextStage(kind: MailKind, current: Stage | null): Stage | null {
 // ---- Sync ----
 
 const QUERY =
-  '-from:me -in:sent (subject:application OR subject:applying OR subject:interview OR subject:candidacy OR subject:offer OR assessment OR "thank you for applying" OR unfortunately OR "next steps" OR "other candidates" OR "regret to inform" OR "not to move forward" OR "not be moving forward")';
-
-interface GmailMessage {
-  id: string;
-  internalDate?: string;
-  snippet?: string;
-  payload?: { headers?: { name: string; value: string }[] };
-}
+  '-from:me -in:sent (subject:application OR subject:applying OR subject:applied OR subject:interview OR subject:candidacy OR subject:offer OR assessment OR "thank you for applying" OR "application was sent" OR unfortunately OR "next steps" OR "other candidates" OR "regret to inform" OR "not to move forward" OR "not be moving forward")';
 
 export interface GmailSyncResult {
   scanned: number;
   matched: number;
   updated: number;
-  indeedJobs?: number;
+  /** Applications RADAR had not seen (you applied elsewhere), opened in C2 · OPS from your mail. */
+  created: number;
   error?: string;
 }
 
-/** Read new application mail for one user and apply what it says to C2 · OPS, and ingest Indeed alert jobs. */
+const EMPTY: Omit<GmailSyncResult, 'error'> = { scanned: 0, matched: 0, updated: 0, created: 0 };
+
+async function loadApplications(supabase: SupabaseClient, userId: string): Promise<Application[]> {
+  const { data, error } = await supabase
+    .from('match_scores')
+    .select('id, stage, applied_at, jobs!inner(title, employer, companies!inner(name))')
+    .eq('user_id', userId)
+    .eq('status', 'applied');
+  if (error) throw new Error('Reading applications failed: ' + error.message);
+  return (data || []).map((r) => {
+    const job = (Array.isArray(r.jobs) ? r.jobs[0] : r.jobs) as {
+      title: string;
+      employer: string | null;
+      companies: { name: string } | { name: string }[];
+    };
+    const company = Array.isArray(job.companies) ? job.companies[0] : job.companies;
+    return {
+      id: r.id,
+      stage: r.stage,
+      title: job.title,
+      company: job.employer || company.name,
+      applied_at: r.applied_at,
+    };
+  });
+}
+
+/** An application RADAR never saw, opened from your mail: a job of yours plus an applied match for it. */
+async function openApplication(
+  supabase: SupabaseClient,
+  userId: string,
+  mail: { company: string; role: string | null; at: string; stage: Stage },
+): Promise<Application> {
+  const title = mail.role || 'Application';
+  const externalId =
+    'mail:' +
+    createHash('sha256')
+      .update(userId + '|' + mail.company.toLowerCase() + '|' + title.toLowerCase())
+      .digest('hex')
+      .slice(0, 24);
+  const { data: job, error: jobError } = await supabase
+    .from('jobs')
+    .upsert(
+      {
+        company_id: await findsCompanyId(supabase),
+        external_id: externalId,
+        title,
+        employer: mail.company,
+        apply_url: 'https://mail.google.com/',
+        is_active: false,
+        scraped_at: mail.at,
+      },
+      { onConflict: 'company_id,external_id' },
+    )
+    .select('id')
+    .single();
+  if (jobError) throw new Error('Saving the application failed: ' + jobError.message);
+  const { data: match, error } = await supabase
+    .from('match_scores')
+    .upsert(
+      {
+        user_id: userId,
+        job_id: job.id,
+        score: 0,
+        section: 'recommended',
+        status: 'applied',
+        stage: mail.stage,
+        applied_at: mail.at,
+        stage_changed_at: mail.at,
+        status_changed_at: mail.at,
+      },
+      { onConflict: 'user_id,job_id' },
+    )
+    .select('id')
+    .single();
+  if (error) throw new Error('Saving the application failed: ' + error.message);
+  return { id: match.id, stage: mail.stage, title, company: mail.company, applied_at: mail.at };
+}
+
+/** Read new application mail for one user and apply what it says to C2 · OPS. */
 export async function syncGmail(supabase: SupabaseClient, userId: string): Promise<GmailSyncResult> {
   const cfg = gmailConfig();
-  if (!cfg) return { scanned: 0, matched: 0, updated: 0, error: 'Gmail is not configured on the server.' };
+  if (!cfg) return { ...EMPTY, error: 'Gmail is not configured on the server.' };
   const { data: link } = await supabase
     .from('gmail_links')
     .select('refresh_token_enc, last_synced_at')
     .eq('user_id', userId)
     .maybeSingle();
-  if (!link) return { scanned: 0, matched: 0, updated: 0, error: 'Gmail is not connected.' };
+  if (!link) return { ...EMPTY, error: 'Gmail is not connected.' };
 
   const finish = async (result: GmailSyncResult) => {
     await supabase
@@ -238,59 +448,23 @@ export async function syncGmail(supabase: SupabaseClient, userId: string): Promi
 
   let accessToken: string;
   try {
-    accessToken = (await refreshAccess(cfg, decryptSecret(link.refresh_token_enc, cfg.tokenKey))).access_token!;
+    accessToken = await accessTokenFor(cfg, userId, link.refresh_token_enc);
   } catch (err) {
     const expired = (err as { code?: string }).code === 'invalid_grant';
     return finish({
-      scanned: 0,
-      matched: 0,
-      updated: 0,
+      ...EMPTY,
       error: expired ? 'Gmail access expired. Reconnect Gmail.' : 'Could not refresh Gmail access.',
     });
   }
 
   // A Gmail or database failure mid-sync is recorded on the link, so Settings can show it.
   try {
-    // 1. Ingest any fresh Indeed Job Alert digest emails into RADAR jobs pipeline
-    let indeedJobs = 0;
-    try {
-      const { syncIndeedAlertsForUser } = await import('@/lib/scraper/indeed-email');
-      indeedJobs = await syncIndeedAlertsForUser(supabase, userId, accessToken);
-    } catch (e) {
-      console.warn('[GMAIL] Indeed alerts sync error:', e instanceof Error ? e.message : e);
-    }
-
-    const { data: rows } = await supabase
-      .from('match_scores')
-      .select('id, stage, applied_at, jobs!inner(title, employer, companies!inner(name))')
-      .eq('user_id', userId)
-      .eq('status', 'applied');
-    const apps: Application[] = (rows || []).map((r) => {
-      const job = (Array.isArray(r.jobs) ? r.jobs[0] : r.jobs) as {
-        title: string;
-        employer: string | null;
-        companies: { name: string } | { name: string }[];
-      };
-      const company = Array.isArray(job.companies) ? job.companies[0] : job.companies;
-      return {
-        id: r.id,
-        stage: r.stage,
-        title: job.title,
-        company: job.employer || company.name,
-        applied_at: r.applied_at,
-      };
-    });
-    if (!apps.length) return finish({ scanned: 0, matched: 0, updated: 0, indeedJobs });
-
+    const apps = await loadApplications(supabase, userId);
     const days = link.last_synced_at
       ? Math.min(30, Math.max(1, Math.ceil((Date.now() - Date.parse(link.last_synced_at)) / 86_400_000) + 1))
       : 30;
-    const list = await gmailGet<{ messages?: { id: string }[] }>(
-      '/messages?maxResults=50&q=' + encodeURIComponent(`newer_than:${days}d ${QUERY}`),
-      accessToken,
-    );
-    const ids = (list.messages || []).map((m) => m.id);
-    if (!ids.length) return finish({ scanned: 0, matched: 0, updated: 0 });
+    const ids = await searchMessages(accessToken, `newer_than:${days}d ${QUERY}`, 50);
+    if (!ids.length) return finish({ ...EMPTY });
 
     const { data: seen } = await supabase
       .from('ops_events')
@@ -299,24 +473,47 @@ export async function syncGmail(supabase: SupabaseClient, userId: string): Promi
       .in('external_id', ids);
     const done = new Set((seen || []).map((e) => e.external_id));
 
-    const { extractBodyFromPayload } = await import('@/lib/scraper/indeed-email');
-    const { htmlToText } = await import('@/lib/scraper/utils');
-    let matched = 0;
-    let updated = 0;
-    for (const id of ids.filter((x) => !done.has(x))) {
-      const msg = await gmailGet<GmailMessage>(`/messages/${id}?format=full`, accessToken);
-      const header = (name: string) => msg.payload?.headers?.find((h) => h.name.toLowerCase() === name)?.value || '';
-      const subject = header('subject');
-      const from = header('from');
-      // The body is read here only to classify; it is never stored.
-      const body = htmlToText(extractBodyFromPayload(msg.payload as never)).slice(0, 6000);
+    const result = { ...EMPTY, scanned: ids.length };
+    // Oldest first, so "received" opens an application before its later rejection moves it.
+    for (const id of ids.filter((x) => !done.has(x)).reverse()) {
+      const msg = await getMessage(accessToken, id);
+      const subject = messageHeader(msg, 'subject');
+      const from = messageHeader(msg, 'from');
+      const { html, text } = messageBodies(msg.payload);
+      const body = (text || htmlToText(html)).slice(0, 6000);
       const kind = classifyEmail(subject, msg.snippet || '', body);
-      const app = kind ? matchApplication([from, subject, msg.snippet].join('\n'), apps) : null;
-      if (!kind || !app) continue;
-      matched += 1;
+      if (!kind) continue;
+      const at = messageDate(msg);
+      const role = roleFromMail(subject, body);
+      let app = matchApplication([from, subject, msg.snippet].join('\n'), apps, role);
+      if (!app) {
+        const company = isRecruitingMail(from, subject) ? employerFromMail(from, subject) : null;
+        if (!company) continue;
+        app = await openApplication(supabase, userId, {
+          company,
+          role,
+          at,
+          stage: kind === 'received' ? 'applied' : (nextStage(kind, 'applied') ?? 'applied'),
+        });
+        apps.push(app);
+        result.created += 1;
+      } else {
+        result.matched += 1;
+        const stage = nextStage(kind, app.stage);
+        if (stage) {
+          const { error } = await supabase
+            .from('match_scores')
+            .update({ stage, stage_changed_at: at })
+            .eq('user_id', userId)
+            .eq('id', app.id);
+          if (!error) {
+            app.stage = stage;
+            result.updated += 1;
+          }
+        }
+      }
 
       const sender = from.replace(/<.*>/, '').replace(/"/g, '').trim() || 'recruiter';
-      const occurred = msg.internalDate ? new Date(Number(msg.internalDate)).toISOString() : new Date().toISOString();
       await supabase.from('ops_events').upsert(
         {
           user_id: userId,
@@ -325,33 +522,15 @@ export async function syncGmail(supabase: SupabaseClient, userId: string): Promi
           kind,
           summary: `${kind.toUpperCase()} · "${subject.slice(0, 140)}" from ${sender.slice(0, 60)}`,
           external_id: id,
-          occurred_at: occurred,
+          occurred_at: at,
         },
         { onConflict: 'user_id,external_id', ignoreDuplicates: true },
       );
-
-      const stage = nextStage(kind, app.stage);
-      if (stage) {
-        const { error } = await supabase
-          .from('match_scores')
-          .update({ stage, stage_changed_at: occurred })
-          .eq('user_id', userId)
-          .eq('id', app.id);
-        if (!error) {
-          app.stage = stage;
-          updated += 1;
-        }
-      }
     }
-    return finish({ scanned: ids.length, matched, updated, indeedJobs });
+    return finish(result);
   } catch (err) {
     console.error('[GMAIL]', userId, err instanceof Error ? err.message : err);
-    return finish({
-      scanned: 0,
-      matched: 0,
-      updated: 0,
-      error: 'Reading Gmail failed. RADAR will retry on the next cycle.',
-    });
+    return finish({ ...EMPTY, error: 'Reading Gmail failed. RADAR will retry on the next cycle.' });
   }
 }
 
