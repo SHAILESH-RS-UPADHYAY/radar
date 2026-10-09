@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { classifyEmail, matchApplication, nextStage, type Application } from './gmail';
+import {
+  classifyEmail,
+  employerFromMail,
+  isRecruitingMail,
+  matchApplication,
+  messageBodies,
+  nextStage,
+  roleFromMail,
+  type Application,
+} from './gmail';
 
 describe('classifyEmail', () => {
   it('reads the common recruiter replies', () => {
@@ -64,6 +73,63 @@ describe('matchApplication', () => {
   it('prefers the role named in the email, else the latest application', () => {
     expect(matchApplication('Stripe: your Backend Engineer application', apps)?.id).toBe('s1');
     expect(matchApplication('Stripe <jobs@stripe.com> thanks for applying', apps)?.id).toBe('s2');
+  });
+  it('files mail about a role none of your applications has as a new application, not under the latest one', () => {
+    expect(matchApplication('Stripe <jobs@stripe.com> about your application', apps, 'Data Scientist')).toBeNull();
+    expect(matchApplication('Stripe <jobs@stripe.com> about your application', apps, 'backend engineer')?.id).toBe(
+      's1',
+    );
+  });
+});
+
+describe('mail from an application RADAR never saw', () => {
+  it('reads the employer from the subject, the sender name, or the sender domain', () => {
+    expect(employerFromMail('no-reply@us.greenhouse-mail.io', 'Thank you for applying to Cohere!')).toBe('Cohere');
+    expect(employerFromMail('Cohere Talent <no-reply@ashbyhq.com>', 'Thank you for your interest')).toBe('Cohere');
+    expect(employerFromMail('LinkedIn <jobs-noreply@linkedin.com>', 'Your application was sent to Cohere')).toBe(
+      'Cohere',
+    );
+    expect(employerFromMail('Stripe Recruiting Team <careers@stripe.com>', 'Update')).toBe('Stripe');
+    expect(employerFromMail('careers@scale.com', 'Update on your application')).toBe('Scale');
+    expect(employerFromMail('Greenhouse <no-reply@greenhouse.io>', 'Update on your application')).toBeNull();
+  });
+
+  it('reads the role when the email names it', () => {
+    expect(
+      roleFromMail('Thank you', 'We received your application for the Forward Deployed Engineer position at Cohere.'),
+    ).toBe('Forward Deployed Engineer');
+    expect(roleFromMail('Your application for Backend Engineer, Payments', '')).toBe('Backend Engineer');
+    expect(roleFromMail('Thank you for applying', 'We will review it soon.')).toBeNull();
+  });
+
+  it('opens an application only from recruiting mail, never from a newsletter', () => {
+    expect(isRecruitingMail('Cohere Talent <no-reply@ashbyhq.com>', 'Thank you for your interest')).toBe(true);
+    expect(isRecruitingMail('Acme <news@acme.com>', 'Your application was received')).toBe(true);
+    expect(isRecruitingMail('Acme <news@acme.com>', 'Thank you for your interest in our webinar')).toBe(false);
+  });
+});
+
+describe('messageBodies', () => {
+  const b64 = (s: string) => Buffer.from(s, 'utf-8').toString('base64url');
+  it('finds the HTML and plain-text parts at any depth, and a bare single-part body', () => {
+    const nested = {
+      mimeType: 'multipart/mixed',
+      parts: [
+        {
+          mimeType: 'multipart/alternative',
+          parts: [
+            { mimeType: 'text/plain', body: { data: b64('Hello — plain') } },
+            { mimeType: 'text/html', body: { data: b64('<p>Hello</p>') } },
+          ],
+        },
+      ],
+    };
+    expect(messageBodies(nested)).toEqual({ html: '<p>Hello</p>', text: 'Hello — plain' });
+    expect(messageBodies({ body: { data: b64('<div>only html</div>') } })).toEqual({
+      html: '<div>only html</div>',
+      text: '',
+    });
+    expect(messageBodies(undefined)).toEqual({ html: '', text: '' });
   });
 });
 

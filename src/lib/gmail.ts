@@ -259,8 +259,8 @@ export function employerFromMail(from: string, subject: string): string | null {
       .trim();
     if (name && !NOT_A_COMPANY.test(name)) return name.slice(0, 80);
   }
-  const display = from
-    .replace(/<[^>]*>/, '')
+  // The display name only: a bare "careers@scale.com" has none, and its domain is read below.
+  const display = (from.includes('<') ? from.slice(0, from.indexOf('<')) : '')
     .replace(/["']/g, '')
     .replace(ROLE_WORDS, ' ')
     .replace(/[@|·,–-]+/g, ' ')
