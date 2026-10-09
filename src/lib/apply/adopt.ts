@@ -1,4 +1,34 @@
-// The employer behind a careers page you opened yourself, for C2 · OPS and for matching Gmail replies by company.
+// Jobs RADAR did not scrape but you are applying to: a careers page you adopted with the extension, or an application
+// RADAR first heard of from your mail. They hang off one board company; `employer` carries the real name.
+
+import type { SupabaseClient } from '@supabase/supabase-js';
+
+const FINDS_COMPANY = 'Your finds';
+let findsId: Promise<string> | null = null;
+
+/** The company row your own finds hang off, created on first use. */
+export function findsCompanyId(supabase: SupabaseClient): Promise<string> {
+  findsId ??= (async () => {
+    const { data } = await supabase.from('companies').select('id').eq('name', FINDS_COMPANY).maybeSingle();
+    if (data) return data.id as string;
+    const { data: made, error } = await supabase
+      .from('companies')
+      .insert({
+        name: FINDS_COMPANY,
+        ats_provider: 'custom',
+        careers_url: 'https://radar.local/finds',
+        category: 'Board',
+      })
+      .select('id')
+      .single();
+    if (error) throw new Error('Creating your finds failed: ' + error.message);
+    return made.id as string;
+  })().catch((err) => {
+    findsId = null; // a failed lookup is retried on the next call
+    throw err;
+  });
+  return findsId;
+}
 
 const ATS_PATH =
   /(^|\.)(greenhouse\.io|lever\.co|ashbyhq\.com|workable\.com|recruitee\.com|breezy\.hr|smartrecruiters\.com|teamtailor\.com|welcometothejungle\.com)$/i;

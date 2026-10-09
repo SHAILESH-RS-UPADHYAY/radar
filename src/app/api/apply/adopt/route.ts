@@ -3,12 +3,9 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { z } from 'zod';
 import { createServerClient } from '@/lib/supabase/client';
-import { employerFromPage } from '@/lib/apply/adopt';
+import { employerFromPage, findsCompanyId } from '@/lib/apply/adopt';
 
 export const dynamic = 'force-dynamic';
-
-// Jobs you opened yourself (any careers page) hang off one board company; `employer` carries the real name.
-const FINDS_COMPANY = 'Your finds (extension)';
 
 const Body = z.object({
   url: z.string().url().max(2000),
@@ -33,20 +30,11 @@ export async function POST(req: NextRequest) {
   url.hash = '';
 
   const supabase = createServerClient();
-  let { data: company } = await supabase.from('companies').select('id').eq('name', FINDS_COMPANY).maybeSingle();
-  if (!company) {
-    const { data, error } = await supabase
-      .from('companies')
-      .insert({
-        name: FINDS_COMPANY,
-        ats_provider: 'custom',
-        careers_url: 'https://radar.local/finds',
-        category: 'Board',
-      })
-      .select('id')
-      .single();
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    company = data;
+  let companyId: string;
+  try {
+    companyId = await findsCompanyId(supabase);
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
   }
 
   const employer = employerFromPage(url, page.siteName, page.title);
@@ -56,7 +44,7 @@ export async function POST(req: NextRequest) {
     .from('jobs')
     .upsert(
       {
-        company_id: company!.id,
+        company_id: companyId,
         external_id: externalId,
         title,
         employer,
