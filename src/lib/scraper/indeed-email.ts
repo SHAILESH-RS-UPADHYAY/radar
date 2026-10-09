@@ -214,7 +214,7 @@ interface MessagePart {
   parts?: MessagePart[];
 }
 
-function extractBodyFromPayload(payload?: MessagePart): string {
+export function extractBodyFromPayload(payload?: MessagePart): string {
   if (!payload) return '';
   if (payload.body?.data) {
     try {

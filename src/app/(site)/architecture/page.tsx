@@ -206,7 +206,10 @@ export default function ArchitecturePage() {
               ['VERCEL', 'Hosting, functions and the daily cron'],
               ['GITHUB ACTIONS', '6-hourly pipeline trigger and CI'],
               ['TAILWIND 4 · MOTION', 'HUD design tokens and animation'],
-              ['ANTHROPIC · GEMINI · GROK', 'OVERCLOCK resume tailoring; AI_PROVIDER picks, the others fall back'],
+              [
+                'GROQ · GEMINI · ANTHROPIC · GROK',
+                'OVERCLOCK and form answers; AI_PROVIDER picks, the others fall back',
+              ],
               ['GMAIL API', 'Read-only recruiter replies for C2 · OPS'],
               ['VITEST', 'Unit tests for scoring, parsing, discovery and adapters'],
             ].map(([name, what]) => (

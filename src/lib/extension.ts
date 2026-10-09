@@ -16,7 +16,7 @@ export interface PageQuestion {
 }
 
 export interface ExtensionEvent {
-  type: 'pong' | 'launched' | 'filled' | 'applied' | 'questions' | 'autopilot' | 'learn';
+  type: 'pong' | 'launched' | 'filled' | 'applied' | 'questions' | 'autopilot' | 'learn' | 'adopt';
   version?: string;
   matchId?: string;
   tailoredId?: string | null;
@@ -35,6 +35,9 @@ export interface ExtensionEvent {
   /** learn: an answer you typed in the extension's panel, for RADAR to remember. */
   question?: string;
   answer?: string;
+  /** adopt: you pressed the extension's icon on a careers page RADAR did not open; RADAR takes that tab over. */
+  tabId?: number;
+  page?: { url: string; title: string; heading: string; siteName: string; text: string };
 }
 
 const send = (message: Record<string, unknown>) =>
@@ -70,6 +73,8 @@ export function launchInExtension(launch: {
   matchId: string;
   tailoredId: string | null;
   packet?: FillPacket;
+  /** Fill this already-open tab (a page you adopted with the extension's icon) instead of opening a new one. */
+  tabId?: number;
   /** ZERO-DAY: open in the background, run pre-flight and, unless dryRun, press the form's Submit. */
   auto?: { dryRun: boolean; consents: string[] };
 }) {

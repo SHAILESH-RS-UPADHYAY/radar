@@ -911,8 +911,34 @@
     ],
   };
 
+  // Questions RADAR left empty on any pass. What you type into them yourself is learned when you press Submit, so the
+  // next form that asks gets your words. Never secrets: passwords, OTPs, card or ID numbers are skipped.
+  const leftForYou = new Set();
+  const LEARNABLE = new Set(['text', 'textarea', 'select', 'radio', 'buttons']);
+  const SECRET =
+    /password|passcode|otp|one[- ]time|captcha|cvv|card number|aadhaa?r|\bpan\b|ssn|social security|passport/i;
+  const noteLeft = () => {
+    for (const q of questions()) if (q.label && LEARNABLE.has(q.kind) && !answered(q)) leftForYou.add(q.label);
+  };
+  function answerText(q) {
+    if (q.kind === 'select') return [...q.el.selectedOptions].map((o) => o.textContent.trim()).join(', ');
+    if (q.kind === 'radio') return choiceText(q.els.find((b) => b.checked));
+    if (q.kind === 'buttons')
+      return (q.els.find((b) => b.getAttribute('aria-pressed') === 'true') || {}).textContent || '';
+    return q.el.value;
+  }
+  function learnYours() {
+    for (const q of questions()) {
+      if (!leftForYou.has(q.label) || !answered(q) || q.el.type === 'password' || SECRET.test(q.label)) continue;
+      const value = String(answerText(q) || '').trim();
+      if (value && value.length <= 2000) ask({ type: 'learn', question: q.label, answer: value });
+      leftForYou.delete(q.label);
+    }
+  }
+
   /** What the form looks like now, to RADAR (toast) and to the panel (lines, NEEDS YOU). */
   function report(hud, lines) {
+    noteLeft();
     const needs = stillEmpty();
     markSubmit();
     const filled = questions().filter(answered).length;
@@ -927,6 +953,7 @@
   function watchForConfirmation(hud) {
     let armedAt = 0;
     const arm = () => {
+      if (!armedAt) learnYours();
       armedAt = Date.now();
       ask({ type: 'armed' });
     };
@@ -1176,6 +1203,7 @@
       hud.needs(stillEmpty());
     });
     hud.on('sent', async () => {
+      learnYours();
       const res = await ask({ type: 'submitted' });
       if (res && res.ok) hud.done(LOGGED);
     });

@@ -151,11 +151,11 @@ export async function packForm(
  */
 export async function oneClickApply(
   api: Api,
-  job: { matchId: string; url: string; company: string },
+  job: { matchId: string; url: string; company: string; tabId?: number },
   draft: () => Promise<Prepared | null> = () => prepareForm(api, job.matchId),
 ): Promise<void> {
   const { matchId, company } = job;
-  launchInExtension({ url: job.url, matchId, tailoredId: null });
+  launchInExtension({ url: job.url, matchId, tailoredId: null, tabId: job.tabId });
   try {
     const facts = await prepareForm(api, matchId, { draft: false });
     const readAhead = facts.source !== 'standard';
@@ -174,6 +174,32 @@ export async function oneClickApply(
       error: 'RADAR could not prepare the answers: ' + (err instanceof Error ? err.message : err),
     });
   }
+}
+
+/**
+ * The extension's icon on a careers page RADAR did not open: register the page as a job of yours, then run ↯ HACK in
+ * that same tab. Submitting it logs it in C2 · OPS, and Gmail replies from that company are tracked like any other.
+ */
+export async function adoptPage(
+  api: Api,
+  tabId: number,
+  page: { url: string; title: string; heading: string; siteName: string; text: string },
+): Promise<{ matchId: string; company: string; title: string }> {
+  const res = await api('/api/apply/adopt', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(page),
+  });
+  const d = (await res.json().catch(() => ({}))) as {
+    matchId?: string;
+    company?: string;
+    title?: string;
+    error?: string;
+  };
+  if (!res.ok || !d.matchId) throw new Error(d.error || 'HTTP ' + res.status);
+  const job = { matchId: d.matchId, company: d.company || 'RADAR', title: d.title || '' };
+  await oneClickApply(api, { ...job, url: page.url, tabId });
+  return job;
 }
 
 /** Remember an answer you gave in the extension's panel: every later form that asks the same question gets it. */

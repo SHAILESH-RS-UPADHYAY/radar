@@ -3,7 +3,8 @@
 // One click in RADAR opens the job's form at once; the answers follow a few seconds later (the AI drafts them while
 // the page loads). This worker keeps one entry per tab RADAR opened, in session storage (memory only, gone when the
 // browser closes), and puts fill.js into that tab only: every page load and every form frame inside it, on any site.
-// It never touches a tab RADAR did not open.
+// It never touches a tab RADAR did not open, except one you hand it by clicking the extension's icon (or Alt+Shift+R)
+// on a careers page: RADAR then adopts that tab and fills it the same way.
 
 const key = (tabId) => 'tab:' + tabId;
 const read = async (tabId) => (await chrome.storage.session.get(key(tabId)))[key(tabId)] || null;
@@ -46,12 +47,30 @@ const FORM_FRAME =
 // Sites whose terms forbid automating them: RADAR opens their links but never fills them.
 const NEVER = /^https:\/\/([^/]+\.)?(linkedin\.com|indeed\.[a-z.]+)\//i;
 
+// Job boards whose page is a listing, not the form (Adzuna's /details/, Jooble): follow their Apply link in the same
+// tab, so the employer's form loads in a tab RADAR already tracks. Their own search forms are never filled.
+const AGGREGATOR = /^https:\/\/([^/]+\.)?(adzuna\.[a-z.]+|jooble\.org)\//i;
+
+/** The Apply link on a board's listing page (runs in the page). */
+function boardApplyLink() {
+  const links = [...document.querySelectorAll('a[href]')];
+  const a =
+    links.find((l) => l.dataset.js === 'apply') ||
+    links.find((l) => /^\s*apply( for this job| now)?\s*$/i.test(l.textContent || '') && l.offsetParent);
+  return a ? a.href : null;
+}
+
 async function inject(tabId, frameId) {
   try {
     const [frame] = await chrome.webNavigation
       .getAllFrames({ tabId })
       .then((all) => all.filter((f) => f.frameId === frameId));
     if (frame && NEVER.test(frame.url)) return;
+    if (frameId === 0 && frame && AGGREGATOR.test(frame.url)) {
+      const [{ result: href }] = await chrome.scripting.executeScript({ target: { tabId }, func: boardApplyLink });
+      if (href && /^https:/.test(href) && href !== frame.url) await chrome.tabs.update(tabId, { url: href });
+      return;
+    }
     await chrome.scripting.executeScript({
       target: { tabId, frameIds: [frameId] },
       files: ['preflight.js', 'fill.js'],
@@ -66,8 +85,19 @@ chrome.webNavigation.onCompleted.addListener(async ({ tabId, frameId, url }) => 
   if (frameId === 0 || FORM_FRAME.test(url)) inject(tabId, frameId);
 });
 
-/** Open the form next to the RADAR tab and remember the tab as RADAR's. */
+/** Open the form next to the RADAR tab and remember the tab as RADAR's (or fill the tab you adopted). */
 async function openForm(msg, sender) {
+  if (msg.tabId) {
+    const entry = await read(msg.tabId);
+    if (!entry) return { ok: false, error: 'that tab was closed' };
+    await write(msg.tabId, {
+      ...entry,
+      matchId: msg.matchId,
+      tailoredId: msg.tailoredId || null,
+      radarTab: sender.tab.id,
+    });
+    return { ok: true };
+  }
   let url;
   try {
     url = new URL(msg.url);
@@ -119,6 +149,16 @@ chrome.runtime.onInstalled.addListener(async () => {
 });
 
 const handlers = {
+  // From a RADAR page that just loaded: a page you adopted while no RADAR tab was open. Also remembers which RADAR
+  // address you use, so the next adopt opens that one.
+  async 'pending-adopt'(msg, sender) {
+    if (!RADAR_PAGE.test(sender.url || '')) return null;
+    await chrome.storage.local.set({ radarOrigin: new URL(sender.url).origin });
+    const { pendingAdopt } = await chrome.storage.session.get('pendingAdopt');
+    if (!pendingAdopt || !/\/dashboard/.test(sender.url)) return null;
+    await chrome.storage.session.remove('pendingAdopt');
+    return pendingAdopt;
+  },
   // From RADAR: open the form now. The packet may come with it, or a moment later through `arm`.
   launch(msg, sender) {
     const opening = openForm(msg, sender);
@@ -295,3 +335,83 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 });
 
 chrome.tabs.onRemoved.addListener((tabId) => chrome.storage.session.remove(key(tabId)));
+
+// An Apply button that opens the employer's form in a new tab: that tab is RADAR's too, with the same answers.
+chrome.webNavigation.onCreatedNavigationTarget.addListener(async ({ sourceTabId, tabId }) => {
+  const entry = await read(sourceTabId);
+  if (entry && !entry.done) await write(tabId, { ...entry, report: null, armedAt: 0 });
+});
+
+// ---- Adopt: the icon on any careers page ----
+
+const PROD = 'https://radar-neon-theta.vercel.app';
+const flash = (tabId, text, color) => {
+  chrome.action.setBadgeBackgroundColor({ color, tabId });
+  chrome.action.setBadgeText({ text, tabId });
+  setTimeout(() => chrome.action.setBadgeText({ text: '', tabId }).catch(() => {}), 4000);
+};
+
+/** What RADAR needs to know about the page: read in the page, nothing else is taken. */
+function readPage() {
+  const meta = (p) => (document.querySelector(`meta[property="${p}"]`) || {}).content || '';
+  const h1 = document.querySelector('h1');
+  return {
+    url: location.href,
+    title: document.title || '',
+    heading: (h1 && h1.innerText.trim().slice(0, 300)) || '',
+    siteName: meta('og:site_name').slice(0, 150),
+    text: (document.body ? document.body.innerText : '').replace(/[ \t]+/g, ' ').slice(0, 15000),
+  };
+}
+
+async function adopt(tab) {
+  if (!tab || !/^https:/.test(tab.url || '')) return flash(tab && tab.id, 'https', '#FF5555');
+  if (NEVER.test(tab.url)) return flash(tab.id, 'NO', '#FF5555'); // their terms forbid automation
+  if (await read(tab.id)) return flash(tab.id, 'ON', '#00FF41'); // already RADAR's
+  let page;
+  try {
+    [{ result: page }] = await chrome.scripting.executeScript({ target: { tabId: tab.id }, func: readPage });
+  } catch {
+    return flash(tab.id, 'ERR', '#FF5555');
+  }
+  // The tab is RADAR's from here: fill.js shows PREPARING until the answers come.
+  await write(tab.id, {
+    packet: null,
+    version: 0,
+    error: null,
+    note: null,
+    more: null,
+    matchId: null,
+    tailoredId: null,
+    radarTab: null,
+    armedAt: 0,
+    report: null,
+    done: false,
+    auto: null,
+  });
+  inject(tab.id, 0);
+  for (const f of await chrome.webNavigation.getAllFrames({ tabId: tab.id }).catch(() => []))
+    if (f.frameId && FORM_FRAME.test(f.url)) inject(tab.id, f.frameId);
+  flash(tab.id, '↯', '#22D3EE');
+
+  // A RADAR dashboard tab does the work (it holds your session): an open one, else one opened in the background.
+  const matches = chrome.runtime.getManifest().content_scripts[0].matches;
+  const radar = (await chrome.tabs.query({ url: matches })).find((t) => /\/dashboard/.test(t.url || ''));
+  const message = { type: 'adopt', tabId: tab.id, page };
+  if (
+    radar &&
+    (await chrome.tabs.sendMessage(radar.id, message).then(
+      () => true,
+      () => false,
+    ))
+  )
+    return;
+  await chrome.storage.session.set({ pendingAdopt: message });
+  const { radarOrigin } = await chrome.storage.local.get('radarOrigin');
+  await chrome.tabs.create({ url: (radarOrigin || PROD) + '/dashboard', active: false, index: tab.index + 1 });
+}
+
+chrome.action.onClicked.addListener(adopt);
+chrome.commands.onCommand.addListener(async (command, tab) => {
+  if (command === 'adopt') adopt(tab || (await chrome.tabs.query({ active: true, currentWindow: true }))[0]);
+});

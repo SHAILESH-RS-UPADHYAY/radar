@@ -7,7 +7,7 @@ import { UserButton, useUser } from '@clerk/nextjs';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useApi } from '@/lib/use-api';
 import { onExtension, useExtension } from '@/lib/extension';
-import { answerPageQuestions, oneClickApply, rememberAnswer } from '@/lib/apply/client';
+import { adoptPage, answerPageQuestions, oneClickApply, rememberAnswer } from '@/lib/apply/client';
 import type { MatchStatus, Stage } from '@/types';
 
 type OpsLane = Stage | 'closed' | 'attention';
@@ -611,6 +611,15 @@ export default function DashboardPage() {
   const onExtensionEvent = useRef<Parameters<typeof onExtension>[0]>(() => {});
   useEffect(() => {
     onExtensionEvent.current = (e) => {
+      // ↯ on a careers page RADAR did not open: take that tab over and fill it like any HACK.
+      if (e.type === 'adopt' && e.tabId && e.page) {
+        const page = e.page;
+        setNotice({ tone: 'info', text: `RADAR is taking over ${new URL(page.url).hostname} · reading the form…` });
+        void adoptPage(api, e.tabId, page)
+          .then((j) => setNotice({ tone: 'info', text: `${j.company} · ${j.title}: filling in that tab.` }))
+          .catch((err) => setNotice({ tone: 'alert', text: 'RADAR could not take that page: ' + err.message }));
+        return;
+      }
       if (!e.matchId) return;
       // The form tab found questions RADAR could not read ahead: answer them (profile, AI, HUMANIZE) and send back.
       if (e.type === 'questions' && e.id && e.fields?.length) {
@@ -629,7 +638,14 @@ export default function DashboardPage() {
           text: `Form filled · ${e.filled} fields${e.needs ? ` · ${e.needs} required left for you` : ''}. Review it in that tab and press Submit.`,
         });
       if (e.type === 'applied') {
-        void setStatus([e.matchId], 'applied', e.tailoredId ?? null);
+        // A page you adopted is not in this list yet: log it on the server, then reload so C2 · OPS shows it.
+        if (!matches.some((m) => m.id === e.matchId))
+          void api('/api/vault', {
+            method: 'PATCH',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ ids: [e.matchId], status: 'applied' }),
+          }).then(() => fetchMatches());
+        else void setStatus([e.matchId], 'applied', e.tailoredId ?? null);
         setNotice({ tone: 'ok', text: 'Application confirmed · logged in C2 · OPS.' });
         if (runMatch?.id === e.matchId) nextRun();
       }
@@ -1202,7 +1218,7 @@ export default function DashboardPage() {
                 >
                   {engine === null && (
                     <p className="font-mono text-xs leading-relaxed text-hud-red">
-                      Set ANTHROPIC_API_KEY, GEMINI_API_KEY or XAI_API_KEY on the server to switch OVERCLOCK on.
+                      Set GROQ_API_KEY or GEMINI_API_KEY (both have free tiers) on the server to switch OVERCLOCK on.
                     </p>
                   )}
                   {engine && <p className="font-mono text-[10px] tracking-[0.2em] text-dim">MODEL · {engine.model}</p>}

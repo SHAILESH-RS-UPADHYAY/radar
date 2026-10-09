@@ -262,6 +262,16 @@ export const COMPANY_SEEDS: CompanySeed[] = [
   c('Working Nomads', 'https://www.workingnomads.com/', 'workingnomads', null, 'Board', 'Remote', 'Global'),
   c('Hasjob', 'https://hasjob.co/', 'hasjob', null, 'Board', null, 'India'),
   c('Indeed Email Alerts', 'https://indeed.com/', 'indeed_email', null, 'Board', null, 'India'),
+  c('LinkedIn Email Alerts', 'https://www.linkedin.com/jobs/', 'linkedin_email', null, 'Board', null, 'India'),
+  c(
+    'Welcome to the Jungle Email Alerts',
+    'https://www.welcometothejungle.com/',
+    'wttj_email',
+    null,
+    'Board',
+    null,
+    'Global',
+  ),
   c(
     'JSearch (Indeed & LinkedIn)',
     'https://rapidapi.com/letscrape-6bRBa3QguO5/api/jsearch',

@@ -29,7 +29,9 @@ export const SOURCE_NAMES: Record<Exclude<Provider, 'custom'>, string> = {
   weworkremotely: 'We Work Remotely',
   workingnomads: 'Working Nomads',
   hasjob: 'Hasjob',
-  indeed_email: 'Indeed (Gmail Alerts)',
+  indeed_email: 'Indeed alerts (Gmail)',
+  linkedin_email: 'LinkedIn alerts (Gmail)',
+  wttj_email: 'Welcome to the Jungle alerts (Gmail)',
   jsearch: 'JSearch (Indeed & LinkedIn)',
   googlejobs: 'Google Jobs',
 };

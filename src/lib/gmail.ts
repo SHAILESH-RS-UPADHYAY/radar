@@ -3,7 +3,8 @@
 // ============================
 // Read-only Google OAuth (gmail.readonly). Each sync reads recent application-related mail, classifies it
 // (rejection, interview, assessment, offer, received), ties it to one of the user's applications by company,
-// records an ops_event and moves the stage forward. Only subject, sender name and the verdict are stored.
+// records an ops_event and moves the stage forward. Only subject, sender name and the verdict are stored;
+// the body is read in memory to find the verdict and dropped.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { decryptSecret, encryptSecret } from '@/lib/crypto';
@@ -129,7 +130,7 @@ const RULES: [MailKind, RegExp][] = [
   [
     'rejection',
     // A negation is required, so "excited to move forward with your application" is not read as a rejection.
-    /(unfortunately|regret to inform|(will not|won['’]t|not) (be )?(to )?(moving|move|proceeding|proceed) (forward|ahead|with your (application|candidacy))|decided (not )?to (pursue|proceed with|move forward with) other|other candidates|no longer (under consideration|considering)|not (been )?selected|position has (been )?(filled|closed)|will not be progressing)/i,
+    /(regret to inform|(will not|won['’]t|not) (be )?(to )?(moving|move|proceeding|proceed) (forward|ahead|with your (application|candidacy))|decided (not )?to (pursue|proceed with|move forward with) other|other candidates|no longer (under consideration|considering)|not (been )?selected|position has (been )?(filled|closed)|will not be progressing)/i,
   ],
   [
     'assessment',
@@ -145,9 +146,16 @@ const RULES: [MailKind, RegExp][] = [
   ],
 ];
 
-export function classifyEmail(subject: string, snippet: string): MailKind | null {
-  const text = subject + '\n' + snippet;
-  return RULES.find(([, re]) => re.test(text))?.[0] ?? null;
+/**
+ * What a recruiter email says. The verdict usually sits in the subject or first lines (the snippet), but a rejection
+ * often comes after a paragraph of thanks, so rejection phrases are also looked for in the body. A bare
+ * "unfortunately" counts only up top: confirmations say "unfortunately we can't reply to everyone" further down.
+ */
+export function classifyEmail(subject: string, snippet: string, body = ''): MailKind | null {
+  const head = subject + '\n' + snippet;
+  if (RULES[0][1].test(head)) return 'offer';
+  if (RULES[1][1].test(head + '\n' + body) || /\bunfortunately\b/i.test(head)) return 'rejection';
+  return RULES.slice(2).find(([, re]) => re.test(head))?.[0] ?? null;
 }
 
 export interface Application {
@@ -192,7 +200,7 @@ export function nextStage(kind: MailKind, current: Stage | null): Stage | null {
 // ---- Sync ----
 
 const QUERY =
-  '-from:me -in:sent (subject:application OR subject:applying OR subject:interview OR subject:candidacy OR subject:offer OR assessment OR "thank you for applying" OR unfortunately OR "next steps")';
+  '-from:me -in:sent (subject:application OR subject:applying OR subject:interview OR subject:candidacy OR subject:offer OR assessment OR "thank you for applying" OR unfortunately OR "next steps" OR "other candidates" OR "regret to inform" OR "not to move forward" OR "not be moving forward")';
 
 interface GmailMessage {
   id: string;
@@ -291,17 +299,18 @@ export async function syncGmail(supabase: SupabaseClient, userId: string): Promi
       .in('external_id', ids);
     const done = new Set((seen || []).map((e) => e.external_id));
 
+    const { extractBodyFromPayload } = await import('@/lib/scraper/indeed-email');
+    const { htmlToText } = await import('@/lib/scraper/utils');
     let matched = 0;
     let updated = 0;
     for (const id of ids.filter((x) => !done.has(x))) {
-      const msg = await gmailGet<GmailMessage>(
-        `/messages/${id}?format=metadata&metadataHeaders=From&metadataHeaders=Subject`,
-        accessToken,
-      );
+      const msg = await gmailGet<GmailMessage>(`/messages/${id}?format=full`, accessToken);
       const header = (name: string) => msg.payload?.headers?.find((h) => h.name.toLowerCase() === name)?.value || '';
       const subject = header('subject');
       const from = header('from');
-      const kind = classifyEmail(subject, msg.snippet || '');
+      // The body is read here only to classify; it is never stored.
+      const body = htmlToText(extractBodyFromPayload(msg.payload as never)).slice(0, 6000);
+      const kind = classifyEmail(subject, msg.snippet || '', body);
       const app = kind ? matchApplication([from, subject, msg.snippet].join('\n'), apps) : null;
       if (!kind || !app) continue;
       matched += 1;

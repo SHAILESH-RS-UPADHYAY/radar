@@ -29,6 +29,24 @@ describe('classifyEmail', () => {
     expect(classifyEmail('Next steps', 'We are excited to move forward with your application!')).toBe('interview');
     expect(classifyEmail('Your order has shipped', 'Track your package.')).toBeNull();
   });
+
+  it('finds a rejection below the thanks, but not a stray "unfortunately" in a confirmation footer', () => {
+    const thanks = 'Thank you for your interest in Cohere and the Forward Deployed Engineer role.';
+    expect(
+      classifyEmail(
+        'Your application to Cohere',
+        thanks,
+        thanks + ' After careful review we have decided to move forward with other candidates.',
+      ),
+    ).toBe('rejection');
+    expect(
+      classifyEmail(
+        'Application received',
+        'Thank you for applying!',
+        'Unfortunately we cannot reply to every applicant.',
+      ),
+    ).toBe('received');
+  });
 });
 
 describe('matchApplication', () => {

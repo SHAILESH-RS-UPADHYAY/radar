@@ -119,13 +119,17 @@ describe('AI providers (Anthropic · Gemini · Grok)', () => {
 
   it('orders providers: AI_PROVIDER first, then any other with a key', () => {
     vi.stubEnv('ANTHROPIC_API_KEY', '');
+    vi.stubEnv('GROQ_API_KEY', '');
+    vi.stubEnv('GEMINI_MODEL', '');
     vi.stubEnv('GEMINI_API_KEY', 'g');
     vi.stubEnv('XAI_API_KEY', 'x');
     vi.stubEnv('AI_PROVIDER', 'grok');
     expect(aiProviders()).toEqual(['grok', 'gemini']);
     vi.stubEnv('AI_PROVIDER', '');
     expect(aiProviders()).toEqual(['gemini', 'grok']);
-    expect(aiEngine()).toMatchObject({ provider: 'gemini', model: 'gemini-3.1-pro-preview' });
+    expect(aiEngine()).toMatchObject({ provider: 'gemini', model: 'gemini-3.8-flash' });
+    vi.stubEnv('GROQ_API_KEY', 'q');
+    expect(aiProviders()).toEqual(['gemini', 'groq', 'grok']);
   });
 
   it('reads fenced or bare JSON and rejects replies that miss the schema', () => {
@@ -136,9 +140,11 @@ describe('AI providers (Anthropic · Gemini · Grok)', () => {
 
   it('tailors with Gemini, and falls back to Grok when Gemini is rate limited', async () => {
     vi.stubEnv('ANTHROPIC_API_KEY', '');
+    vi.stubEnv('GROQ_API_KEY', '');
     vi.stubEnv('GEMINI_API_KEY', 'g');
     vi.stubEnv('XAI_API_KEY', 'x');
     vi.stubEnv('AI_PROVIDER', 'gemini');
+    vi.stubEnv('GEMINI_MODEL', 'gemini-3.1-pro-preview');
     const fetchMock = vi.fn<(url: RequestInfo | URL) => Promise<Response>>(async () =>
       reply(200, gemini(JSON.stringify(output))),
     );
@@ -147,7 +153,7 @@ describe('AI providers (Anthropic · Gemini · Grok)', () => {
     expect(first.model).toBe('gemini:gemini-3.1-pro-preview');
     expect(String(fetchMock.mock.calls[0][0])).toContain('/models/gemini-3.1-pro-preview:generateContent');
 
-    // The top model is a preview: when it is gone, the newest stable Flash writes instead.
+    // A chosen model that is gone, the newest stable Flash writes instead.
     fetchMock.mockImplementation(async (url: RequestInfo | URL) =>
       String(url).includes('gemini-3.1-pro-preview')
         ? reply(404, { error: { message: 'model not found' } })
@@ -167,6 +173,7 @@ describe('AI providers (Anthropic · Gemini · Grok)', () => {
 
   it('stops at a refusal, and explains a missing configuration', async () => {
     vi.stubEnv('ANTHROPIC_API_KEY', '');
+    vi.stubEnv('GROQ_API_KEY', '');
     vi.stubEnv('GEMINI_API_KEY', 'g');
     vi.stubEnv('XAI_API_KEY', 'x');
     vi.stubEnv('AI_PROVIDER', 'gemini');
@@ -180,5 +187,29 @@ describe('AI providers (Anthropic · Gemini · Grok)', () => {
     vi.stubEnv('GEMINI_API_KEY', '');
     vi.stubEnv('XAI_API_KEY', '');
     await expect(tailorResume('resume', profile, job)).rejects.toMatchObject({ status: 503 });
+  });
+
+  it('falls back to Groq when every Gemini model is rate limited', async () => {
+    vi.stubEnv('ANTHROPIC_API_KEY', '');
+    vi.stubEnv('XAI_API_KEY', '');
+    vi.stubEnv('GEMINI_MODEL', '');
+    vi.stubEnv('GEMINI_API_KEY', 'g');
+    vi.stubEnv('GROQ_API_KEY', 'q');
+    vi.stubEnv('AI_PROVIDER', '');
+    const fetchMock = vi.fn<(url: RequestInfo | URL) => Promise<Response>>(async (url) =>
+      String(url).includes('googleapis')
+        ? reply(429, { error: { message: 'quota' } })
+        : reply(200, grok(JSON.stringify(output))),
+    );
+    vi.stubGlobal('fetch', fetchMock);
+    const result = await tailorResume('resume', profile, job);
+    expect(result.model).toBe('groq:openai/gpt-oss-120b');
+    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    // Flash, then Flash-Lite (its own free quota), then Groq.
+    expect(urls.filter((u) => u.includes('googleapis')).map((u) => u.split('/models/')[1].split(':')[0])).toEqual([
+      'gemini-3.8-flash',
+      'gemini-3.5-flash-lite',
+    ]);
+    expect(urls.at(-1)).toBe('https://api.groq.com/openai/v1/chat/completions');
   });
 });

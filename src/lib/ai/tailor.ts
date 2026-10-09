@@ -3,8 +3,10 @@
 // ============================
 // The model rewrites the user's resume for one job using only facts already in it, lists what the job
 // wants that the resume cannot back up, and RADAR measures the result with the same scorer as a scan.
-// Any of three providers can do the writing — Anthropic, Google Gemini or xAI Grok — chosen with
+// Any of four providers can do the writing — Google Gemini, Groq, Anthropic or xAI Grok — chosen with
 // AI_PROVIDER; every other provider with a key set is a fallback when the first is down or rate limited.
+// Gemini Flash and Groq have free tiers, so they come first when AI_PROVIDER is not set. Gemini leads: Groq's free
+// plan allows about 8K tokens a minute, which one resume tailoring can use up on its own.
 
 import Anthropic from '@anthropic-ai/sdk';
 import type { Portfolio } from '@/types';
@@ -16,20 +18,30 @@ import { readEnv } from '@/lib/env';
 import { matchInput, profileSkills, type ScoringJob, type ScoringProfile } from '@/lib/pipeline/match';
 import { extractSkills } from '@/lib/scraper/utils';
 
-export type AiProvider = 'anthropic' | 'gemini' | 'grok';
-const PROVIDERS: AiProvider[] = ['anthropic', 'gemini', 'grok'];
+export type AiProvider = 'groq' | 'gemini' | 'anthropic' | 'grok';
+const PROVIDERS: AiProvider[] = ['gemini', 'groq', 'anthropic', 'grok'];
 const KEY: Record<AiProvider, string> = {
-  anthropic: 'ANTHROPIC_API_KEY',
+  groq: 'GROQ_API_KEY',
   gemini: 'GEMINI_API_KEY',
+  anthropic: 'ANTHROPIC_API_KEY',
   grok: 'XAI_API_KEY',
 };
-const NAME: Record<AiProvider, string> = { anthropic: 'Anthropic', gemini: 'Gemini', grok: 'Grok' };
-/** Defaults checked against each provider's model list (2026-09-26); override with ANTHROPIC_MODEL / GEMINI_MODEL / XAI_MODEL. */
+const NAME: Record<AiProvider, string> = { groq: 'Groq', gemini: 'Gemini', anthropic: 'Anthropic', grok: 'Grok' };
+/**
+ * Override with GROQ_MODEL / GEMINI_MODEL / ANTHROPIC_MODEL / XAI_MODEL. Gemini defaults to Flash, not Pro:
+ * HUMANIZE makes up to 8 calls per form, and Pro billed every one of them.
+ */
 const MODEL: Record<AiProvider, () => string> = {
+  groq: () => readEnv('GROQ_MODEL') || 'openai/gpt-oss-120b',
+  gemini: () => readEnv('GEMINI_MODEL') || 'gemini-3.8-flash',
   anthropic: () => readEnv('ANTHROPIC_MODEL') || 'claude-opus-5',
-  gemini: () => readEnv('GEMINI_MODEL') || 'gemini-3.1-pro-preview',
   grok: () => readEnv('XAI_MODEL') || 'grok-4.7',
 };
+// Groq and xAI speak the OpenAI chat API.
+const CHAT_URL = {
+  groq: 'https://api.groq.com/openai/v1/chat/completions',
+  grok: 'https://api.x.ai/v1/chat/completions',
+} as const;
 const TIMEOUT_MS = 170_000;
 
 /** Providers to try, in order: AI_PROVIDER first, then every other one whose key is set. */
@@ -155,8 +167,31 @@ async function post(provider: AiProvider, url: string, headers: Record<string, s
   return data;
 }
 
-// Gemini's top model is a preview: when it is retired, rate limited or cut short, the newest stable Flash writes.
-const GEMINI_FALLBACK = 'gemini-3.8-flash';
+// When the chosen Gemini model is retired, rate limited or cut short, the stable Flash writes, then Flash-Lite:
+// free-tier limits are counted per model, so Flash-Lite still has room when Flash is rate limited.
+const GEMINI_FALLBACKS = ['gemini-3.8-flash', 'gemini-3.5-flash-lite'];
+const geminiModels = () => [...new Set([MODEL.gemini(), ...GEMINI_FALLBACKS])];
+
+/** One OpenAI-style chat reply (Groq, xAI) in JSON mode. */
+async function chatJson(provider: keyof typeof CHAT_URL, system: string, user: string) {
+  const data = (await post(
+    provider,
+    CHAT_URL[provider],
+    { authorization: 'Bearer ' + readEnv(KEY[provider]) },
+    {
+      model: MODEL[provider](),
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user },
+      ],
+      response_format: { type: 'json_object' },
+    },
+  )) as { choices?: { finish_reason?: string; message?: { content?: string } }[] };
+  const choice = data.choices?.[0];
+  if (choice?.finish_reason === 'content_filter') throw new TailorError('The AI declined to write this.', 422);
+  if (choice?.finish_reason === 'length') throw new TailorError('The AI reply came back incomplete.', 502);
+  return choice?.message?.content || '';
+}
 
 /** One Gemini JSON reply as text (refusals, cut-offs and HTTP errors become TailorErrors). */
 async function geminiText(model: string, system: string, user: string): Promise<string> {
@@ -192,14 +227,14 @@ export async function completeJson(system: string, user: string): Promise<{ text
   const providers = aiProviders();
   if (!providers.length)
     throw new TailorError(
-      'AI is not configured. Set ANTHROPIC_API_KEY, GEMINI_API_KEY or XAI_API_KEY on the server.',
+      'AI is not configured. Set GROQ_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY or XAI_API_KEY on the server.',
       503,
     );
   let last: TailorError | null = null;
   for (const provider of providers) {
     try {
       if (provider === 'gemini') {
-        for (const model of [...new Set([MODEL.gemini(), GEMINI_FALLBACK])]) {
+        for (const model of geminiModels()) {
           try {
             return { text: await geminiText(model, system, user), model: 'gemini:' + model };
           } catch (err) {
@@ -209,22 +244,8 @@ export async function completeJson(system: string, user: string): Promise<{ text
         }
         throw last!;
       }
-      if (provider === 'grok') {
-        const data = (await post(
-          'grok',
-          'https://api.x.ai/v1/chat/completions',
-          { authorization: 'Bearer ' + readEnv('XAI_API_KEY') },
-          {
-            model: MODEL.grok(),
-            messages: [
-              { role: 'system', content: system },
-              { role: 'user', content: user },
-            ],
-            response_format: { type: 'json_object' },
-          },
-        )) as { choices?: { message?: { content?: string } }[] };
-        return { text: data.choices?.[0]?.message?.content || '', model: 'grok:' + MODEL.grok() };
-      }
+      if (provider === 'grok' || provider === 'groq')
+        return { text: await chatJson(provider, system, user), model: provider + ':' + MODEL[provider]() };
       const client = new Anthropic({ apiKey: readEnv('ANTHROPIC_API_KEY')! });
       const response = await client.messages
         .create({
@@ -280,7 +301,7 @@ const CALL: Record<AiProvider, (user: string) => Promise<{ output: TailorOutput;
 
   async gemini(user) {
     let last: TailorError | null = null;
-    for (const model of [...new Set([MODEL.gemini(), GEMINI_FALLBACK])]) {
+    for (const model of geminiModels()) {
       try {
         return { output: await callGemini(model, user), model };
       } catch (err) {
@@ -293,25 +314,12 @@ const CALL: Record<AiProvider, (user: string) => Promise<{ output: TailorOutput;
     throw last!;
   },
 
+  async groq(user) {
+    return { output: parseTailored(await chatJson('groq', SYSTEM + JSON_RULE, user)), model: MODEL.groq() };
+  },
+
   async grok(user) {
-    const data = (await post(
-      'grok',
-      'https://api.x.ai/v1/chat/completions',
-      { authorization: 'Bearer ' + readEnv('XAI_API_KEY') },
-      {
-        model: MODEL.grok(),
-        messages: [
-          { role: 'system', content: SYSTEM + JSON_RULE },
-          { role: 'user', content: user },
-        ],
-        response_format: { type: 'json_object' },
-      },
-    )) as { choices?: { finish_reason?: string; message?: { content?: string } }[] };
-    const choice = data.choices?.[0];
-    if (choice?.finish_reason === 'content_filter')
-      throw new TailorError('The AI declined to tailor this resume.', 422);
-    if (choice?.finish_reason === 'length') throw new TailorError('The tailored resume came back incomplete.', 502);
-    return { output: parseTailored(choice?.message?.content || ''), model: MODEL.grok() };
+    return { output: parseTailored(await chatJson('grok', SYSTEM + JSON_RULE, user)), model: MODEL.grok() };
   },
 };
 
@@ -329,7 +337,7 @@ export async function tailorResume(
   const providers = aiProviders();
   if (!providers.length)
     throw new TailorError(
-      'AI tailoring is not configured. Set ANTHROPIC_API_KEY, GEMINI_API_KEY or XAI_API_KEY on the server.',
+      'AI tailoring is not configured. Set GROQ_API_KEY, GEMINI_API_KEY, ANTHROPIC_API_KEY or XAI_API_KEY on the server.',
       503,
     );
   const posting = [

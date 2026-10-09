@@ -30,6 +30,8 @@ export const BOARD_PROVIDERS = [
   'workingnomads',
   'hasjob',
   'indeed_email',
+  'linkedin_email',
+  'wttj_email',
   'jsearch',
   'googlejobs',
 ] as const;

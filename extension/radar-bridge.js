@@ -17,7 +17,16 @@ const alive = () => !!(chrome.runtime && chrome.runtime.id);
 window.addEventListener('message', (event) => {
   const msg = event.data;
   if (event.source !== window || !msg || msg.radar !== 'app') return;
-  if (msg.type === 'ping') return toPage({ type: 'pong', version: VERSION });
+  if (msg.type === 'ping') {
+    toPage({ type: 'pong', version: VERSION });
+    // The page is listening now: hand it a careers page you adopted before this tab existed.
+    if (alive())
+      chrome.runtime.sendMessage({ type: 'pending-adopt' }, (adopt) => {
+        void chrome.runtime.lastError;
+        if (adopt) toPage(adopt);
+      });
+    return;
+  }
   if (!alive()) {
     if (msg.type === 'launch') toPage({ type: 'launched', matchId: msg.matchId, ok: false, error: STALE });
     return;
@@ -51,6 +60,7 @@ window.addEventListener('message', (event) => {
         matchId: msg.matchId,
         tailoredId: msg.tailoredId,
         auto: msg.auto,
+        tabId: msg.tabId,
       },
       (res) => {
         void chrome.runtime.lastError;
@@ -59,7 +69,13 @@ window.addEventListener('message', (event) => {
     );
 });
 
-chrome.runtime.onMessage.addListener((msg) => {
+chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+  // The worker waits on this one: no reply would read as "no RADAR tab" and open another.
+  if (msg && msg.type === 'adopt') {
+    toPage(msg);
+    reply({ ok: true });
+    return;
+  }
   if (
     msg &&
     (msg.type === 'filled' ||
