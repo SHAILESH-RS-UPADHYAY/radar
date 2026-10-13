@@ -148,18 +148,24 @@ View job: https://www.linkedin.com/comm/jobs/view/4055555555/?trackingId=def`;
   });
 });
 
-describe('Welcome to the Jungle alerts', () => {
-  it('reads cards, and takes the company from the link when the card does not name it', () => {
-    const html = `
-      <a href="https://www.welcometothejungle.com/en/companies/qonto/jobs/backend-engineer-go_paris?utm_source=alert">
-        <strong>Backend Engineer - Go</strong></a>
-      <div>Paris</div>
-      <a href="https://www.welcometothejungle.com/en/companies/doctolib/jobs/sre_berlin?utm_source=alert">Site Reliability Engineer</a>
-      <div>Doctolib</div><div>Berlin, Germany</div>`;
-    const jobs = parseAlertEmail('wttj_email', mail(html));
-    expect(jobs.map((j) => [j.title, j.employer, j.location])).toEqual([
-      ['Backend Engineer - Go', 'Qonto', 'Paris'],
-      ['Site Reliability Engineer', 'Doctolib', 'Berlin, Germany'],
-    ]);
+describe('real layouts (2026-10-13)', () => {
+  it('reads Welcome to the Jungle cards behind SendGrid links, keeping no login token', () => {
+    const tracked = 'https://u9255466.ct.sendgrid.net/ls/click?upn=u001.abc';
+    const html = `<a href="https://u9255466.ct.sendgrid.net/ls/click?upn=u001.top">There are new jobs matching your search preferences</a>
+      <a href="${tracked}"><p>Semios</p><p>Data analytics platform for farmers</p><p>Software Developer</p><p>(Co-op)</p><p>Vancouver</p></a>
+      <a href="https://u9255466.ct.sendgrid.net/ls/click?upn=u001.all">See all top matches</a>`;
+    const resolved = new Map([[tracked, 'https://app.otta.com/jobs/RxwDs_mw?token=SECRET&position=1']]);
+    expect(
+      parseAlertEmail('wttj_email', mail(html), resolved).map((j) => [j.title, j.employer, j.location, j.apply_url]),
+    ).toEqual([['Software Developer (Co-op)', 'Semios', 'Vancouver', 'https://app.otta.com/jobs/RxwDs_mw']]);
+  });
+
+  it('splits LinkedIn’s "Company &middot; Place" line', () => {
+    const html = `<a href="https://www.linkedin.com/comm/jobs/view/4448262048?trk=x">Python Engineer</a>
+      <p>Tata Consultancy Services &middot; Phoenix, Arizona, United States</p>`;
+    expect(parseAlertEmail('linkedin_email', mail(html))[0]).toMatchObject({
+      employer: 'Tata Consultancy Services',
+      location: 'Phoenix, Arizona, United States',
+    });
   });
 });

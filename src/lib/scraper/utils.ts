@@ -113,6 +113,7 @@ const ENTITIES: Record<string, string> = {
   ldquo: '“',
   hellip: '…',
   bull: '•',
+  middot: '·',
 };
 
 export function decodeEntities(text: string): string {

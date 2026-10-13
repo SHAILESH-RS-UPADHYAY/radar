@@ -33,6 +33,10 @@ interface AlertSource {
   /** Gmail search for this source's alert emails (application confirmations excluded). */
   query: string;
   job(url: URL): JobLink | null;
+  /** A source whose whole card is one link reads it from the link's own lines. */
+  readCard?(lines: string[]): { title: string; company: string; location: string } | null;
+  /** Click-tracking hosts whose links are opaque: RADAR reads where they redirect (never the page itself). */
+  tracker?: RegExp;
 }
 
 const titleCase = (slug: string) => slug.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
@@ -66,7 +70,18 @@ export const ALERT_SOURCES: Record<AlertProvider, AlertSource> = {
   wttj_email: {
     name: 'Welcome to the Jungle',
     query: 'from:(welcometothejungle.com OR welcometothejungle.co OR wttj.co) -subject:(application OR candidature)',
+    // Its alert links go through SendGrid to app.otta.com/jobs/<id>?token=… (the token logs you in: never kept).
+    tracker: /(^|\.)ct\.sendgrid\.net$/,
+    // "Semios / Data analytics platform for farmers / Software Developer / (Co-op) / Vancouver"
+    readCard(lines) {
+      const [company, , title, ...rest] = lines;
+      if (!company || !title) return null;
+      const qualifier = rest[0]?.startsWith('(') ? rest.shift()! : '';
+      return { company, title: [title, qualifier].filter(Boolean).join(' '), location: rest[0] || '' };
+    },
     job(url) {
+      const otta = url.hostname === 'app.otta.com' && /^\/jobs\/([A-Za-z0-9_-]+)\/?$/.exec(url.pathname)?.[1];
+      if (otta) return { id: 'wttj:otta:' + otta, url: 'https://app.otta.com/jobs/' + otta };
       if (!/(^|\.)welcometothejungle\.com$/.test(url.hostname)) return null;
       const path = url.pathname.split('/').filter(Boolean);
       const i = path.indexOf('companies');
@@ -123,8 +138,14 @@ export function unwrapLink(href: string, depth = 0): URL[] {
   return out;
 }
 
-const jobLinkOf = (href: string, source: AlertSource) =>
-  unwrapLink(href).reduce<JobLink | null>((found, url) => found ?? source.job(url), null);
+/** Where a tracked link redirects, read ahead by scrapeAlertEmails: tracked href → target URL. */
+type Resolved = Map<string, string>;
+
+const jobLinkOf = (href: string, source: AlertSource, resolved?: Resolved) =>
+  [...unwrapLink(href), ...unwrapLink(resolved?.get(decodeEntities(href).trim()) ?? '')].reduce<JobLink | null>(
+    (found, url) => found ?? source.job(url),
+    null,
+  );
 
 // ---- Cards (pure) ----
 
@@ -213,12 +234,18 @@ const isLabel = (s: string) => s.length >= 3 && s.length <= 150 && !NOISE.test(s
  * Cards from the HTML part. A job's card runs from its first link to the next job's link, or to the email's own
  * links after it ("See all jobs", "Unsubscribe"), so the footer never reads as a company or a place.
  */
-function htmlCards(html: string, source: AlertSource): Card[] {
+function htmlCards(html: string, source: AlertSource, resolved?: Resolved): Card[] {
   const anchors = [...html.matchAll(ANCHOR)].map((m) => ({
     at: m.index!,
-    job: jobLinkOf(m[2], source),
+    job: jobLinkOf(m[2], source, resolved),
+    inner: m[3],
     text: textLines(m[3]).join(' '),
   }));
+  if (source.readCard)
+    return anchors.flatMap((a) => {
+      const read = a.job && source.readCard!(textLines(a.inner));
+      return read ? [{ link: a.job!, ...read, snippet: '' }] : [];
+    });
   const ids = [...new Set(anchors.flatMap((a) => (a.job ? [a.job.id] : [])))];
   return ids.map((id) => {
     const own = anchors.filter((a) => a.job?.id === id);
@@ -265,10 +292,11 @@ const pick = (a: string, b: string) => a || b;
 export function parseAlertEmail(
   provider: AlertProvider,
   mail: { html: string; text: string; date: string | null },
+  resolved?: Resolved,
 ): ScrapedJob[] {
   const source = ALERT_SOURCES[provider];
   const cards = new Map<string, Card>();
-  for (const c of [...htmlCards(mail.html, source), ...textCards(mail.text, source)]) {
+  for (const c of [...htmlCards(mail.html, source, resolved), ...textCards(mail.text, source)]) {
     const had = cards.get(c.link.id);
     cards.set(
       c.link.id,
@@ -307,6 +335,34 @@ export function parseAlertEmail(
 
 const WINDOW = 'newer_than:3d';
 const MAX_EMAILS = 25;
+const MAX_TRACKED = 30;
+
+/**
+ * Where an email's opaque tracking links lead: one request each, redirects not followed, so the target page itself is
+ * never opened. Links that do not answer with a redirect are left out.
+ */
+async function resolveTracked(html: string, tracker: RegExp): Promise<Resolved> {
+  const hrefs = [
+    ...new Set(
+      [...html.matchAll(ANCHOR)]
+        .map((m) => decodeEntities(m[2]).trim())
+        .filter((h) => {
+          try {
+            return tracker.test(new URL(h).hostname);
+          } catch {
+            return false;
+          }
+        }),
+    ),
+  ].slice(0, MAX_TRACKED);
+  const resolved: Resolved = new Map();
+  await mapLimit(hrefs, 4, async (href) => {
+    const res = await fetch(href, { redirect: 'manual', signal: AbortSignal.timeout(8_000) }).catch(() => null);
+    const to = res?.headers.get('location');
+    if (to) resolved.set(href, to);
+  });
+  return resolved;
+}
 
 export interface AlertReadState {
   emails: number;
@@ -339,7 +395,9 @@ export async function scrapeAlertEmails(provider: AlertProvider): Promise<Scrape
         const date = messageDate(msg);
         if (!state.lastEmailAt || date > state.lastEmailAt) state.lastEmailAt = date;
         // Newest email first: a job seen in several alerts keeps its newest card.
-        for (const job of parseAlertEmail(provider, { ...messageBodies(msg.payload), date }))
+        const bodies = messageBodies(msg.payload);
+        const resolved = source.tracker ? await resolveTracked(bodies.html, source.tracker) : undefined;
+        for (const job of parseAlertEmail(provider, { ...bodies, date }, resolved))
           if (!jobs.has(job.external_id)) jobs.set(job.external_id, job);
       }
     } catch (err) {

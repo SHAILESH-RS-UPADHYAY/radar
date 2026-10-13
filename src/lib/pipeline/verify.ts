@@ -78,7 +78,7 @@ const LINK_CHECKED = new Set<string>(BOARD_PROVIDERS.filter((p) => !NEVER_OPENED
 
 // Pages RADAR never opens, wherever a link led: sites that forbid automated access, and job boards' own pages.
 const NEVER_OPENED_HOSTS =
-  /(^|\.)(linkedin\.com|indeed\.[a-z.]+|adzuna\.[a-z.]+|jooble\.org|glassdoor\.[a-z.]+|naukri\.com|foundit\.in|monsterindia\.com|shine\.com|timesjobs\.com)$/i;
+  /(^|\.)(linkedin\.com|indeed\.[a-z.]+|adzuna\.[a-z.]+|jooble\.org|glassdoor\.[a-z.]+|naukri\.com|app\.otta\.com|foundit\.in|monsterindia\.com|shine\.com|timesjobs\.com)$/i;
 
 /** Whether RADAR may open this page to check a posting. Pure. */
 export function mayOpen(url: string): boolean {
