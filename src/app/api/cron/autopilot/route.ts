@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/client';
 import { isCronAuthorized } from '@/lib/pipeline/cron-auth';
-import { syncAllGmail } from '@/lib/gmail';
+import { expireStaleAssessments, syncAllGmail } from '@/lib/gmail';
 import { retireClosedMatches, reverifyOpenMatches, reviveReopenedMatches } from '@/lib/pipeline/verify';
 import { autoOverclockAll } from '@/lib/overclock';
 
@@ -23,6 +23,7 @@ async function handle(req: NextRequest) {
   const retired = await retireClosedMatches(supabase);
   const revived = await reviveReopenedMatches(supabase);
   const gmail = await syncAllGmail(supabase, deadline);
+  const expired = await expireStaleAssessments(supabase).catch((e) => (console.error('[AUTOPILOT] expiry:', e), 0));
   const overclock = await autoOverclockAll(supabase, deadline);
   const summary = {
     postings: { ...checks, retired, revived },
@@ -32,6 +33,7 @@ async function handle(req: NextRequest) {
       matched: gmail.reduce((s, r) => s + r.matched, 0),
       stagesMoved: gmail.reduce((s, r) => s + r.updated, 0),
       errors: gmail.filter((r) => r.error).length,
+      expired,
     },
   };
   console.log('[AUTOPILOT]', JSON.stringify(summary));

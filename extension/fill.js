@@ -614,11 +614,18 @@
   // =====================================================================================================
 
   const CONFIRM =
-    /thank you for (applying|your application)|application (has been |was )?(submitted|received)|we('ve| have) received your application|successfully submitted/i;
+    /thanks? (you )?for (applying|your application|submitting)|application (has been |was |is )?(submitted|received|sent|complete)|we('ve| have) (received|got) your application|successfully (submitted|applied)|you('ve| have) (successfully )?applied|application submitted/gi;
+  const confirmations = () => (pageText().match(CONFIRM) || []).length;
   const pageText = () => (document.body && document.body.innerText.slice(0, 20000)) || '';
   const confirmedPath = () => /\/(thanks|thank-you|confirmation|submitted)(\/|$|\?)/i.test(location.pathname);
-  let textBefore = false;
-  const confirmed = () => confirmedPath() || (!textBefore && CONFIRM.test(pageText()));
+  // How many confirmation phrases the page had while you filled it: only a new one counts.
+  let textBefore = 0;
+  let fieldsBefore = 0;
+  // Single-page forms (Ashby, Workable) swap the form for a message without a new page: the form is gone and no
+  // field is marked invalid.
+  const formGone = () =>
+    fieldsBefore >= 3 && visibleFields().length === 0 && !deepAll(document, '[aria-invalid="true"]').some(visible);
+  const confirmed = () => confirmedPath() || confirmations() > textBefore || formGone();
 
   // =====================================================================================================
   // The panel (top frame only): shadow DOM, so the page's styles never touch it. Drag it by its header; ─ or a
@@ -1086,7 +1093,8 @@
    * 30 minutes: answers that arrive later (the AI's) and new steps of a multi-step form are filled as they come.
    */
   async function session(packet, version, hud) {
-    textBefore = CONFIRM.test(pageText());
+    textBefore = confirmations();
+    fieldsBefore = visibleFields().length;
     let asking = 0;
     const settle = () => {
       if (!hud) return;

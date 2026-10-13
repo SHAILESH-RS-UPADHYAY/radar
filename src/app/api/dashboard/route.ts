@@ -174,18 +174,26 @@ export async function GET() {
   // Latest recruiter reply / RADAR event per application. The table arrives with migration 006.
   const applied = formatted.filter((m) => m.status === 'applied');
   if (versionsReady && applied.length) {
-    const { data: events } = await supabase
-      .from('ops_events')
-      .select('match_id, source, kind, summary, occurred_at')
-      .eq('user_id', userId)
-      .in(
-        'match_id',
-        applied.map((m) => m.id),
-      )
-      .order('occurred_at', { ascending: false })
-      .limit(500);
+    const [{ data: events }, { data: inbox }] = await Promise.all([
+      supabase
+        .from('ops_events')
+        .select('match_id, source, kind, summary, occurred_at, external_id')
+        .eq('user_id', userId)
+        .in(
+          'match_id',
+          applied.map((m) => m.id),
+        )
+        .order('occurred_at', { ascending: false })
+        .limit(500),
+      supabase.from('gmail_links').select('email').eq('user_id', userId).maybeSingle(),
+    ]);
+    // A reply read from Gmail links to the message itself, in the inbox it came from.
+    const mailUrl = (id: string) =>
+      'https://mail.google.com/mail/u/?authuser=' + encodeURIComponent(inbox?.email || '') + '#all/' + id;
     const latest = new Map<string, OpsEvent>();
-    for (const { match_id, ...e } of events || []) if (!latest.has(match_id)) latest.set(match_id, e);
+    for (const { match_id, external_id, ...e } of events || [])
+      if (!latest.has(match_id))
+        latest.set(match_id, { ...e, url: e.source === 'gmail' && external_id ? mailUrl(external_id) : null });
     for (const m of applied) m.last_event = latest.get(m.id) ?? null;
   }
 

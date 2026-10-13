@@ -35,7 +35,8 @@ describe('classifyEmail', () => {
       'rejection',
     );
     expect(classifyEmail('Update', "We won't be proceeding with your application.")).toBe('rejection');
-    expect(classifyEmail('Next steps', 'We are excited to move forward with your application!')).toBe('interview');
+    // Good news without an invitation moves nothing until the invitation itself arrives.
+    expect(classifyEmail('Next steps', 'We are excited to move forward with your application!')).toBeNull();
     expect(classifyEmail('Your order has shipped', 'Track your package.')).toBeNull();
   });
 
@@ -142,5 +143,31 @@ describe('nextStage', () => {
     expect(nextStage('received', 'applied')).toBeNull();
     expect(nextStage('interview', 'offer')).toBeNull();
     expect(nextStage('offer', 'rejected')).toBeNull();
+  });
+});
+
+describe('classifyEmail on real mail (2026-10-14)', () => {
+  it('keeps confirmations as confirmations, even when they mention next steps or interviews', () => {
+    expect(
+      classifyEmail(
+        'Thanks for applying to Happl!',
+        'Thank you for applying for the Backend Engineer role at Happl! We will get back to you if there are next steps.',
+      ),
+    ).toBe('received');
+    expect(
+      classifyEmail('ascendion Application Successful | Ace your interview using PrepAI’s personalised Q&A', ''),
+    ).toBe('received');
+  });
+
+  it('reads real invitations and expired assessments', () => {
+    expect(classifyEmail('Interview invitation: Backend Engineer', 'Please pick a slot that suits you.')).toBe(
+      'interview',
+    );
+    expect(classifyEmail('Thanks for applying', 'We would like to schedule a call. Share your availability.')).toBe(
+      'interview',
+    );
+    expect(classifyEmail('Your Ramp assessment link has expired', '')).toBe('expired');
+    expect(nextStage('expired', 'screening')).toBe('withdrawn');
+    expect(classifyEmail('Time-Sensitive: Complete Your Interview Today', '')).toBe('interview');
   });
 });

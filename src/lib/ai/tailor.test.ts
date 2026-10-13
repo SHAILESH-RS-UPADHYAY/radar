@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 vi.mock('@/lib/ai/embeddings', () => ({ embedText: vi.fn(), fetchJobVector: vi.fn() }));
 
 import { embedText, fetchJobVector } from '@/lib/ai/embeddings';
+import { SIM_CEIL, SIM_FLOOR } from '@/lib/ai/matcher';
 import {
   aiEngine,
   aiProviders,
@@ -67,9 +68,10 @@ describe('projectScore', () => {
 
   it('applies only the measured improvement to the current score', async () => {
     vi.mocked(fetchJobVector).mockResolvedValue([1, 0]);
-    // Original sits at the similarity floor (0.72), tailored at the ceiling (0.88): +60 meaning points x 0.6.
+    // Original sits at the similarity floor, tailored at the ceiling: +60 meaning points x 0.6.
+    const at = (c: number) => [c, Math.sqrt(1 - c ** 2)];
     vi.mocked(embedText).mockImplementation(async (t: string) =>
-      t === 'tailored resume' ? [0.88, Math.sqrt(1 - 0.88 ** 2)] : [0.72, Math.sqrt(1 - 0.72 ** 2)],
+      t === 'tailored resume' ? at(SIM_CEIL) : at(SIM_FLOOR),
     );
     expect(await projectScore(base)).toBe(100);
     expect(await projectScore({ ...base, currentScore: 20 })).toBe(80);

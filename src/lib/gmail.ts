@@ -194,7 +194,7 @@ export async function disconnectGmail(supabase: SupabaseClient, userId: string) 
 
 // ---- Classification (pure) ----
 
-export type MailKind = 'offer' | 'rejection' | 'interview' | 'assessment' | 'received';
+export type MailKind = 'offer' | 'rejection' | 'expired' | 'interview' | 'assessment' | 'received';
 
 // Checked in order: a rejection often mentions "interview", and an offer beats everything.
 const RULES: [MailKind, RegExp][] = [
@@ -203,6 +203,10 @@ const RULES: [MailKind, RegExp][] = [
     'rejection',
     // A negation is required, so "excited to move forward with your application" is not read as a rejection.
     /(regret to inform|(will not|won['’]t|not) (be )?(to )?(moving|move|proceeding|proceed) (forward|ahead|with your (application|candidacy))|decided (not )?to (pursue|proceed with|move forward with) other|other candidates|no longer (under consideration|considering)|not (been )?selected|position has (been )?(filled|closed)|will not be progressing)/i,
+  ],
+  [
+    'expired',
+    /\b((link|invitation|invite|assessment|test|challenge|deadline) (has |have )?(now )?(expired|passed|closed)|(has|have) expired|missed the deadline|no longer (able to (complete|submit)|accepting submissions))\b/i,
   ],
   [
     'assessment',
@@ -214,7 +218,7 @@ const RULES: [MailKind, RegExp][] = [
   ],
   [
     'received',
-    /(thank(s| you) for (applying|your application|your interest)|application (has been |was )?(received|submitted|sent)|we (have )?received your application)/i,
+    /(thank(s| you) for (applying|your application|your interest)|application (has been |was )?(received|submitted|sent|successful)|we (have )?received your application|you('ve| have) applied (to|for))/i,
   ],
 ];
 
@@ -223,11 +227,23 @@ const RULES: [MailKind, RegExp][] = [
  * often comes after a paragraph of thanks, so rejection phrases are also looked for in the body. A bare
  * "unfortunately" counts only up top: confirmations say "unfortunately we can't reply to everyone" further down.
  */
+// An invitation, not a mention: "we'll be in touch if there are next steps" and "ace your interview with our app"
+// (a confirmation's marketing) are not interviews.
+const INVITED =
+  /\b(schedul\w* (an? |your )?(interview|call|chat|time)|invit\w* (you )?(to|for) (an? |the )?(interview|call|chat)|interview (invitation|invite|request|scheduled|confirmation)|your availability|book a (time|slot)|calendly\.com|phone screen)\b/i;
+
 export function classifyEmail(subject: string, snippet: string, body = ''): MailKind | null {
   const head = subject + '\n' + snippet;
-  if (RULES[0][1].test(head)) return 'offer';
-  if (RULES[1][1].test(head + '\n' + body) || /\bunfortunately\b/i.test(head)) return 'rejection';
-  return RULES.slice(2).find(([, re]) => re.test(head))?.[0] ?? null;
+  const rule = (kind: MailKind) => RULES.find(([k]) => k === kind)![1];
+  if (rule('offer').test(head)) return 'offer';
+  if (rule('rejection').test(head + '\n' + body) || /\bunfortunately\b/i.test(head)) return 'rejection';
+  if (rule('expired').test(head)) return 'expired';
+  // A confirmation stays a confirmation unless it really invites you to talk.
+  if (rule('received').test(head) && !INVITED.test(head)) return 'received';
+  if (rule('assessment').test(head)) return 'assessment';
+  if (rule('interview').test(head))
+    return INVITED.test(head + '\n' + body) || /\binterview\b/i.test(subject) ? 'interview' : null;
+  return rule('received').test(head) ? 'received' : null;
 }
 
 // Mail sent by an applicant-tracking system, or that speaks of an application, can open one in C2 · OPS. A newsletter
@@ -329,6 +345,8 @@ export function nextStage(kind: MailKind, current: Stage | null): Stage | null {
   const now = current || 'applied';
   if (now === 'rejected' || now === 'withdrawn' || now === 'offer') return null;
   if (kind === 'rejection') return 'rejected';
+  // An assessment or invitation whose window closed: out of the running, not rejected.
+  if (kind === 'expired') return 'withdrawn';
   const target: Stage | null =
     kind === 'offer' ? 'offer' : kind === 'interview' ? 'interview' : kind === 'assessment' ? 'screening' : null;
   if (!target) return null;
@@ -522,7 +540,7 @@ export async function syncGmail(supabase: SupabaseClient, userId: string): Promi
           match_id: app.id,
           source: 'gmail',
           kind,
-          summary: `${kind.toUpperCase()} · "${subject.slice(0, 140)}" from ${sender.slice(0, 60)}`,
+          summary: `${subject.slice(0, 160)} — ${sender.slice(0, 60)}`,
           external_id: id,
           occurred_at: at,
         },
@@ -554,4 +572,38 @@ export async function syncAllGmail(supabase: SupabaseClient, deadline: number) {
     }
   }
   return results;
+}
+
+/** An assessment invite (CodeSignal, HackerRank) usually expires in a week. */
+const ASSESSMENT_WINDOW_MS = 7 * 86_400_000;
+
+/**
+ * Applications stuck at screening (an assessment invite) with nothing newer for a week: the window has passed, so
+ * they close as missed (withdrawn), with the reason in C2 · OPS. Idempotent: one event per application.
+ */
+export async function expireStaleAssessments(supabase: SupabaseClient, now = Date.now()): Promise<number> {
+  const { data, error } = await supabase
+    .from('match_scores')
+    .select('id, user_id')
+    .eq('status', 'applied')
+    .eq('stage', 'screening')
+    .lt('stage_changed_at', new Date(now - ASSESSMENT_WINDOW_MS).toISOString());
+  if (error) throw new Error('Reading screening applications failed: ' + error.message);
+  const at = new Date(now).toISOString();
+  for (const m of data || []) {
+    await supabase.from('match_scores').update({ stage: 'withdrawn', stage_changed_at: at }).eq('id', m.id);
+    await supabase.from('ops_events').upsert(
+      {
+        user_id: m.user_id,
+        match_id: m.id,
+        source: 'radar',
+        kind: 'expired',
+        summary: 'Assessment window passed: no result a week after the invite',
+        external_id: 'expired:' + m.id,
+        occurred_at: at,
+      },
+      { onConflict: 'user_id,external_id', ignoreDuplicates: true },
+    );
+  }
+  return (data || []).length;
 }

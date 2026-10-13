@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { computeMatchScore, freshness, matchedRole, vectorToScore, type MatchInput } from './matcher';
+import {
+  SIM_CEIL,
+  SIM_FLOOR,
+  computeMatchScore,
+  freshness,
+  matchedRole,
+  vectorToScore,
+  type MatchInput,
+} from './matcher';
 
 const base: MatchInput = {
   userSkills: ['React', 'TypeScript', 'node'],
   jobSkills: ['react', 'typescript', 'node.js', 'aws'],
-  vectorSimilarity: 0.85,
+  vectorSimilarity: SIM_FLOOR + 0.8 * (SIM_CEIL - SIM_FLOOR),
   isDreamCompany: false,
   companyCategory: 'MNC',
   userIsFresher: true,
@@ -13,12 +21,12 @@ const base: MatchInput = {
 };
 
 describe('vectorToScore', () => {
-  it('stretches the compressed e5 band onto 0–100 and clamps', () => {
-    expect(vectorToScore(0.72)).toBe(0);
-    expect(vectorToScore(0.88)).toBe(100);
-    expect(vectorToScore(0.5)).toBe(0);
+  it("stretches the model's similarity band onto 0–100 and clamps", () => {
+    expect(vectorToScore(SIM_FLOOR)).toBe(0);
+    expect(vectorToScore(SIM_CEIL)).toBe(100);
+    expect(vectorToScore(SIM_FLOOR - 0.1)).toBe(0);
     expect(vectorToScore(0.99)).toBe(100);
-    expect(vectorToScore(0.8)).toBeCloseTo(50);
+    expect(vectorToScore((SIM_FLOOR + SIM_CEIL) / 2)).toBeCloseTo(50);
   });
 });
 

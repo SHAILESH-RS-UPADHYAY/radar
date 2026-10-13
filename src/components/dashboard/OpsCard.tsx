@@ -16,6 +16,33 @@ const SIGNAL_STYLE = {
 } as const;
 const button = 'border px-2.5 py-1.5 font-mono text-[10px] font-bold tracking-[0.18em] transition-colors';
 
+/** What a mail or RADAR event means, at a glance. */
+const EVENT: Record<string, { icon: string; label: string; tone: string }> = {
+  received: { icon: '📨', label: 'APPLICATION RECEIVED', tone: 'text-hud-cyan' },
+  assessment: { icon: '🧪', label: 'ASSESSMENT', tone: 'text-hud-amber' },
+  interview: { icon: '🎙️', label: 'INTERVIEW', tone: 'text-phosphor' },
+  offer: { icon: '🏆', label: 'OFFER', tone: 'text-phosphor' },
+  rejection: { icon: '❌', label: 'NOT SHORTLISTED', tone: 'text-hud-red' },
+  expired: { icon: '⏰', label: 'WINDOW MISSED', tone: 'text-hud-red' },
+};
+const eventMeta = (kind: string) =>
+  EVENT[kind] ?? { icon: '⚡', label: kind.replace(/_/g, ' ').toUpperCase(), tone: 'text-hud-cyan' };
+
+/** Older events read 'KIND · "Subject" from Sender'; newer ones 'Subject — Sender'. */
+function readSummary(summary: string): { subject: string; sender: string } {
+  const old = /^[A-Z_]+ · "(.*)" from (.*)$/.exec(summary);
+  if (old) return { subject: old[1], sender: old[2] };
+  const [subject, sender = ''] = summary.split(' — ');
+  return { subject, sender };
+}
+
+/** Why a closed application closed. */
+function closedReason(stage: string, kind: string | undefined): string | null {
+  if (stage === 'rejected') return '❌ Not shortlisted';
+  if (stage === 'withdrawn') return kind === 'expired' ? '⏰ Missed: the window closed' : '↩ Withdrawn';
+  return null;
+}
+
 /** One application in C2 · OPS: stage controls, notes, and the signals RADAR has picked up. */
 export function OpsCard({
   match,
@@ -94,17 +121,51 @@ export function OpsCard({
         </div>
       )}
 
-      {match.last_event && (
-        <p
-          title={match.last_event.summary}
-          className="mt-3 border-l-2 border-hud-cyan/50 pl-2 font-mono text-[10px] leading-relaxed text-ink/75"
-        >
-          <span className="block tracking-[0.2em] text-hud-cyan">
-            {match.last_event.source === 'gmail' ? '✉ GMAIL' : 'RADAR'} · {timeAgo(match.last_event.occurred_at)}
-          </span>
-          <span className="line-clamp-2">{match.last_event.summary}</span>
+      {closedReason(stage, match.last_event?.kind) && (
+        <p className="mt-3 inline-block border border-hud-red/40 bg-hud-red/[0.07] px-2 py-1 font-mono text-[10px] font-bold tracking-[0.15em] text-hud-red">
+          {closedReason(stage, match.last_event?.kind)}
         </p>
       )}
+
+      {match.last_event &&
+        (() => {
+          const e = match.last_event;
+          const meta = eventMeta(e.kind);
+          const { subject, sender } = readSummary(e.summary);
+          return (
+            <div tabIndex={0} className="group/event relative mt-3 outline-none">
+              <div className="border-l-2 border-hud-cyan/50 pl-2 font-mono text-[10px] leading-relaxed">
+                <span className={'block tracking-[0.18em] ' + meta.tone}>
+                  {meta.icon} {meta.label} · {e.source === 'gmail' ? 'GMAIL' : 'RADAR'} · {timeAgo(e.occurred_at)}
+                </span>
+                <span className="line-clamp-1 text-ink/75">{subject}</span>
+              </div>
+              {/* The full message on hover or focus: a HUD panel, with a way to the mail itself. */}
+              <div
+                role="tooltip"
+                className="pointer-events-none absolute left-0 right-0 top-full z-30 mt-1 border border-phosphor/40 bg-black/95 p-3 font-mono text-[11px] leading-relaxed opacity-0 shadow-[0_0_24px_rgba(0,255,65,0.15)] transition-opacity duration-150 group-focus-within/event:pointer-events-auto group-focus-within/event:opacity-100 group-hover/event:pointer-events-auto group-hover/event:opacity-100"
+              >
+                <p className={'tracking-[0.2em] ' + meta.tone}>
+                  {'> '}
+                  {meta.icon} {meta.label}
+                </p>
+                <p className="mt-1.5 text-ink">{subject}</p>
+                {sender && <p className="mt-1 text-dim">from {sender}</p>}
+                <p className="mt-1 text-dim/80">{new Date(e.occurred_at).toLocaleString('en-IN')}</p>
+                {e.url && (
+                  <a
+                    href={e.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mt-2 inline-block border border-phosphor/40 px-2 py-1 font-bold tracking-[0.2em] text-phosphor transition-colors hover:bg-phosphor/10"
+                  >
+                    OPEN IN GMAIL ↗
+                  </a>
+                )}
+              </div>
+            </div>
+          );
+        })()}
 
       {editable &&
         (editing ? (

@@ -47,6 +47,8 @@ export interface OpsEvent {
   kind: string;
   summary: string;
   occurred_at: string;
+  /** The Gmail message, for a reply read from your inbox. */
+  url?: string | null;
 }
 
 /** One row of GET /api/overclock: a tailored resume, scores only. */

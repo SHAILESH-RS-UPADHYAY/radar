@@ -16,11 +16,12 @@ export interface MatchResult {
   tooSenior: boolean;
 }
 
-// multilingual-e5-large cosine scores are compressed: unrelated text still lands around 0.7,
-// strong matches around 0.85–0.9. Stretch that band onto 0–100 so the score spreads out.
-// Tune these after looking at real scores (they are logged by the match pipeline).
-export const SIM_FLOOR = Number(process.env.RADAR_SIM_FLOOR || 0.72);
-export const SIM_CEIL = Number(process.env.RADAR_SIM_CEIL || 0.88);
+// Cosine scores from the embedding model sit in a narrow band; stretch that band onto 0–100 so the score spreads
+// out. The band belongs to the model (src/lib/ai/embeddings.ts EMBED_MODEL): multilingual-e5-large used 0.72–0.88;
+// llama-text-embed-v2 puts a resume's top 400 jobs at about 0.48–0.63 (measured 2026-10-14), so 0.32–0.64.
+// Tune after looking at real scores (the match pipeline logs the similarity range).
+export const SIM_FLOOR = Number(process.env.RADAR_SIM_FLOOR || 0.32);
+export const SIM_CEIL = Number(process.env.RADAR_SIM_CEIL || 0.64);
 
 export function vectorToScore(similarity: number): number {
   const scaled = (similarity - SIM_FLOOR) / (SIM_CEIL - SIM_FLOOR);
