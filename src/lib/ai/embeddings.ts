@@ -44,14 +44,39 @@ export function parseEmbedding(value: unknown): number[] | null {
 }
 
 /**
- * e5-large passage embeddings. Many new jobs at once can hit Pinecone's tokens-per-minute limit, which the SDK
- * reports as an unexpected error: wait and try again (8s, then 16s) before giving up. A rejected key fails at once.
+ * The model every vector in the index comes from: resumes and jobs must share it, so changing it means re-embedding
+ * every job and clearing stored resume vectors (done once on 2026-10-14: 7,433 jobs, 1.9M tokens). Switched from multilingual-e5-large on
+ * 2026-10-14, when e5's 5M-token monthly quota ran out; llama-text-embed-v2 has its own, at the index's 1024 dims.
+ */
+export const EMBED_MODEL = 'llama-text-embed-v2';
+
+/** How much of a job description is embedded: the opening says what the role is; the rest costs tokens. */
+export const JD_CHARS = 800;
+
+/** One job's text for its vector. Pure. */
+export function jobText(j: {
+  title: string;
+  company_name: string;
+  skills: string[];
+  location: string | null;
+  description: string | null;
+}): string {
+  const parts = [j.title, j.company_name];
+  if (j.skills.length) parts.push('Skills: ' + j.skills.join(', '));
+  if (j.location) parts.push('Location: ' + j.location);
+  if (j.description) parts.push(j.description.replace(/\s+/g, ' ').trim().substring(0, JD_CHARS));
+  return parts.join(' | ');
+}
+
+/**
+ * Passage embeddings. Many new jobs at once can hit Pinecone's tokens-per-minute limit, which the SDK reports as an
+ * unexpected error: wait and try again (8s, then 16s) before giving up. A rejected key fails at once.
  */
 async function embedPassages(inputs: string[]) {
   for (let attempt = 0; ; attempt++) {
     try {
       return await getPinecone().inference.embed({
-        model: 'multilingual-e5-large',
+        model: EMBED_MODEL,
         inputs,
         parameters: { inputType: 'passage', truncate: 'END' },
       });
@@ -117,16 +142,7 @@ export async function upsertJobVectors(
 
   for (let i = 0; i < jobs.length; i += batchSize) {
     const batch = jobs.slice(i, i + batchSize);
-    const texts = batch.map((j) => {
-      const parts = [j.title, j.company_name];
-      if (j.skills.length) parts.push('Skills: ' + j.skills.join(', '));
-      if (j.location) parts.push('Location: ' + j.location);
-      if (j.description) parts.push(j.description.substring(0, 2000));
-      return parts.join(' | ');
-    });
-
-    const embeddings = await embedPassages(texts);
-
+    const embeddings = await embedPassages(batch.map(jobText));
     const vectors = batch.map((j, idx) => ({
       id: j.id,
       values: Array.from((embeddings.data[idx] as { values: number[] }).values as number[]),

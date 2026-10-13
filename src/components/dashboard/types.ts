@@ -62,7 +62,7 @@ export interface TailoredSummary {
 export const OVERCLOCK_MIN = 50;
 export const OVERCLOCK_MAX = 79;
 
-export type MatchAction = 'SAVE' | 'REMOVE_SAVE' | 'REMOVE_APPLY' | 'DISMISS';
+export type MatchAction = 'SAVE' | 'REMOVE_SAVE' | 'REMOVE_APPLY' | 'DISMISS' | 'MARK_APPLIED';
 
 /** Removing from the Vault dismisses the job so auto-vault never brings it back. */
 export const ACTION_STATUS: Record<MatchAction, MatchStatus> = {
@@ -70,6 +70,8 @@ export const ACTION_STATUS: Record<MatchAction, MatchStatus> = {
   REMOVE_SAVE: 'dismissed',
   REMOVE_APPLY: 'saved',
   DISMISS: 'dismissed',
+  // You applied outside RADAR: it goes to C2 · OPS and counts toward the company's two.
+  MARK_APPLIED: 'applied',
 };
 
 export function formatSalary(job: MatchedJob['job']): string | null {

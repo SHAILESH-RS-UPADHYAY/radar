@@ -94,6 +94,13 @@ export function DiscoveryCard({
           >
             NOT FOR ME
           </button>
+          <button
+            onClick={() => onAction(match.id, 'MARK_APPLIED')}
+            title="You applied to this outside RADAR: log it in C2 · OPS (it counts toward the company's two)"
+            className="py-1 font-mono text-[10px] tracking-[0.2em] text-dim transition-colors hover:text-phosphor"
+          >
+            ALREADY APPLIED
+          </button>
         </div>
       </div>
     </motion.article>

@@ -7,8 +7,9 @@ import { createServerClient } from '@/lib/supabase/client';
 import { isSchemaMissing } from '@/lib/supabase/errors';
 import type { OpsEvent } from '@/components/dashboard/types';
 import { applicationFormUrl, atsFromUrl } from '@/lib/apply/form';
-import { capPerCompany, companyKey } from '@/lib/vault-filters';
+import { ALERT_SOURCE_KEYS, capPerCompany, companyKey } from '@/lib/vault-filters';
 import { jobKey } from '@/lib/scraper/utils';
+import { PER_COMPANY, isOpenApplication } from '@/types';
 import { serverError } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
@@ -36,6 +37,7 @@ const TIERS = [
 /** Discovery shows the best this many, after each company is held to its share (capPerCompany). */
 const DISCOVERY_SHOWN = 300;
 const DISCOVERY_READ = 1000;
+const ALERTS_READ = 300;
 
 /** Vault + applied: everything, even if the posting has since closed. Discovery: the best open jobs not yet acted on. */
 function load(supabase: SupabaseClient, userId: string, select: string) {
@@ -55,6 +57,16 @@ function load(supabase: SupabaseClient, userId: string, select: string) {
       .eq('jobs.is_active', true)
       .order('score', { ascending: false })
       .limit(DISCOVERY_READ),
+    // Jobs from your own alert emails are listed whatever their score: their short cards score lower than full JDs.
+    supabase
+      .from('match_scores')
+      .select(select)
+      .eq('user_id', userId)
+      .eq('status', 'new')
+      .eq('jobs.is_active', true)
+      .in('jobs.companies.ats_provider', ALERT_SOURCE_KEYS)
+      .order('score', { ascending: false })
+      .limit(ALERTS_READ),
   ]);
 }
 
@@ -72,36 +84,44 @@ export async function GET() {
     .then((r) => r);
 
   let tier = 0;
-  let [tracked, discovery] = await load(supabase, userId, TIERS[tier]);
+  let [tracked, discovery, alerts] = await load(supabase, userId, TIERS[tier]);
   while ((isSchemaMissing(tracked.error) || isSchemaMissing(discovery.error)) && tier < TIERS.length - 1) {
     tier += 1;
-    [tracked, discovery] = await load(supabase, userId, TIERS[tier]);
+    [tracked, discovery, alerts] = await load(supabase, userId, TIERS[tier]);
   }
   const versionsReady = tier <= 1;
   const opsReady = tier <= 2;
 
-  const error = tracked.error || discovery.error;
+  const error = tracked.error || discovery.error || alerts.error;
   if (error) {
     console.error('[DASHBOARD] Error:', error);
     return serverError('API /dashboard', error);
   }
 
   // One employer never floods Discovery: each company keeps its best roles up to its share, fewer once you have
-  // applied there, none after two applications. What each company had beyond that is counted for the cards.
+  // applied there, none after two open applications (a rejection frees its slot). What each company had beyond that
+  // is counted for the cards.
   const nameOf = (m: any) => companyKey(m.jobs.employer || m.jobs.companies.name);
   const appliedRows = ((tracked.data || []) as any[]).filter((m) => m.status === 'applied');
   const applications = new Map<string, number>();
-  for (const m of appliedRows) applications.set(nameOf(m), (applications.get(nameOf(m)) || 0) + 1);
+  for (const m of appliedRows.filter((a) => isOpenApplication(a.stage)))
+    applications.set(nameOf(m), (applications.get(nameOf(m)) || 0) + 1);
   // A role you applied to that another source lists again (the company's feed and an alert) is not a new signal.
   const appliedRoles = new Set(appliedRows.map((m) => jobKey(nameOf(m), m.jobs.title)));
   const fresh = (m: any) => m.status === 'applied' || !appliedRoles.has(jobKey(nameOf(m), m.jobs.title));
+  const candidates = new Map<string, any>();
+  for (const m of [...((discovery.data || []) as any[]), ...((alerts.data || []) as any[])]) candidates.set(m.id, m);
   const { kept, hidden } = capPerCompany(
-    ((discovery.data || []) as any[]).filter(fresh).map((m) => ({ ...m, company: nameOf(m) })),
+    [...candidates.values()].filter(fresh).map((m) => ({ ...m, company: nameOf(m) })),
     applications,
   );
+  const fromAlerts = (m: any) => ALERT_SOURCE_KEYS.includes(m.jobs.companies.ats_provider);
+  const shown = [...kept.filter((m) => !fromAlerts(m)).slice(0, DISCOVERY_SHOWN), ...kept.filter(fromAlerts)];
 
-  const tracking = ((tracked.data || []) as any[]).filter(fresh);
-  const formatted = [...tracking, ...kept.slice(0, DISCOVERY_SHOWN)].map((m: any) => ({
+  // RADAR's own saves leave the Vault once the company has its two open applications; your own saves stay.
+  const capped = (m: any) => m.status === 'saved' && m.auto_saved && (applications.get(nameOf(m)) || 0) >= PER_COMPANY;
+  const tracking = ((tracked.data || []) as any[]).filter((m) => fresh(m) && !capped(m));
+  const formatted = [...tracking, ...shown].map((m: any) => ({
     id: m.id,
     score: m.score,
     reasoning: m.reasoning,

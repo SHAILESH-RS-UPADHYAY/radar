@@ -14,7 +14,7 @@ import { splitList } from '@/lib/profile';
 import { cityAliases } from '@/lib/geo/city-companies';
 import { gateForVault } from './verify';
 import type { ScanEvent } from '@/lib/scan-events';
-import { PER_COMPANY } from '@/types';
+import { PER_COMPANY, isOpenApplication } from '@/types';
 
 /** How many of the closest jobs the SCAN://LIVE console plots. */
 const SCOPE_SAMPLE = 160;
@@ -200,6 +200,30 @@ export async function matchUser(
     for (const [id, sim] of sims) simById.set(id, sim);
   }
 
+  // Jobs from your own alert emails always get scored too: you asked for them, and their short cards rarely reach
+  // the vector top-K.
+  const { data: alertSources } = await supabase
+    .from('companies')
+    .select('id')
+    .in('ats_provider', ['indeed_email', 'linkedin_email', 'wttj_email']);
+  if (alertSources?.length) {
+    const { data } = await supabase
+      .from('jobs')
+      .select('id')
+      .in(
+        'company_id',
+        alertSources.map((c) => c.id),
+      )
+      .eq('is_active', true)
+      .limit(2000);
+    const alerts = (data || []).map((j) => j.id as string).filter((id) => !simById.has(id));
+    const sims = await similarityTo(embedding, alerts).catch((e) => {
+      console.error('[MATCH] alert jobs not scored:', e instanceof Error ? e.message : e);
+      return new Map<string, number>();
+    });
+    for (const [id, sim] of sims) simById.set(id, sim);
+  }
+
   type JobRow = {
     id: string;
     title: string;
@@ -314,11 +338,12 @@ export async function matchUser(
       score: number;
       company: string;
       title: string;
+      stage: string | null;
     }[] = [];
     for (let from = 0; ; from += 1000) {
       const { data, error } = await supabase
         .from('match_scores')
-        .select('id, job_id, status, auto_saved, score, jobs!inner(title, employer, companies!inner(name))')
+        .select('id, job_id, status, stage, auto_saved, score, jobs!inner(title, employer, companies!inner(name))')
         .eq('user_id', userId)
         .in('status', ['saved', 'applied'])
         .range(from, from + 999);
@@ -329,6 +354,7 @@ export async function matchUser(
         status: string;
         auto_saved: boolean;
         score: number;
+        stage: string | null;
         jobs: { title: string; employer: string | null; companies: { name: string } };
       }[])
         held.push({ ...r, company: companyKey(r.jobs.employer, r.jobs.companies.name), title: r.jobs.title });
@@ -336,7 +362,8 @@ export async function matchUser(
     }
     // Auto-saved jobs that no longer belong: too senior for you, or past the company's cap once your applications
     // and your own saves are counted (the best ones stay). What you saved yourself is never moved.
-    const fixed = countBy(held.filter((h) => h.status === 'applied' || (h.status === 'saved' && !h.auto_saved)));
+    const stillOpen = (h: (typeof held)[number]) => h.status === 'applied' && isOpenApplication(h.stage);
+    const fixed = countBy(held.filter((h) => stillOpen(h) || (h.status === 'saved' && !h.auto_saved)));
     const keep = new Set(
       pickForVault(
         held.filter((h) => h.status === 'saved' && h.auto_saved && !tooSenior.has(h.job_id)),
@@ -352,7 +379,7 @@ export async function matchUser(
       if (error) throw new MatchError('Failed to tidy the Vault: ' + error.message, 500);
     }
     const taken = countBy(
-      held.filter((h) => h.status === 'applied' || (h.status === 'saved' && (!h.auto_saved || keep.has(h.id)))),
+      held.filter((h) => stillOpen(h) || (h.status === 'saved' && (!h.auto_saved || keep.has(h.id)))),
     );
     // A role that asks for clearly more years than you have stays in Discovery, however well it reads.
     const strong = rows.filter((r) => r.score >= minScore && !tooSenior.has(r.job_id)).map((r) => r.job_id);

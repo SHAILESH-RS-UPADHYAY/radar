@@ -42,6 +42,9 @@ export type BoardProvider = (typeof BOARD_PROVIDERS)[number];
  * the Vault and Discovery, so one employer (ElevenLabs, Amazon) never floods your lists or gets a third application.
  */
 export const PER_COMPANY = 2;
+
+/** An application still in play counts toward PER_COMPANY; a rejected or withdrawn one frees its slot. */
+export const isOpenApplication = (stage: string | null | undefined) => stage !== 'rejected' && stage !== 'withdrawn';
 export type Provider = AtsProvider | BoardProvider | 'custom';
 
 export type CompanyCategory = 'MNC' | 'Growth' | 'Startup' | 'Board';

@@ -13,7 +13,7 @@ import { applicationFormUrl } from '@/lib/apply/form';
 import { jobKey } from '@/lib/scraper/utils';
 import { splitList } from '@/lib/profile';
 import { isSchemaMissing } from '@/lib/supabase/errors';
-import { PER_COMPANY } from '@/types';
+import { PER_COMPANY, isOpenApplication } from '@/types';
 
 /** Consents you can pre-approve, one class at a time. Arbitration and anything else always stay yours. */
 export const CONSENTS = ['privacy', 'accurate', 'talent_pool'] as const;
@@ -193,6 +193,7 @@ export async function loadAutopilot(supabase: SupabaseClient, userId: string) {
     job_id: string;
     score: number;
     status: string;
+    stage: string | null;
     applied_at: string | null;
     jobs: {
       title: string;
@@ -210,7 +211,7 @@ export async function loadAutopilot(supabase: SupabaseClient, userId: string) {
     const { data, error: e } = await supabase
       .from('match_scores')
       .select(
-        'id, job_id, score, status, applied_at, jobs!inner(title, employer, location, work_type, experience_required, posted_at, is_active, companies!inner(name, ats_provider))',
+        'id, job_id, score, status, stage, applied_at, jobs!inner(title, employer, location, work_type, experience_required, posted_at, is_active, companies!inner(name, ats_provider))',
       )
       .eq('user_id', userId)
       .range(from, from + 999);
@@ -248,9 +249,11 @@ export async function loadAutopilot(supabase: SupabaseClient, userId: string) {
       .map((r) => ({ company: company(r), title: r.jobs.title })),
     appliedPerCompany: new Map<string, number>(),
   };
-  for (const c of candidates)
-    if (c.status === 'applied')
-      options.appliedPerCompany.set(companyOf(c), (options.appliedPerCompany.get(companyOf(c)) || 0) + 1);
+  for (const r of rows)
+    if (r.status === 'applied' && isOpenApplication(r.stage)) {
+      const key = companyOf({ company: company(r) });
+      options.appliedPerCompany.set(key, (options.appliedPerCompany.get(key) || 0) + 1);
+    }
   return { settings, cities, candidates, options, tailoredByJob };
 }
 

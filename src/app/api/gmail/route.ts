@@ -88,7 +88,7 @@ export async function POST() {
     const replies = await syncGmail(supabase, userId);
     if (replies.error) return NextResponse.json(replies, { status: 409 });
     const { data: sources } = await supabase.from('companies').select('id').in('ats_provider', ALERT_PROVIDERS);
-    const scrape = await runScrape(supabase, { companyIds: (sources || []).map((c) => c.id), budgetMs: 60_000 });
+    const scrape = await runScrape(supabase, { companyIds: (sources || []).map((c) => c.id), budgetMs: 110_000 });
     // Scoring needs a resume; without one the alert jobs still wait in RADAR for your first scan.
     const vaulted = await matchUser(supabase, userId).then(
       (m) => m.vaulted,
