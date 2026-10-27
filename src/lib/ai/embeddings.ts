@@ -101,22 +101,17 @@ export async function fetchJobVector(id: string): Promise<number[] | null> {
   return values?.length ? Array.from(values) : null;
 }
 
-/** Cosine similarity of a resume to specific jobs (by their stored vectors); jobs never embedded are left out. */
+/**
+ * Cosine similarity of a resume to specific jobs; jobs never embedded, or too far to be in the nearest 10,000, are
+ * left out. One query returning ids and scores only: fetching the vectors themselves cost about 18 KB a job and used
+ * up Pinecone's 1 GB monthly egress (measured 2026-10-27).
+ */
 export async function similarityTo(embedding: number[], ids: string[]): Promise<Map<string, number>> {
-  const norm = (v: ArrayLike<number>) => Math.sqrt(Array.from(v).reduce((s, x) => s + x * x, 0)) || 1;
-  const mine = norm(embedding);
   const out = new Map<string, number>();
-  // Small batches: fetch puts the ids in the URL, and a long one fails.
-  for (let i = 0; i < ids.length; i += 100) {
-    const { records } = await getIndex().fetch({ ids: ids.slice(i, i + 100) });
-    for (const [id, r] of Object.entries(records)) {
-      const v = r.values;
-      if (!v?.length) continue;
-      let dot = 0;
-      for (let k = 0; k < v.length; k++) dot += v[k] * (embedding[k] || 0);
-      out.set(id, dot / (norm(v) * mine));
-    }
-  }
+  if (!ids.length) return out;
+  const wanted = new Set(ids);
+  const { matches } = await getIndex().query({ vector: embedding, topK: 10_000 });
+  for (const m of matches || []) if (wanted.has(m.id)) out.set(m.id, m.score || 0);
   return out;
 }
 

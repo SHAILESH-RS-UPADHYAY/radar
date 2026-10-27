@@ -1230,6 +1230,7 @@
       );
     }
     if (entry.done) return hud.done('Already logged in RADAR · C2 · OPS.');
+    if (entry.note) hud.note(entry.note);
     // Back after pressing the employer's Submit (a new page load): log it if the employer confirmed it.
     if (entry.armedAt && Date.now() - entry.armedAt < 5 * 60_000 && confirmed()) {
       hud.log('OK', 'employer confirmed the application', 'ok');

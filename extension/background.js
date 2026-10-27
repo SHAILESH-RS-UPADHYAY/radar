@@ -50,14 +50,21 @@ const NEVER = /^https:\/\/([^/]+\.)?(linkedin\.com|indeed\.[a-z.]+)\//i;
 // Job boards whose page is a listing, not the form (Adzuna's /details/, Jooble): follow their Apply link in the same
 // tab, so the employer's form loads in a tab RADAR already tracks. Their own search forms are never filled.
 const AGGREGATOR = /^https:\/\/([^/]+\.)?(adzuna\.[a-z.]+|jooble\.org)\//i;
+// Boards an aggregator hands jobs to whose Apply is a one-click button on your account there, not a form.
+const HOSTED_BOARD =
+  /(^|\.)(cutshort\.io|naukri\.com|foundit\.in|instahyre\.com|iimjobs\.com|hirist\.tech|shine\.com|timesjobs\.com)$/i;
 
-/** The Apply link on a board's listing page (runs in the page). */
-function boardApplyLink() {
-  const links = [...document.querySelectorAll('a[href]')];
-  const a =
-    links.find((l) => l.dataset.js === 'apply') ||
-    links.find((l) => /^\s*apply( for this job| now)?\s*$/i.test(l.textContent || '') && l.offsetParent);
-  return a ? a.href : null;
+/** The Apply link on a board's listing page (runs in the page). Adzuna renders it after the load event, so wait. */
+async function boardApplyLink() {
+  for (let i = 0; i < 40; i++) {
+    const links = [...document.querySelectorAll('a[href]')];
+    const a =
+      links.find((l) => l.dataset.js === 'apply') ||
+      links.find((l) => /^\s*apply( for this job| now)?\s*$/i.test(l.textContent || '') && l.offsetParent);
+    if (a) return a.href;
+    await new Promise((r) => setTimeout(r, 250));
+  }
+  return null;
 }
 
 async function inject(tabId, frameId) {
@@ -72,6 +79,8 @@ async function inject(tabId, frameId) {
         // Where the board's link ends up is told to RADAR on arrival (see onCompleted), so next time it opens there.
         await update(tabId, { fromBoard: true });
         await chrome.tabs.update(tabId, { url: href });
+      } else {
+        await update(tabId, { note: 'This listing has no Apply link (the job may be gone). Close the tab.' });
       }
       return;
     }
@@ -89,7 +98,16 @@ chrome.webNavigation.onCompleted.addListener(async ({ tabId, frameId, url }) => 
   if (!entry) return;
   // Arrived from a job board's link (the redirects in between never complete): the employer's page, for RADAR.
   if (frameId === 0 && entry.fromBoard && !AGGREGATOR.test(url)) {
-    await update(tabId, { fromBoard: false });
+    // Another job board behind the first one (Adzuna India sends most jobs to Cutshort): its Apply button uses
+    // your account there, so RADAR cannot fill it. Say so instead of looking for a form that is not there.
+    const host = new URL(url).hostname.replace(/^www\./, '');
+    const hosted = HOSTED_BOARD.test(host);
+    await update(tabId, {
+      fromBoard: false,
+      note: hosted
+        ? `${host} applies with your ${host} account: sign in once, then press its Apply. RADAR logs it.`
+        : null,
+    });
     if (entry.matchId && entry.radarTab) tellRadar(entry, { type: 'landed', url });
   }
   if (frameId === 0 || FORM_FRAME.test(url)) inject(tabId, frameId);
