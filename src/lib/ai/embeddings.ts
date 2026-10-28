@@ -312,7 +312,8 @@ async function embedJobs(jobs: JobForVector[], space: Space, wait = true): Promi
  * waiting. Jobs left without a v2 vector are embedded by the backfill.
  */
 export async function upsertJobVectors(jobs: JobForVector[]) {
-  await embedJobs(jobs, 'v1');
+  // Neither space may stop the other: Pinecone's free 5M tokens a month can run out, and so can Gemini's minute.
+  await embedJobs(jobs, 'v1').catch((e) => console.error('[EMBED] v1 skipped:', e instanceof Error ? e.message : e));
   await embedJobs(jobs, 'v2', false).catch((e) => {
     if (!(e instanceof EmbedQuotaError)) console.error('[EMBED] v2 skipped:', e instanceof Error ? e.message : e);
   });

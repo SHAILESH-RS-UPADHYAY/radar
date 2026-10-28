@@ -12,23 +12,28 @@ async function handle(req: NextRequest) {
   if (!isCronAuthorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const startedAt = Date.now();
   const embedded: Record<Space, number> = { v1: 0, v2: 0 };
-  try {
-    for (const [space, batch] of [
-      ['v1', 250],
-      ['v2', 20],
-    ] as const) {
+  const errors: Partial<Record<Space, string>> = {};
+  // Each space on its own: when Pinecone's monthly quota runs out, Gemini's backfill still goes on.
+  for (const [space, batch] of [
+    ['v1', 250],
+    ['v2', 20],
+  ] as const) {
+    try {
       while (Date.now() - startedAt < 200_000) {
         const n = await backfillEmbeddings(batch, space);
         embedded[space] += n;
         if (n < batch) break;
       }
+    } catch (err) {
+      errors[space] = err instanceof Error ? err.message : String(err);
     }
-    const left = Date.now() - startedAt < 200_000 ? 0 : 'more';
-    return NextResponse.json({ ok: true, embedded, left, durationMs: Date.now() - startedAt });
-  } catch (err) {
-    const error = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ ok: false, embedded, error }, { status: 500 });
   }
+  const left = Date.now() - startedAt < 200_000 ? 0 : 'more';
+  const ok = !errors.v2;
+  return NextResponse.json(
+    { ok, embedded, left, errors, durationMs: Date.now() - startedAt },
+    { status: ok ? 200 : 500 },
+  );
 }
 
 export const GET = handle;
