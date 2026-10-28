@@ -114,9 +114,10 @@ export async function activeSpace(): Promise<Space> {
 }
 
 // The score formula was tuned on v1 similarities (matcher.ts SIM_FLOOR..SIM_CEIL = 0.32..0.64). v2 similarities sit in
-// another band, so they are mapped onto v1's before scoring: the Vault's 80% means the same in both spaces.
+// another band, so they are mapped onto v1's before scoring: the Vault's 80% means the same in both spaces. Band fitted
+// on 975 jobs with both vectors (2026-10-28, main profile): quantiles 10/50/90/99% line up within 0.007.
 const V1_BAND = [0.32, 0.64];
-const V2_BAND = [Number(process.env.RADAR_SIM_FLOOR_V2 || 0.6), Number(process.env.RADAR_SIM_CEIL_V2 || 0.8)];
+const V2_BAND = [Number(process.env.RADAR_SIM_FLOOR_V2 || 0.59), Number(process.env.RADAR_SIM_CEIL_V2 || 0.76)];
 
 /** A similarity on v1's scale. Pure. */
 export function calibrate(similarity: number, space: Space): number {

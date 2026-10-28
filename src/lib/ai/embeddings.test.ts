@@ -4,9 +4,9 @@ import { calibrate, JD_CHARS, JD_CHARS_V2, jobText } from './embeddings';
 describe('calibrate', () => {
   it('keeps v1 similarities and maps v2 onto the v1 band', () => {
     expect(calibrate(0.5, 'v1')).toBe(0.5);
-    expect(calibrate(0.6, 'v2')).toBeCloseTo(0.32);
-    expect(calibrate(0.8, 'v2')).toBeCloseTo(0.64);
-    expect(calibrate(0.7, 'v2')).toBeCloseTo(0.48);
+    expect(calibrate(0.59, 'v2')).toBeCloseTo(0.32);
+    expect(calibrate(0.76, 'v2')).toBeCloseTo(0.64);
+    expect(calibrate(0.675, 'v2')).toBeCloseTo(0.48);
   });
 });
 
