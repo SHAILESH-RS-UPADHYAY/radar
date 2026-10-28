@@ -22,7 +22,11 @@ GitHub Actions workflow runs all three on demand.
 │  StartupMap every 48h: robots.txt → sitemap → /jobs/<city>/engineering (your cities first, cursor)
 │  queue (discovered_companies): startup page → job links → ATS board (gh_jid / Teamtailor verified)
 │  YC every 48h: yc-oss hiring.json (one static file) → queue, your cities / remote first, then India
-│  your imports and YC companies: homepage → careers page → ATS board
+│  HN every 48h: ATS links companies post in the last six "Who is hiring?" threads (official API)
+│  Hiring Without Whiteboards every 48h: the MIT-licensed list of ~765 companies with careers links
+│  your imports and listed companies: homepage → careers page → ATS board; none found → board guessed from the
+│    name, accepted only with proof (Ashby names the website; Greenhouse/Lever/Workable name the company)
+│  not crawled: VC portfolio boards on Getro (Accel, Blume) — Getro's terms forbid crawling
 └─ new companies → companies table   (then scraped like any other)
 ```
 

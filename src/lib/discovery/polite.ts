@@ -10,7 +10,7 @@
 
 import { SITE_URL } from '@/lib/site';
 
-const BOT_UA = `RADAR-Discovery/1.0 (+${SITE_URL}/system; personal job-search bot)`;
+export const BOT_UA = `RADAR-Discovery/1.0 (+${SITE_URL}/system; personal job-search bot)`;
 const BOT_TOKEN = 'radar-discovery';
 
 /** A site answered 429/403/503 (or its robots.txt could not be read): stop asking it for now. */

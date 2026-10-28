@@ -116,6 +116,45 @@ export function slugCandidates(name: string | null, website: string | null): str
   return [...new Set(out.filter((s) => s.length >= 2 && SLUG.test(s)))].slice(0, 4);
 }
 
+const normName = (s: string | null | undefined) =>
+  (s || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]/g, '');
+
+/**
+ * How well a board's company name fits a company: 'exact' ("Stripe" / "stripe"), 'prefix' ("Palantir" /
+ * "Palantir Technologies", 4+ letters) or null.
+ */
+export function nameMatches(
+  board: string | null | undefined,
+  company: string | null | undefined,
+): 'exact' | 'prefix' | null {
+  const a = normName(board);
+  const b = normName(company);
+  if (!a || !b) return null;
+  if (a === b) return 'exact';
+  const [short, long] = a.length < b.length ? [a, b] : [b, a];
+  return short.length >= 4 && long.startsWith(short) ? 'prefix' : null;
+}
+
+/** The host of a website or URL without "www.", or null. */
+export function siteHost(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  return (
+    parse(raw.includes('://') ? raw : 'https://' + raw)
+      ?.hostname.replace(/^www\./, '')
+      .toLowerCase() || null
+  );
+}
+
+/** Two links on the same site: "https://legora.com/careers" and "www.legora.com", or a subdomain of it. */
+export function sameSite(a: string | null | undefined, b: string | null | undefined): boolean {
+  const x = siteHost(a);
+  const y = siteHost(b);
+  return !!x && !!y && (x === y || x.endsWith('.' + y) || y.endsWith('.' + x));
+}
+
 /** Public board URL, stored as the company's careers link. */
 export function boardUrl({ provider, identifier: id }: AtsRef): string {
   switch (provider) {

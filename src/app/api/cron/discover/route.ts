@@ -6,8 +6,9 @@ import { runDiscovery } from '@/lib/discovery/run';
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
 
-// Startup discovery: StartupMap and YC's hiring list every 48h + your imported companies → their ATS boards → `companies`.
-// Called daily by Vercel Cron and every 6 hours by .github/workflows/radar-cron.yml; each call resumes the work.
+// Startup discovery: StartupMap, YC's hiring list, HN "Who is hiring?" and Hiring Without Whiteboards every 48h
+// + your imported companies → their ATS boards → `companies`.
+// Called five times a day by Vercel Cron (vercel.json); each call resumes the work.
 async function handle(req: NextRequest) {
   if (!isCronAuthorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   const startedAt = Date.now();

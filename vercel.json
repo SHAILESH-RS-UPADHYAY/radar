@@ -5,6 +5,22 @@
       "schedule": "30 1 * * *"
     },
     {
+      "path": "/api/cron/discover",
+      "schedule": "30 5 * * *"
+    },
+    {
+      "path": "/api/cron/discover",
+      "schedule": "30 11 * * *"
+    },
+    {
+      "path": "/api/cron/discover",
+      "schedule": "30 17 * * *"
+    },
+    {
+      "path": "/api/cron/discover",
+      "schedule": "30 23 * * *"
+    },
+    {
       "path": "/api/cron",
       "schedule": "30 2 * * *"
     },

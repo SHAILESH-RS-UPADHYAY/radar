@@ -4,9 +4,12 @@
 // Runs from /api/cron/discover inside a time budget and resumes where it stopped:
 //   1. Every 48h, StartupMap's sitemap queues new startups. Its /jobs/<city>/engineering pages (your cities
 //      first, a slice per run) raise the priority of startups hiring engineers right now.
-//   2. The queue: read a startup's page (or an imported company's own website), find its ATS board from the
-//      job links, verify any guess, and add the company to `companies`. From then on the normal scrape reads
-//      its jobs straight from the ATS — the source of truth for what is actually open.
+//   1b. Every 48h, free company lists are queued too: YC companies hiring now (yc-oss), the ATS links companies post
+//      in HN's "Who is hiring?" threads, and Hiring Without Whiteboards (see lists.ts).
+//   2. The queue: read a startup's page (or a company's own website), find its ATS board from the job links,
+//      verify any guess, and add the company to `companies`. When the website shows no board, the board is guessed
+//      from the company's name and accepted only with proof (guessFeed). From then on the normal scrape reads its
+//      jobs straight from the ATS — the source of truth for what is actually open.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isSchemaMissing } from '@/lib/supabase/errors';
@@ -19,11 +22,15 @@ import {
   detectAts,
   extractLinks,
   greenhouseJobId,
+  nameMatches,
+  sameSite,
+  siteHost,
   slugCandidates,
   teamtailorJobHost,
   type AtsRef,
 } from './ats';
-import { politeFetcher, SiteBlockedError, type PoliteFetcher } from './polite';
+import { hnRows, hwwRows, type ListRow } from './lists';
+import { BOT_UA, politeFetcher, SiteBlockedError, type PoliteFetcher } from './polite';
 import {
   citySlug,
   hiringSlugs,
@@ -40,6 +47,10 @@ const RECHECK_NO_FEED_MS = 60 * 24 * 3600_000; // look again at companies that h
 const REOPEN_HIRING_MS = 7 * 24 * 3600_000; // a "no roles" company seen hiring again is rechecked at most weekly
 const MAX_ATTEMPTS = 3;
 const QUEUE_BATCH = 300;
+const NO_SITE_FEED = 'no supported careers feed found on the website';
+const SITE_REFUSES = 'the website refuses automated requests';
+// Companies whose website showed no board before guessFeed existed get one more look.
+const GUESS_SINCE = '2026-10-29T00:00:00Z';
 
 interface StartupMapState {
   /** /jobs/<city>/engineering pages still to read this cycle, your cities first. */
@@ -63,12 +74,19 @@ interface QueueRow {
 
 type Info = Partial<Omit<DirectoryCompany, 'jobLinks'>>;
 
+interface ListSync {
+  queued: number;
+  error?: string;
+}
+
 export interface DiscoverySummary {
   /** False until migration 007 has been run. */
   ready: boolean;
   startupmap: { synced: boolean; pagesRead: number; pausedUntil?: string; error?: string };
-  /** YC companies hiring now, queued this run (0 between 48h syncs). */
-  yc: { queued: number; error?: string };
+  /** Companies queued this run from each free list (0 between 48h syncs). */
+  yc: ListSync;
+  hn: ListSync;
+  hww: ListSync;
   processed: number;
   linked: number;
   noFeed: number;
@@ -87,6 +105,8 @@ export async function runDiscovery(supabase: SupabaseClient, deadline: number): 
     ready: true,
     startupmap: { synced: false, pagesRead: 0 },
     yc: { queued: 0 },
+    hn: { queued: 0 },
+    hww: { queued: 0 },
     processed: 0,
     linked: 0,
     noFeed: 0,
@@ -131,10 +151,19 @@ export async function runDiscovery(supabase: SupabaseClient, deadline: number): 
       .upsert({ source: 'startupmap', notes, ...(syncedAt ? { synced_at: syncedAt } : {}) });
   }
 
-  try {
-    summary.yc.queued = await syncYc(supabase);
-  } catch (err) {
-    summary.yc.error = (err as Error).message.slice(0, 300);
+  const { data: profiles } = await supabase.from('user_profiles').select('location').not('location', 'is', null);
+  const cities = (profiles || []).flatMap((p) => splitList(p.location));
+  const lists: [keyof Pick<DiscoverySummary, 'yc' | 'hn' | 'hww'>, () => Promise<ListRow[]>][] = [
+    ['yc', async () => ycRows(await fetchJson<YcCompany[]>(YC_HIRING, { timeoutMs: 20_000 }), cities)],
+    ['hn', () => hnListRows(cities)],
+    ['hww', async () => hwwRows(await fetchText(HWW_README), cities)],
+  ];
+  for (const [source, load] of lists) {
+    try {
+      summary[source].queued = await syncList(supabase, source, load);
+    } catch (err) {
+      summary[source].error = (err as Error).message.slice(0, 300);
+    }
   }
 
   if (await workQueue(supabase, http, deadline, summary, startupMapOpen)) {
@@ -238,23 +267,45 @@ export function ycRows(list: YcCompany[], cities: string[]) {
     });
 }
 
-/** Every 48h: queue YC companies that are hiring. Returns how many were queued (existing ones are kept). */
-async function syncYc(supabase: SupabaseClient): Promise<number> {
-  const { data: state } = await supabase.from('source_state').select('synced_at').eq('source', 'yc').maybeSingle();
+/** Every 48h: queue a list's companies. Returns how many were queued (existing ones are kept as they are). */
+async function syncList(supabase: SupabaseClient, source: string, load: () => Promise<ListRow[]>): Promise<number> {
+  const { data: state } = await supabase.from('source_state').select('synced_at').eq('source', source).maybeSingle();
   if (state?.synced_at && Date.now() - Date.parse(state.synced_at) < CYCLE_MS) return 0;
-  const { data: profiles } = await supabase.from('user_profiles').select('location').not('location', 'is', null);
-  const rows = ycRows(
-    await fetchJson<YcCompany[]>(YC_HIRING, { timeoutMs: 20_000 }),
-    (profiles || []).flatMap((p) => splitList(p.location)),
-  );
+  const rows = await load();
   for (let i = 0; i < rows.length; i += 500) {
     const { error } = await supabase
       .from('discovered_companies')
       .upsert(rows.slice(i, i + 500), { onConflict: 'source,source_ref', ignoreDuplicates: true });
-    if (error) throw new Error('Queueing YC companies failed: ' + error.message);
+    if (error) throw new Error(`Queueing ${source} companies failed: ` + error.message);
   }
-  await supabase.from('source_state').upsert({ source: 'yc', synced_at: now() });
+  await supabase.from('source_state').upsert({ source, synced_at: now() });
   return rows.length;
+}
+
+// ---- 1c. HN "Who is hiring?" and Hiring Without Whiteboards ----
+
+const HN_THREADS = 'https://hn.algolia.com/api/v1/search_by_date?tags=story,author_whoishiring&hitsPerPage=12';
+const HWW_README = 'https://raw.githubusercontent.com/poteto/hiring-without-whiteboards/main/README.md';
+
+/** The last six "Who is hiring?" threads: an older post's board is still worth a look (closed ones have no jobs). */
+async function hnListRows(cities: string[]): Promise<ListRow[]> {
+  const { hits } = await fetchJson<{ hits: { objectID: string; title: string }[] }>(HN_THREADS, { timeoutMs: 20_000 });
+  const threads = hits.filter((h) => /who is hiring/i.test(h.title)).slice(0, 6);
+  const rows = new Map<string, ListRow>();
+  for (const t of threads) {
+    const item = await fetchJson<{ children?: { text?: string | null }[] }>(
+      'https://hn.algolia.com/api/v1/items/' + t.objectID,
+      { timeoutMs: 30_000 },
+    );
+    for (const r of hnRows(item.children || [], cities)) if (!rows.has(r.source_ref)) rows.set(r.source_ref, r);
+  }
+  return [...rows.values()];
+}
+
+async function fetchText(url: string): Promise<string> {
+  const res = await fetch(url, { headers: { 'user-agent': BOT_UA }, signal: AbortSignal.timeout(20_000) });
+  if (!res.ok) throw new Error(url + ' answered ' + res.status);
+  return res.text();
 }
 
 // ---- 2. Queue ----
@@ -268,10 +319,16 @@ async function workQueue(
   startupMapOpen: boolean,
 ): Promise<boolean> {
   const recheck = new Date(Date.now() - RECHECK_NO_FEED_MS).toISOString();
-  const { data: rows, error } = await supabase
+  let query = supabase
     .from('discovered_companies')
     .select('id, source, source_ref, name, website, attempts')
-    .or(`status.eq.pending,status.eq.failed,and(status.eq.no_feed,checked_at.lt."${recheck}")`)
+    .or(
+      `status.eq.pending,status.eq.failed,and(status.eq.no_feed,checked_at.lt."${recheck}"),` +
+        `and(status.eq.no_feed,note.in.("${NO_SITE_FEED}","${SITE_REFUSES}"),checked_at.lt."${GUESS_SINCE}")`,
+    );
+  // While StartupMap is paused its rows would only fill the batch and be skipped, starving every other source.
+  if (!startupMapOpen) query = query.neq('source', 'startupmap');
+  const { data: rows, error } = await query
     .order('priority', { ascending: false })
     .order('created_at', { ascending: true })
     .limit(QUEUE_BATCH);
@@ -300,10 +357,7 @@ async function workQueue(
           status: attempts >= MAX_ATTEMPTS ? 'no_feed' : 'failed',
           attempts,
           checked_at: now(),
-          note: (err instanceof SiteBlockedError
-            ? 'the website refuses automated requests'
-            : (err as Error).message
-          ).slice(0, 200),
+          note: (err instanceof SiteBlockedError ? SITE_REFUSES : (err as Error).message).slice(0, 200),
         })
         .eq('id', row.id);
     }
@@ -331,8 +385,73 @@ async function resolveRow(http: PoliteFetcher, row: QueueRow): Promise<Found> {
     const ref = await feedFromLinks(jobLinks, page.name, page.website);
     return { ref, info, note: ref ? null : 'careers feed not supported yet (' + new URL(jobLinks[0]).hostname + ')' };
   }
-  const ref = row.website ? await feedFromWebsite(http, row.website, row.name) : null;
-  return { ref, info: {}, note: ref ? null : 'no supported careers feed found on the website' };
+  // A list that links the ATS board itself (HN posts, some Hiring Without Whiteboards entries).
+  const direct = row.website ? detectAts([row.website]) : null;
+  if (direct) return { ref: direct, info: {}, note: null };
+  let ref: AtsRef | null = null;
+  if (row.website) {
+    try {
+      ref = await feedFromWebsite(http, row.website, row.name);
+    } catch (err) {
+      // A website that turns bots away can still have a public board: the guess never touches the website.
+      if (!(err instanceof SiteBlockedError)) throw err;
+    }
+  }
+  ref ??= await guessFeed(http, row.name, row.website);
+  return { ref, info: {}, note: ref ? null : NO_SITE_FEED };
+}
+
+const tryJson = <T>(url: string) => fetchJson<T>(url, { retries: 0, timeoutMs: 10_000 }).catch(() => null);
+
+/** Does the text mention the company's website (proof for a short or partly matching name)? */
+const mentionsSite = (text: string, host: string | null) => !!host && text.toLowerCase().includes(host);
+
+/**
+ * The board of a company whose website shows none (careers pages built in the browser hide their ATS links), guessed
+ * from its name and website and accepted only with proof, because names collide ("Feather", "Seam"):
+ *   Ashby       the board page names the company's website (publicWebsite).
+ *   Greenhouse, Lever, Workable   the board's company name is the company's; a short (< 6 letters) or partial name
+ *               also needs the website named in the board's jobs or description.
+ * Only boards with open jobs count. Measured on 40 stuck YC companies (2026-10-29): 15 had a board, 8 with jobs.
+ */
+export async function guessFeed(
+  http: PoliteFetcher,
+  name: string | null,
+  website: string | null,
+): Promise<AtsRef | null> {
+  if (!name) return null;
+  const host = siteHost(website);
+  const trusted = (match: 'exact' | 'prefix' | null, text: () => string) =>
+    !!match && ((match === 'exact' && name.replace(/[^a-z0-9]/gi, '').length >= 6) || mentionsSite(text(), host));
+  for (const slug of slugCandidates(name, website)) {
+    const ashby = await tryJson<{ jobs?: unknown[] }>('https://api.ashbyhq.com/posting-api/job-board/' + slug);
+    if (ashby?.jobs?.length && website) {
+      const page = await http.get('https://jobs.ashbyhq.com/' + slug);
+      const site = page.status === 200 ? /"publicWebsite":"([^"]+)"/.exec(page.text)?.[1] : null;
+      if (site && sameSite(site, website)) return { provider: 'ashby', identifier: slug };
+    }
+    const gh = await tryJson<{ name?: string }>('https://boards-api.greenhouse.io/v1/boards/' + slug);
+    if (gh?.name && nameMatches(gh.name, name)) {
+      const jobs = await tryJson<{ jobs?: { content?: string }[] }>(
+        `https://boards-api.greenhouse.io/v1/boards/${slug}/jobs?content=true`,
+      );
+      if (jobs?.jobs?.length && trusted(nameMatches(gh.name, name), () => jobs.jobs!.map((j) => j.content).join(' ')))
+        return { provider: 'greenhouse', identifier: slug };
+    }
+    const lever = await tryJson<{ descriptionPlain?: string }[]>(`https://api.lever.co/v0/postings/${slug}?mode=json`);
+    if (Array.isArray(lever) && lever.length) {
+      const page = await http.get('https://jobs.lever.co/' + slug);
+      const title = page.status === 200 ? /<title>([^<]*)<\/title>/.exec(page.text)?.[1] : null;
+      if (trusted(nameMatches(title, name), () => lever.map((p) => p.descriptionPlain).join(' ')))
+        return { provider: 'lever', identifier: slug };
+    }
+    const wk = await tryJson<{ name?: string; description?: string; jobs?: { description?: string }[] }>(
+      'https://apply.workable.com/api/v1/widget/accounts/' + slug,
+    );
+    if (wk?.jobs?.length && trusted(nameMatches(wk.name, name), () => (wk.description || '') + JSON.stringify(wk.jobs)))
+      return { provider: 'workable', identifier: slug };
+  }
+  return null;
 }
 
 const answers = (url: string) =>

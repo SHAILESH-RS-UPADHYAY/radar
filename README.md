@@ -170,9 +170,11 @@ through **C2 · OPS**. Only the verdict is stored, and the token is sealed with 
 ```mermaid
 %%{init: {'theme': 'dark', 'themeVariables': {'lineColor': '#00ff41', 'fontFamily': 'monospace'}}}%%
 flowchart LR
-  subgraph D["/api/cron/discover · 01:30"]
+  subgraph D["/api/cron/discover · 5× a day"]
     SM["StartupMap"] --> Q[("discovery queue")]
     YC["YC hiring list"] --> Q
+    HN["HN Who is hiring"] --> Q
+    HW["Hiring Without Whiteboards"] --> Q
     IM["your imports"] --> Q
     Q --> FB{"ATS board<br/>verified?"}
   end
