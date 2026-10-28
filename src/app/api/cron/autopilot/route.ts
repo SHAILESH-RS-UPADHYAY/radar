@@ -4,6 +4,7 @@ import { isCronAuthorized } from '@/lib/pipeline/cron-auth';
 import { expireStaleAssessments, syncAllGmail } from '@/lib/gmail';
 import { retireClosedMatches, reverifyOpenMatches, reviveReopenedMatches } from '@/lib/pipeline/verify';
 import { autoOverclockAll } from '@/lib/overclock';
+import { backfillEmbeddings } from '@/lib/ai/embeddings';
 
 export const maxDuration = 300;
 export const dynamic = 'force-dynamic';
@@ -24,10 +25,13 @@ async function handle(req: NextRequest) {
   const revived = await reviveReopenedMatches(supabase);
   const gmail = await syncAllGmail(supabase, deadline);
   const expired = await expireStaleAssessments(supabase).catch((e) => (console.error('[AUTOPILOT] expiry:', e), 0));
+  // Open jobs without a vector (a scrape past its embed budget, or the move to pgvector) get one here.
+  const embedded = await backfillEmbeddings(300).catch((e) => (console.error('[AUTOPILOT] backfill:', e), 0));
   const overclock = await autoOverclockAll(supabase, deadline);
   const summary = {
     postings: { ...checks, retired, revived },
     overclock,
+    embedded,
     gmail: {
       inboxes: gmail.length,
       matched: gmail.reduce((s, r) => s + r.matched, 0),

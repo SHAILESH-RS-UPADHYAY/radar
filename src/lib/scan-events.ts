@@ -27,8 +27,8 @@ export type ScanStage = Exclude<ScanEvent['stage'], 'done' | 'error'>;
 export const SCAN_STAGES: { stage: ScanStage; label: string; call: string }[] = [
   { stage: 'retire', label: 'RETIRE://CLOSED', call: 'supabase.match_scores ⟵ jobs.is_active = false' },
   { stage: 'profile', label: 'PROFILE://LOAD', call: 'supabase.user_profiles.select(skills, roles, cities)' },
-  { stage: 'vector', label: 'VECTOR://RESUME', call: 'pinecone.inference.embed(multilingual-e5-large)' },
-  { stage: 'search', label: 'PINECONE://TOP-K', call: 'index.query(resume, topK)' },
+  { stage: 'vector', label: 'VECTOR://RESUME', call: 'pinecone.inference.embed(llama-text-embed-v2)' },
+  { stage: 'search', label: 'PGVECTOR://TOP-K', call: 'rpc(match_jobs, resume, topK)' },
   { stage: 'load', label: 'SUPABASE://JOBS', call: 'jobs.select(…).in(ids).eq(is_active, true)' },
   { stage: 'score', label: 'SCORE://MATRIX', call: '0.6·meaning + 0.4·skills ± role, seniority, place, freshness' },
   { stage: 'gate', label: 'GATE://VERIFY', call: 'open the apply links of board jobs before they enter' },

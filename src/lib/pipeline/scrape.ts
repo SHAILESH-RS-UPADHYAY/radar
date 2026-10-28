@@ -11,7 +11,7 @@ import { scrapeCompany, type ScrapedJob } from '@/lib/scraper/adapters';
 import { jobKey, mapLimit } from '@/lib/scraper/utils';
 import { BOARD_PROVIDERS } from '@/types';
 import { ensureCompaniesSeeded } from '@/lib/scraper/seed';
-import { deleteJobVectors, upsertJobVectors } from '@/lib/ai/embeddings';
+import { upsertJobVectors } from '@/lib/ai/embeddings';
 
 export interface CompanyScrapeResult {
   company: string;
@@ -140,7 +140,6 @@ export async function purgeSenior(supabase: SupabaseClient): Promise<number> {
       .in('id', gone.slice(i, i + 200));
     if (error) throw new Error('Deleting senior jobs failed: ' + error.message);
   }
-  await deleteJobVectors(gone).catch((e) => console.error('[SCRAPE] senior vectors not removed:', e));
   return gone.length;
 }
 
@@ -295,11 +294,6 @@ async function scrapeOne(
       const { data: gone, error: staleErr } = await stale.select('id');
       if (staleErr) console.error('[SCRAPE]', company.name, 'stale cleanup failed:', staleErr.message);
       deactivated = gone?.length || 0;
-      if (deactivated) {
-        await deleteJobVectors(gone!.map((g) => g.id)).catch((e) =>
-          console.error('[SCRAPE]', company.name, 'vector cleanup failed:', e instanceof Error ? e.message : e),
-        );
-      }
     }
 
     const durationMs = Date.now() - start;

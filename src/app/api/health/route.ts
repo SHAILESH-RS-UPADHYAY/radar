@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/client';
-import { getIndex } from '@/lib/ai/embeddings';
+import { searchSimilarJobs } from '@/lib/ai/embeddings';
 import { env, missingServerEnv } from '@/lib/env';
 
 const STALE_MS = 48 * 3600_000;
@@ -18,7 +18,7 @@ async function probe(check: () => Promise<void>) {
   }
 }
 
-// GET /api/health — for uptime monitors. 200 when the database and the vector index answer, 503 otherwise.
+// GET /api/health — for uptime monitors. 200 when the database and the job search (pgvector) answer, 503 otherwise.
 // Reports up/down, latency and whether the automatic loop has run in the last 48h; details go to the server log.
 export async function GET() {
   const missingEnv = missingServerEnv();
@@ -31,7 +31,7 @@ export async function GET() {
           if (error) throw new Error(error.message);
         }),
         probe(async () => {
-          await getIndex().describeIndexStats();
+          await searchSimilarJobs(new Array(1024).fill(1), 1);
         }),
       ]);
   const ok = !missingEnv.length && database.ok && vectors.ok;

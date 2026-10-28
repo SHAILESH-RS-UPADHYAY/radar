@@ -13,7 +13,6 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { BOARD_PROVIDERS } from '@/types';
-import { deleteJobVectors } from '@/lib/ai/embeddings';
 import { mapLimit } from '@/lib/scraper/utils';
 import { politeFetcher, SiteBlockedError, type PoliteFetcher } from '@/lib/discovery/polite';
 import { isSchemaMissing } from '@/lib/supabase/errors';
@@ -113,7 +112,7 @@ type JobRef = CheckableJob & {
 };
 const providerOf = (j: JobRef) => (Array.isArray(j.companies) ? j.companies[0] : j.companies)?.ats_provider;
 
-/** Record checks: confirmed-open jobs get verified_at; closed ones leave every list and the vector index. */
+/** Record checks: confirmed-open jobs get verified_at; closed ones leave every list and the job search. */
 export async function recordChecks(supabase: SupabaseClient, live: string[], closed: string[]) {
   if (live.length) {
     const { error } = await supabase.from('jobs').update({ verified_at: new Date().toISOString() }).in('id', live);
@@ -121,7 +120,6 @@ export async function recordChecks(supabase: SupabaseClient, live: string[], clo
   }
   if (closed.length) {
     await supabase.from('jobs').update({ is_active: false }).in('id', closed);
-    await deleteJobVectors(closed).catch((e) => console.error('[VERIFY] vector cleanup failed:', (e as Error).message));
   }
 }
 

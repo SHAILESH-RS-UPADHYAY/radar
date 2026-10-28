@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { env, readEnv } from '@/lib/env';
+import { createServerClient } from '@/lib/supabase/client';
 
 function getPinecone() {
   return new Pinecone({ apiKey: env.pineconeApiKey() });
@@ -18,10 +19,6 @@ export function explainVectorError(err: unknown): string | null {
   if (e?.name === 'PineconeAuthorizationError' || /api key you provided was rejected/i.test(e?.message || ''))
     return `Job search is offline: Pinecone rejected the server's PINECONE_API_KEY (${keyPrint()}). Set the exact key (no quotes) in Vercel → Settings → Environment Variables → Production, then redeploy.`;
   return null;
-}
-
-export function getIndex() {
-  return getPinecone().index(env.pineconeIndex());
 }
 
 export function toVectorLiteral(values: number[]): string {
@@ -94,72 +91,100 @@ export async function embedText(text: string): Promise<number[]> {
   return Array.from(values);
 }
 
-/** A job's stored vector, or null if it was never embedded (or has been removed). */
+/** A job's stored vector, or null if it was never embedded. */
 export async function fetchJobVector(id: string): Promise<number[] | null> {
-  const { records } = await getIndex().fetch({ ids: [id] });
-  const values = records[id]?.values;
-  return values?.length ? Array.from(values) : null;
+  const { data, error } = await createServerClient().from('jobs').select('embedding').eq('id', id).maybeSingle();
+  if (error) throw new Error('Reading the job vector failed: ' + error.message);
+  return parseEmbedding(data?.embedding);
 }
 
-/**
- * Cosine similarity of a resume to specific jobs; jobs never embedded, or too far to be in the nearest 10,000, are
- * left out. One query returning ids and scores only: fetching the vectors themselves cost about 18 KB a job and used
- * up Pinecone's 1 GB monthly egress (measured 2026-10-27).
- */
+/** Cosine similarity of a resume to specific jobs (pgvector, migration 013); jobs never embedded are left out. */
 export async function similarityTo(embedding: number[], ids: string[]): Promise<Map<string, number>> {
   const out = new Map<string, number>();
-  if (!ids.length) return out;
-  const wanted = new Set(ids);
-  const { matches } = await getIndex().query({ vector: embedding, topK: 10_000 });
-  for (const m of matches || []) if (wanted.has(m.id)) out.set(m.id, m.score || 0);
+  const query_embedding = toVectorLiteral(embedding);
+  for (let i = 0; i < ids.length; i += 500) {
+    const { data, error } = await createServerClient().rpc('job_similarity', {
+      query_embedding,
+      job_ids: ids.slice(i, i + 500),
+    });
+    if (error) throw new Error('job_similarity failed: ' + error.message);
+    for (const r of (data || []) as { id: string; similarity: number }[]) out.set(r.id, r.similarity);
+  }
   return out;
 }
 
-/** Drop vectors of closed jobs so they stop taking top-K slots in searchSimilarJobs. */
-export async function deleteJobVectors(ids: string[]) {
-  const index = getIndex();
-  for (let i = 0; i < ids.length; i += 1000) await index.deleteMany({ ids: ids.slice(i, i + 1000) });
-}
+type JobForVector = {
+  id: string;
+  title: string;
+  description: string | null;
+  company_name: string;
+  skills: string[];
+  location: string | null;
+};
 
-export async function upsertJobVectors(
-  jobs: Array<{
-    id: string;
-    title: string;
-    description: string | null;
-    company_name: string;
-    skills: string[];
-    location: string | null;
-  }>,
-) {
-  const pc = getPinecone();
-  const index = pc.index(env.pineconeIndex());
-  const batchSize = 50;
-
-  for (let i = 0; i < jobs.length; i += batchSize) {
-    const batch = jobs.slice(i, i + batchSize);
-    const embeddings = await embedPassages(batch.map(jobText));
-    const vectors = batch.map((j, idx) => ({
-      id: j.id,
-      values: Array.from((embeddings.data[idx] as { values: number[] }).values as number[]),
-      metadata: {
-        title: j.title,
-        company: j.company_name,
-        skills: j.skills.join(','),
-        location: j.location || 'Not specified',
-      },
-    }));
-
-    await index.upsert({ records: vectors });
-    console.log('[EMBED] Upserted batch', Math.floor(i / batchSize) + 1, '(' + vectors.length + ' vectors)');
+/** Save one vector; a failed save is retried once (writing the same vector twice is harmless). */
+async function saveVector(supabase: ReturnType<typeof createServerClient>, id: string, embedding: string) {
+  for (let attempt = 0; ; attempt++) {
+    const { error } = await supabase.from('jobs').update({ embedding }).eq('id', id);
+    if (!error) return;
+    if (attempt >= 1)
+      throw new Error(
+        'Saving job vectors failed: ' + error.message + (error.details ? ' · ' + error.details.slice(0, 300) : ''),
+      );
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
   }
 }
 
-export async function searchSimilarJobs(resumeEmbedding: number[], topK: number = 50) {
-  const index = getIndex();
-  const results = await index.query({
-    vector: resumeEmbedding,
-    topK,
-    includeMetadata: true,
+/** Embed jobs with Pinecone inference and store each vector in jobs.embedding. */
+export async function upsertJobVectors(jobs: JobForVector[]) {
+  const supabase = createServerClient();
+  for (let i = 0; i < jobs.length; i += 50) {
+    const batch = jobs.slice(i, i + 50);
+    const embeddings = await embedPassages(batch.map(jobText));
+    const vectors = batch.map((j, idx) => ({
+      id: j.id,
+      embedding: toVectorLiteral(Array.from((embeddings.data[idx] as { values: number[] }).values)),
+    }));
+    // Ten saves at a time: fifty at once had connections reset after a few thousand jobs ("fetch failed").
+    for (let k = 0; k < vectors.length; k += 10)
+      await Promise.all(vectors.slice(k, k + 10).map((v) => saveVector(supabase, v.id, v.embedding)));
+    console.log('[EMBED] Stored batch', i / 50 + 1, '(' + batch.length + ' vectors)');
+  }
+}
+
+/**
+ * Embed open jobs that have no vector yet (all of them right after migration 013, then only the odd miss).
+ * Returns how many were embedded; `max` keeps one call inside the function time limit.
+ */
+export async function backfillEmbeddings(max = 500): Promise<number> {
+  const { data, error } = await createServerClient()
+    .from('jobs')
+    .select('id, title, description, skills, location, employer, companies!inner(name)')
+    .eq('is_active', true)
+    .is('embedding', null)
+    .limit(max);
+  if (error) throw new Error('Reading jobs to embed failed: ' + error.message);
+  const jobs = (data || []).map((j) => {
+    const c = j.companies as { name: string } | { name: string }[];
+    return {
+      id: j.id as string,
+      title: j.title as string,
+      description: j.description as string | null,
+      skills: (j.skills as string[] | null) || [],
+      location: j.location as string | null,
+      company_name: (j.employer as string | null) || (Array.isArray(c) ? c[0]?.name : c.name) || '',
+    };
   });
-  return results.matches || [];
+  await upsertJobVectors(jobs);
+  return jobs.length;
+}
+
+/** The open jobs nearest to a resume (pgvector, migration 013). */
+export async function searchSimilarJobs(resumeEmbedding: number[], topK: number = 50) {
+  const { data, error } = await createServerClient().rpc('match_jobs', {
+    query_embedding: toVectorLiteral(resumeEmbedding),
+    match_count: topK,
+  });
+  if (error) throw new Error('match_jobs failed: ' + error.message);
+  return ((data || []) as { id: string; similarity: number }[]).map((r) => ({ id: r.id, score: r.similarity }));
 }
