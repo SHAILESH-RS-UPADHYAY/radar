@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/client';
-import { searchSimilarJobs } from '@/lib/ai/embeddings';
+import { activeSpace, searchSimilarJobs } from '@/lib/ai/embeddings';
 import { env, missingServerEnv } from '@/lib/env';
 
 const STALE_MS = 48 * 3600_000;
@@ -31,7 +31,8 @@ export async function GET() {
           if (error) throw new Error(error.message);
         }),
         probe(async () => {
-          await searchSimilarJobs(new Array(1024).fill(1), 1);
+          const space = await activeSpace();
+          await searchSimilarJobs(new Array(space === 'v2' ? 768 : 1024).fill(1), 1, space);
         }),
       ]);
   const ok = !missingEnv.length && database.ok && vectors.ok;

@@ -64,7 +64,12 @@ export async function POST(req: NextRequest) {
 
     const { error: updateErr } = await supabase
       .from('user_profiles')
-      .update({ resume_text: text, skills, resume_embedding: embedding ? toVectorLiteral(embedding) : null })
+      .update({
+        resume_text: text,
+        skills,
+        resume_embedding: embedding ? toVectorLiteral(embedding) : null,
+        resume_embedding_v2: null, // rebuilt from the new resume by the next match
+      })
       .eq('id', userId);
     if (updateErr) return fail(updateErr.message, 500);
 

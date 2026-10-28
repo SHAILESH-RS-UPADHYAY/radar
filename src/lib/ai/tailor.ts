@@ -12,7 +12,7 @@ import Anthropic from '@anthropic-ai/sdk';
 import type { Portfolio } from '@/types';
 import { betaZodOutputFormat } from '@anthropic-ai/sdk/helpers/beta/zod';
 import { z } from 'zod';
-import { embedText, fetchJobVector } from '@/lib/ai/embeddings';
+import { activeSpace, calibrate, embedText, fetchJobVector } from '@/lib/ai/embeddings';
 import { computeMatchScore } from '@/lib/ai/matcher';
 import { readEnv } from '@/lib/env';
 import { matchInput, profileSkills, type ScoringJob, type ScoringProfile } from '@/lib/pipeline/match';
@@ -432,12 +432,16 @@ export async function projectScore(opts: {
   isDreamCompany: boolean;
   companyCategory: string;
 }): Promise<number | null> {
-  const jobVector = await fetchJobVector(opts.jobId);
+  const space = await activeSpace();
+  const jobVector = await fetchJobVector(opts.jobId, space);
   if (!jobVector) return null;
-  const [original, tailored] = await Promise.all([embedText(opts.originalText), embedText(opts.tailoredText)]);
+  const [original, tailored] = await Promise.all([
+    embedText(opts.originalText, space),
+    embedText(opts.tailoredText, space),
+  ]);
   const score = (vector: number[], extraSkills: string[]) =>
     computeMatchScore(
-      matchInput(opts.profile, opts.job, cosine(vector, jobVector), {
+      matchInput(opts.profile, opts.job, calibrate(cosine(vector, jobVector), space), {
         isDreamCompany: opts.isDreamCompany,
         companyCategory: opts.companyCategory,
         userSkills: [...new Set([...profileSkills(opts.profile), ...extraSkills])],

@@ -123,6 +123,7 @@ export async function POST(req: NextRequest) {
         resume_text: resumeText || null,
         // A failed embedding keeps the vector you had; the next match rebuilds it from resume_text.
         ...(resumeEmbedding ? { resume_embedding: toVectorLiteral(resumeEmbedding) } : {}),
+        resume_embedding_v2: null, // rebuilt from this resume by the next match
       },
       { onConflict: 'id' },
     );

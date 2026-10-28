@@ -1,13 +1,136 @@
 {
   "crons": [
-    { "path": "/api/cron/discover", "schedule": "30 1 * * *" },
-    { "path": "/api/cron", "schedule": "30 2 * * *" },
-    { "path": "/api/cron", "schedule": "30 8 * * *" },
-    { "path": "/api/cron", "schedule": "30 14 * * *" },
-    { "path": "/api/cron", "schedule": "30 20 * * *" },
-    { "path": "/api/cron/autopilot", "schedule": "30 3 * * *" },
-    { "path": "/api/cron/autopilot", "schedule": "30 9 * * *" },
-    { "path": "/api/cron/autopilot", "schedule": "30 15 * * *" },
-    { "path": "/api/cron/autopilot", "schedule": "30 21 * * *" }
+    {
+      "path": "/api/cron/discover",
+      "schedule": "30 1 * * *"
+    },
+    {
+      "path": "/api/cron",
+      "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/cron",
+      "schedule": "30 8 * * *"
+    },
+    {
+      "path": "/api/cron",
+      "schedule": "30 14 * * *"
+    },
+    {
+      "path": "/api/cron",
+      "schedule": "30 20 * * *"
+    },
+    {
+      "path": "/api/cron/autopilot",
+      "schedule": "30 3 * * *"
+    },
+    {
+      "path": "/api/cron/autopilot",
+      "schedule": "30 9 * * *"
+    },
+    {
+      "path": "/api/cron/autopilot",
+      "schedule": "30 15 * * *"
+    },
+    {
+      "path": "/api/cron/autopilot",
+      "schedule": "30 21 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 0 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 1 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 2 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 3 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 4 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 5 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 6 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 7 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 8 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 9 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 10 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 11 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 12 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 13 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 14 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 15 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 16 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 17 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 18 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 19 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 20 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 21 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 22 * * *"
+    },
+    {
+      "path": "/api/cron/embed",
+      "schedule": "45 23 * * *"
+    }
   ]
 }

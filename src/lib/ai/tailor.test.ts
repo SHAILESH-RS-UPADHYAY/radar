@@ -1,6 +1,11 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-vi.mock('@/lib/ai/embeddings', () => ({ embedText: vi.fn(), fetchJobVector: vi.fn() }));
+vi.mock('@/lib/ai/embeddings', () => ({
+  embedText: vi.fn(),
+  fetchJobVector: vi.fn(),
+  activeSpace: vi.fn(async () => 'v1'),
+  calibrate: (similarity: number) => similarity,
+}));
 
 import { embedText, fetchJobVector } from '@/lib/ai/embeddings';
 import { SIM_CEIL, SIM_FLOOR } from '@/lib/ai/matcher';

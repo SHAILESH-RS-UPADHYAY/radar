@@ -7,7 +7,15 @@
 // A company holds at most PER_COMPANY of your roles, applications included.
 
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { embedText, parseEmbedding, searchSimilarJobs, similarityTo, toVectorLiteral } from '@/lib/ai/embeddings';
+import {
+  activeSpace,
+  embedText,
+  parseEmbedding,
+  searchSimilarJobs,
+  similarityTo,
+  spaceColumns,
+  toVectorLiteral,
+} from '@/lib/ai/embeddings';
 import { computeMatchScore, type MatchInput } from '@/lib/ai/matcher';
 import { extractSkills, jobKey } from '@/lib/scraper/utils';
 import { splitList } from '@/lib/profile';
@@ -136,16 +144,19 @@ export async function matchUser(
     cities: splitList(profile.location).length,
   });
 
-  let embedding = parseEmbedding(profile.resume_embedding);
+  // The resume's vector in the space the jobs are searched in (Gemini once it covers the open jobs).
+  const space = await activeSpace();
+  const resumeColumn = spaceColumns(space).resume;
+  let embedding = parseEmbedding(profile[resumeColumn]);
   const cached = !!embedding;
   if (!embedding) {
     const source =
       (profile.resume_text as string) || [profile.skills, profile.location].flat().filter(Boolean).join(' ');
     if (!source.trim()) throw new MatchError('No resume uploaded. Upload your resume first.', 400);
-    embedding = await embedText(source);
+    embedding = await embedText(source, space);
     await supabase
       .from('user_profiles')
-      .update({ resume_embedding: toVectorLiteral(embedding) })
+      .update({ [resumeColumn]: toVectorLiteral(embedding) })
       .eq('id', userId);
   }
   report({ stage: 'vector', cached, dims: embedding.length });
@@ -154,7 +165,7 @@ export async function matchUser(
   const dreamIds = new Set((dreamRows || []).map((d: { company_id: string }) => d.company_id));
 
   const empty = { userId, total: 0, vaulted: 0, sections: { dream: 0, recommended: 0, startup: 0 } };
-  const vectorMatches = await searchSimilarJobs(embedding, TOP_K);
+  const vectorMatches = await searchSimilarJobs(embedding, TOP_K, space);
   if (vectorMatches.length === 0) return { ...empty, message: 'No jobs indexed yet. Run a scrape first.' };
 
   const simById = new Map(vectorMatches.map((m) => [m.id, m.score || 0]));
@@ -193,7 +204,7 @@ export async function matchUser(
       .or(aliases.map((a) => `location.ilike.%${a}%`).join(','))
       .limit(2000);
     const local = (data || []).map((j) => j.id as string).filter((id) => !simById.has(id));
-    const sims = await similarityTo(embedding, local).catch((e) => {
+    const sims = await similarityTo(embedding, local, space).catch((e) => {
       console.error('[MATCH] city jobs not scored:', e instanceof Error ? e.message : e);
       return new Map<string, number>();
     });
@@ -217,7 +228,7 @@ export async function matchUser(
       .eq('is_active', true)
       .limit(2000);
     const alerts = (data || []).map((j) => j.id as string).filter((id) => !simById.has(id));
-    const sims = await similarityTo(embedding, alerts).catch((e) => {
+    const sims = await similarityTo(embedding, alerts, space).catch((e) => {
       console.error('[MATCH] alert jobs not scored:', e instanceof Error ? e.message : e);
       return new Map<string, number>();
     });

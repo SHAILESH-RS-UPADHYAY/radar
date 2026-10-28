@@ -94,7 +94,7 @@ export async function PATCH(req: Request) {
       // Skills/location feed the resume embedding when there is no resume text; force a recompute.
       if (update.skills || update.location) {
         const { data: p } = await supabase.from('user_profiles').select('resume_text').eq('id', userId).maybeSingle();
-        if (!p?.resume_text) update.resume_embedding = null;
+        if (!p?.resume_text) update.resume_embedding = update.resume_embedding_v2 = null;
       }
       const { error } = await supabase.from('user_profiles').update(update).eq('id', userId);
       if (isSchemaMissing(error))
