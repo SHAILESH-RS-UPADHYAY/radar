@@ -30,6 +30,8 @@ async function handle(req: NextRequest) {
   }
   const left = Date.now() - startedAt < 200_000 ? 0 : 'more';
   const ok = !errors.v2;
+  // One line per run in the Vercel logs: how many vectors were made and why a space stopped.
+  (ok ? console.log : console.error)('[EMBED-CRON]', JSON.stringify({ embedded, errors, left }));
   return NextResponse.json(
     { ok, embedded, left, errors, durationMs: Date.now() - startedAt },
     { status: ok ? 200 : 500 },
