@@ -1,4 +1,5 @@
 <div align="center">
+<img src=".github/logo.svg" width="88" height="88" alt="RADAR logo">
 
 <img src="docs/readme/00-boot.svg" width="100%" alt="RADAR boot sequence: clerk, supabase, pinecone, crawler, AI and 20 sources come online" />
 
