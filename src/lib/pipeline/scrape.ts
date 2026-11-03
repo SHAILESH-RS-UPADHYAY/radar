@@ -69,6 +69,26 @@ export function closurePolicy(provider: string): { graceMs: number; liveProofMs:
   return { graceMs: 10 * HOUR, liveProofMs: null };
 }
 
+/**
+ * Open jobs no source has listed for a month are closed, whatever their source is doing. Closing above needs a feed
+ * that returned jobs (an empty or failed read must not close everything), so a company that moved ATS, leaving its old
+ * board empty forever, kept its postings "open" with dead links: 73 Postman jobs from May (found 2026-11-04).
+ */
+const LONG_GONE_MS = 30 * DAY;
+
+async function closeLongGone(supabase: SupabaseClient, now = Date.now()): Promise<number> {
+  const before = new Date(now - LONG_GONE_MS).toISOString();
+  const { data, error } = await supabase
+    .from('jobs')
+    .update({ is_active: false })
+    .eq('is_active', true)
+    .lt('scraped_at', before)
+    .or(`verified_at.is.null,verified_at.lt.${before}`)
+    .select('id');
+  if (error) throw new Error(error.message);
+  return data?.length ?? 0;
+}
+
 /** Search APIs with daily or monthly quotas run at most this often. */
 const QUOTA_INTERVAL: Record<string, number> = {
   jsearch: 23 * HOUR,
@@ -373,6 +393,10 @@ export async function runScrape(
   if (!opts.companyIds?.length) {
     const purged = await purgeSenior(supabase).catch((e) => (console.error('[SCRAPE] senior purge failed:', e), 0));
     if (purged) console.log('[SCRAPE] removed', purged, 'jobs asking for more than 3 years');
+    const closed = await closeLongGone(supabase).catch(
+      (e) => (console.error('[SCRAPE] long-gone close failed:', e), 0),
+    );
+    if (closed) console.log('[SCRAPE] closed', closed, 'jobs no source has listed for a month');
   }
 
   let query = supabase

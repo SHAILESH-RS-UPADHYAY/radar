@@ -79,6 +79,7 @@ chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
   if (
     msg &&
     (msg.type === 'filled' ||
+      msg.type === 'gone' ||
       msg.type === 'applied' ||
       msg.type === 'questions' ||
       msg.type === 'autopilot' ||

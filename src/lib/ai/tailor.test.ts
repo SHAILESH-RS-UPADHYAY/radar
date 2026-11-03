@@ -143,6 +143,9 @@ describe('AI providers (Anthropic · Gemini · Grok)', () => {
   it('reads fenced or bare JSON and rejects replies that miss the schema', () => {
     expect(parseTailored('```json\n' + JSON.stringify(output) + '\n```').cover_note).toBe('I build retrieval systems.');
     expect(() => parseTailored('not json')).toThrow(TailorError);
+    expect(parseTailored('Here you go: ' + JSON.stringify(output) + ' Good luck!').cover_note).toBe(
+      'I build retrieval systems.',
+    );
     expect(() => parseTailored(JSON.stringify({ resume: {} }))).toThrow(TailorError);
   });
 

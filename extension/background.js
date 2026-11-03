@@ -49,7 +49,8 @@ const NEVER = /^https:\/\/([^/]+\.)?(linkedin\.com|indeed\.[a-z.]+)\//i;
 
 // Job boards whose page is a listing, not the form (Adzuna's /details/, Jooble): follow their Apply link in the same
 // tab, so the employer's form loads in a tab RADAR already tracks. Their own search forms are never filled.
-const AGGREGATOR = /^https:\/\/([^/]+\.)?(adzuna\.[a-z.]+|jooble\.org)\//i;
+const AGGREGATOR =
+  /^https:\/\/([^/]+\.)?(adzuna\.[a-z.]+|jooble\.org|arbeitnow\.com|himalayas\.app|jobicy\.com|themuse\.com|remoteok\.com|remotive\.com|weworkremotely\.com|workingnomads\.com|hasjob\.co)\//i;
 // Boards an aggregator hands jobs to whose Apply is a one-click button on your account there, not a form.
 const HOSTED_BOARD =
   /(^|\.)(cutshort\.io|naukri\.com|foundit\.in|instahyre\.com|iimjobs\.com|hirist\.tech|shine\.com|timesjobs\.com)$/i;
@@ -60,7 +61,12 @@ async function boardApplyLink() {
     const links = [...document.querySelectorAll('a[href]')];
     const a =
       links.find((l) => l.dataset.js === 'apply') ||
-      links.find((l) => /^\s*apply( for this job| now)?\s*$/i.test(l.textContent || '') && l.offsetParent);
+      links.find(
+        (l) =>
+          /^\s*apply( for this (job|position|role)| now| on (the )?(company|employer) (site|website))?\s*$/i.test(
+            l.textContent || '',
+          ) && l.offsetParent,
+      );
     if (a) return a.href;
     await new Promise((r) => setTimeout(r, 250));
   }
@@ -75,7 +81,11 @@ async function inject(tabId, frameId) {
     if (frame && NEVER.test(frame.url)) return;
     if (frameId === 0 && frame && AGGREGATOR.test(frame.url)) {
       const [{ result: href }] = await chrome.scripting.executeScript({ target: { tabId }, func: boardApplyLink });
-      if (href && /^https:/.test(href) && href !== frame.url) {
+      // A link that stays on the board is its sign-up or its own apply flow, on your account there: not RADAR's to open.
+      const site = (u) => new URL(u).hostname.split('.').slice(-2).join('.');
+      if (href && /^https:/.test(href) && href !== frame.url && site(href) === site(frame.url)) {
+        await update(tabId, { note: `${site(href)} applies through your account there. Sign in, then use its Apply.` });
+      } else if (href && /^https:/.test(href) && href !== frame.url) {
         // Where the board's link ends up is told to RADAR on arrival (see onCompleted), so next time it opens there.
         await update(tabId, { fromBoard: true });
         await chrome.tabs.update(tabId, { url: href });
@@ -238,6 +248,13 @@ const handlers = {
       return { ok: false, error: 'the RADAR tab was closed' };
     }
   },
+  // The form tab found the posting gone: RADAR says so instead of leaving you with an empty tab.
+  async gone(msg, sender) {
+    const entry = await read(sender.tab.id);
+    if (entry) tellRadar(entry, { type: 'gone' });
+    return { ok: true };
+  },
+
   // A frame filled the form: RADAR hears it, and the page's panel shows it (also a panel that loads after it).
   async filled(msg, sender) {
     const report = { frameId: sender.frameId, lines: msg.lines, labels: msg.labels };

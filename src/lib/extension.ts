@@ -16,7 +16,7 @@ export interface PageQuestion {
 }
 
 export interface ExtensionEvent {
-  type: 'pong' | 'launched' | 'filled' | 'applied' | 'questions' | 'autopilot' | 'learn' | 'adopt' | 'landed';
+  type: 'pong' | 'launched' | 'filled' | 'gone' | 'applied' | 'questions' | 'autopilot' | 'learn' | 'adopt' | 'landed';
   version?: string;
   matchId?: string;
   tailoredId?: string | null;

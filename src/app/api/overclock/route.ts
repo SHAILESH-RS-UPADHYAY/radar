@@ -12,13 +12,13 @@ export const dynamic = 'force-dynamic';
 
 const fail = (error: string, status: number) => NextResponse.json({ error }, { status });
 
-// GET — the user's tailored resumes (scores only), so the OVERCLOCK tab knows which jobs are done.
+// GET — the user's tailored resumes (scores and the job, no content), for the OVERCLOCK tab and its archive.
 export async function GET() {
   const { userId } = await auth();
   if (!userId) return fail('Unauthorized', 401);
   const { data, error } = await createServerClient()
     .from('tailored_resumes')
-    .select('id, job_id, base_score, projected_score, created_at')
+    .select('id, job_id, base_score, projected_score, created_at, jobs(title, employer, companies(name))')
     .eq('user_id', userId);
   // Which AI writes the next tailoring (AI_PROVIDER, else the first provider with a key), for the OVERCLOCK tab.
   const engine = aiEngine();

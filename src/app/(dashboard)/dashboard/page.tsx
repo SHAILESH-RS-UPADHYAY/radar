@@ -40,6 +40,7 @@ import {
   type StatedExperience,
 } from '@/lib/vault-filters';
 import { OverclockCard } from '@/components/dashboard/OverclockCard';
+import { ResumeArchive } from '@/components/dashboard/ResumeArchive';
 import { RunPanel } from '@/components/dashboard/RunPanel';
 import { ParkedPanel } from '@/components/autopilot/ParkedPanel';
 import { TodayPanel } from '@/components/dashboard/TodayPanel';
@@ -622,6 +623,8 @@ export default function DashboardPage() {
         );
       if (e.type === 'launched' && !e.ok)
         setNotice({ tone: 'alert', text: 'The extension could not open the form: ' + e.error });
+      if (e.type === 'gone')
+        setNotice({ tone: 'alert', text: 'That posting no longer exists: the employer took it down.' });
       if (e.type === 'filled' && runMatch?.id !== e.matchId)
         setNotice({
           tone: e.needs ? 'info' : 'ok',
@@ -1355,6 +1358,11 @@ export default function DashboardPage() {
                     </AnimatePresence>
                   </div>
                 )}
+                <ResumeArchive
+                  items={Object.values(tailoredByJob)}
+                  sent={applied.map((m) => m.resume_version_id)}
+                  onReview={setPreview}
+                />
               </div>
             </motion.section>
           )}

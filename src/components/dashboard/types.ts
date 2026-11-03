@@ -58,6 +58,7 @@ export interface TailoredSummary {
   base_score: number | null;
   projected_score: number | null;
   created_at: string;
+  jobs?: { title: string; employer: string | null; companies: { name: string } | null } | null;
 }
 
 /** Near-miss band OVERCLOCK works on: good enough to be worth it, not yet a strong match. */

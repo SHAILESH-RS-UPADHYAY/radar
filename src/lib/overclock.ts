@@ -86,13 +86,17 @@ export async function overclockMatch(
   const { data: match, error: matchErr } = await supabase
     .from('match_scores')
     .select(
-      'id, score, job_id, jobs!inner(id, title, description, location, work_type, skills, experience_required, employer, company_id, companies!inner(name, category))',
+      'id, score, job_id, resume_version_id, jobs!inner(id, title, description, location, work_type, skills, experience_required, employer, company_id, companies!inner(name, category))',
     )
     .eq('user_id', userId)
     .eq('id', matchId)
     .maybeSingle();
   if (matchErr) throw new OverclockError(matchErr.message, 500);
   if (!match) throw new OverclockError('Match not found', 404);
+
+  // The resume that went out with an application is a record: a new one would change what the employer holds.
+  if (force && match.resume_version_id)
+    throw new OverclockError('This resume went out with your application, so it stays exactly as sent.', 409);
 
   if (!force) {
     const { data: cached, error } = await supabase

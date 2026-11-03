@@ -3,7 +3,8 @@
 //   1. answers    your profile facts and PDF arrive about a second after the tab opens; the AI's written answers
 //                 follow (drafted, then humanized) and fill in as they come.
 //   2. the form   on the page, in a frame (Greenhouse embedded in a company site), or appearing later (an Apply
-//                 button, a modal); multi-step forms step by step. It never clicks anything to get there.
+//                 button, a modal); multi-step forms step by step. It presses only what opens the form (Apply, and on
+//                 Workday its "how do you want to apply" choice and Save and Continue between steps).
 //   3. questions  anything RADAR could not read ahead (Ashby keeps its form behind a robots-disallowed /api/; company
 //                 sites) is read here, in your browser, answered by RADAR the same way, and filled: text, dropdowns,
 //                 search-and-pick boxes, Yes/No buttons, radios, checkboxes. It never overwrites an answer.
@@ -36,6 +37,8 @@
       .replace(/[^a-z0-9]+/g, ' ')
       .trim();
   const visible = (el) => !!(el && (el.offsetWidth || el.offsetHeight || el.getClientRects().length));
+  const WORKDAY = /\.myworkday(jobs|site)\.com$/.test(location.hostname);
+  const byAuto = (id) => deepAll(document, `[data-automation-id="${id}"]`).find(visible) || null;
 
   // Fills one at a time: answers arriving while a pass runs wait for it, so two never type into the page at once.
   let queue = Promise.resolve();
@@ -47,7 +50,7 @@
 
   const FIELD = 'input:not([type=hidden]):not([type=submit]):not([type=button]):not([type=search]), textarea, select';
   /** Controls a question can be answered with: fields, and Yes/No style toggle buttons (Ashby). */
-  const CONTROL = FIELD + ', button[aria-pressed]';
+  const CONTROL = FIELD + ', button[aria-pressed], button[aria-haspopup="listbox"]';
   const isShown = (el) => el.type === 'file' || visible(el);
 
   // Forms built from web components (SmartRecruiters) keep their inputs inside shadow roots: search those too.
@@ -90,6 +93,7 @@
     ['portfolio', /portfolio|personal (site|website)|^website/],
     ['location', /^(current )?location\b|^city\b|where are you (based|located)/],
     ['company', /^current (company|employer)|^company$|^organi[sz]ation/],
+    ['country', /^country( of residence| territory)?\b/],
   ];
   const keyOf = (label) => {
     const l = norm(label);
@@ -181,7 +185,10 @@
     for (const el of deepAll(scope, CONTROL)) {
       if (seen.has(el)) continue;
       let q;
-      if (el.tagName === 'BUTTON') {
+      if (el.matches('button[aria-haspopup="listbox"]')) {
+        if (!visible(el)) continue;
+        q = { kind: 'listbox', el, els: [el] };
+      } else if (el.tagName === 'BUTTON') {
         const els = [...el.parentElement.querySelectorAll('button[aria-pressed]')];
         q = { kind: 'buttons', el, els, hidden: [...el.parentElement.querySelectorAll('input')] };
         q.options = els.map((b) => b.textContent.trim());
@@ -196,7 +203,8 @@
       else if (el.tagName === 'SELECT') {
         q = { kind: 'select', el, els: [el] };
         q.options = [...el.options].map((o) => o.textContent.trim()).filter((t) => t && !PLACEHOLDER.test(t));
-      } else if (el.getAttribute('role') === 'combobox') q = { kind: 'combo', el, els: [el] };
+      } else if (el.getAttribute('role') === 'combobox' || el.closest('[data-automation-id="multiSelectContainer"]'))
+        q = { kind: 'combo', el, els: [el] };
       else q = { kind: el.tagName === 'TEXTAREA' ? 'textarea' : 'text', el, els: [el] };
       [...q.els, ...(q.hidden || [])].forEach((e) => seen.add(e));
       const head = ['buttons', 'radio', 'checkboxes'].includes(q.kind) ? groupHead(el, q.els) : labelFor(el);
@@ -230,6 +238,8 @@
         return selectAnswered(q.el);
       case 'combo':
         return comboHasValue(q.el) || !!q.el.value.trim();
+      case 'listbox':
+        return !PLACEHOLDER.test(q.el.textContent.trim()) && !!q.el.textContent.trim();
       default:
         return !!q.el.value.trim();
     }
@@ -268,11 +278,64 @@
   // An application form, not a search box or a newsletter signup: a file upload, two of the form's own field names,
   // three standard fields (name, email, phone…), or the one note box a short form asks for.
   function hasForm(packet) {
+    if (accountWall()) return false;
+    if (WORKDAY && byAuto('pageFooterNextButton')) return true; // inside the application, on any of its steps
     if (deepAll(document, 'input[type=file]').length) return true;
     if (packet.fields.filter((f) => byNameOrId(f.name)).length >= 2) return true;
     const fields = visibleFields(document);
     if (fields.filter((el) => keyOf(labelText(el))).length >= 3) return true;
     return fields.some((el) => el.tagName === 'TEXTAREA' && NOTE_BOX.test(norm(labelText(el))));
+  }
+
+  /** A sign-in or create-account page (Workday asks for one per employer). Passwords are yours: RADAR waits here. */
+  const accountWall = () =>
+    deepAll(document, 'input[type=password]').some(visible) && visibleFields(document).length <= 6;
+
+  /** The posting is gone: an error page, or the ATS sent the link back to its board with ?error=true. */
+  function postingGone() {
+    if (/[?&]error=true\b/.test(location.search)) return true;
+    const heads = [document.title, ...[...document.querySelectorAll('h1, h2')].slice(0, 3).map((h) => h.textContent)];
+    return heads.some((t) =>
+      /page not found|^\s*404\b|(job|position|posting) (is )?(not found|no longer|closed|has been (filled|closed))|no longer (available|accepting)|doesn.t exist|couldn.t find this/i.test(
+        t || '',
+      ),
+    );
+  }
+
+  /**
+   * Workday's way in: Apply opens a choice. A saved application carries your answers, your resume fills the experience
+   * pages by itself, and typing it all by hand is the last resort. Resolves once a choice was pressed or there was none.
+   */
+  async function enterWorkday(packet, hud) {
+    let applied = false;
+    for (let i = 0; i < 24; i++) {
+      if (accountWall() || hasForm(packet) || /\/apply\//.test(location.pathname)) return;
+      const choice = ['useMyLastApplication', 'autofillWithResume', 'applyManually'].map(byAuto).find(Boolean);
+      if (choice) {
+        hud.log('SYS', `Workday: ${choice.textContent.trim()}`, 'dim');
+        return pressSafely(choice);
+      }
+      const apply = !applied && byAuto('adventureButton');
+      if (apply) {
+        pressSafely(apply);
+        applied = true;
+      }
+      await sleep(500);
+    }
+  }
+
+  // Workday's steps, pressed for you only when this step has nothing left empty and showed no error. "Submit" (the same
+  // button on the Review step) never matches, and each step is pressed once: if it comes back, it is yours.
+  const workdayPressed = new Set();
+  function workdayNext() {
+    const next = byAuto('pageFooterNextButton');
+    if (!next || next.disabled || !/^(save and continue|continue|next)$/i.test(next.textContent.trim())) return false;
+    if (byAuto('errorBanner') || stillEmpty().length) return false;
+    const step = (byAuto('progressBarActiveStep') || document.querySelector('h2') || {}).textContent || location.href;
+    if (workdayPressed.has(step)) return false;
+    workdayPressed.add(step);
+    pressSafely(next);
+    return true;
   }
 
   // A job page whose form opens only behind its own button ("Apply for this job", "I'm interested", Workable's
@@ -377,12 +440,16 @@
     input.focus({ preventScroll: true });
     clickLike(input);
     setValue(input, wanted);
+    // Workday searches on Enter, not as you type.
+    if (WORKDAY) input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
     const w = norm(wanted);
     for (let i = 0; i < 40; i++) {
       await sleep(100);
       const listId = input.getAttribute('aria-controls') || input.getAttribute('aria-owns');
       const list = (listId && document.getElementById(listId)) || document;
-      const options = [...list.querySelectorAll('[role="option"]')].filter(visible);
+      const options = [...list.querySelectorAll('[role="option"], [data-automation-id="promptLeafNode"]')].filter(
+        visible,
+      );
       const hit =
         options.find((o) => norm(o.textContent) === w) ||
         options.find((o) => norm(o.textContent).startsWith(w)) ||
@@ -397,6 +464,41 @@
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     setValue(input, '');
     return false;
+  }
+
+  /** A dropdown that is a button and a pop-up list (Workday): open it, then read or pick. */
+  async function openListbox(button) {
+    clickLike(button);
+    for (let i = 0; i < 30; i++) {
+      await sleep(100);
+      const options = [...document.querySelectorAll('[role="option"]')].filter(visible);
+      if (options.length) return options;
+    }
+    return [];
+  }
+  const closeListbox = (button) =>
+    button.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', keyCode: 27, bubbles: true }));
+
+  async function pickListbox(button, values) {
+    const options = await openListbox(button);
+    const wanted = values.map(norm);
+    const hit =
+      options.find((o) => wanted.includes(norm(o.textContent))) ||
+      options.find((o) => wanted.some((w) => w.length > 3 && norm(o.textContent).startsWith(w)));
+    if (!hit) {
+      closeListbox(button);
+      return false;
+    }
+    clickLike(hit);
+    await sleep(200);
+    return true;
+  }
+
+  async function listboxOptions(button) {
+    const options = (await openListbox(button)).map((o) => o.textContent.trim());
+    closeListbox(button);
+    await sleep(100);
+    return options.filter((t) => t && !PLACEHOLDER.test(t));
   }
 
   function pickChoices(els, values) {
@@ -460,6 +562,7 @@
       ok = !!button;
     } else if (q.kind === 'radio' || q.kind === 'checkboxes' || q.kind === 'checkbox') ok = pickChoices(q.els, values);
     else if (q.kind === 'select') ok = pickSelect(q.el, submit, values);
+    else if (q.kind === 'listbox') ok = await pickListbox(q.el, values);
     else if (q.kind === 'combo') {
       const place = /location|city|where.*(based|live|located)/i.test(q.label);
       ok = true;
@@ -496,6 +599,8 @@
       if (!map.first_name) map.first_name = first;
       if (!map.last_name) map.last_name = rest.join(' ');
     }
+    // Forms ask for the country on their own line; your phone's code says it. The AI still answers it elsewhere.
+    if (!map.country && /^\+?91\b/.test(String(map.phone || ''))) map.country = 'India';
     if (!map.full_name && map.first_name) map.full_name = [map.first_name, map.last_name].filter(Boolean).join(' ');
     return map;
   }
@@ -503,7 +608,7 @@
   async function sweep(map, used) {
     let n = 0;
     for (const q of questions()) {
-      if (used.has(q.el) || (q.kind !== 'text' && q.kind !== 'combo') || answered(q)) continue;
+      if (used.has(q.el) || !['text', 'combo', 'listbox'].includes(q.kind) || answered(q)) continue;
       const k = keyOf(q.label);
       if (k && map[k] && (await answer(q, [map[k]]))) n++;
     }
@@ -550,6 +655,7 @@
     textarea: 'textarea',
     combo: 'text',
     select: 'select',
+    listbox: 'select',
     radio: 'select',
     buttons: 'select',
     checkboxes: 'multiselect',
@@ -566,6 +672,10 @@
     );
     if (!open.length) return null;
     open.forEach((q) => sentToRadar.add(norm(q.label)));
+    // A pop-up list shows its options only while it is open.
+    await exclusive(async () => {
+      for (const q of open) if (q.kind === 'listbox') q.options = await listboxOptions(q.el);
+    });
     const id = Date.now();
     const byName = new Map(open.map((q, i) => ['q' + i, q]));
     if (hud) hud.log('AI', `${open.length} more questions on this form: RADAR is answering them…`, 'ai');
@@ -1132,6 +1242,12 @@
       if (!entry || entry.done) return;
       const arrived = entry.version !== version && entry.packet;
       const newStep = visibleFields().length !== fields;
+      if (WORKDAY && !arrived && !newStep && asking === 0 && !packet.partial && workdayNext()) {
+        if (hud) hud.log('SYS', 'step complete: Save and Continue', 'dim');
+        await sleep(2500);
+        fields = -1; // the next step gets its own pass, even if it happens to have as many fields
+        continue;
+      }
       // ZERO-DAY decides once every answer is in (or after 5 minutes without them).
       if (AUTO && !arrived && !newStep && asking === 0 && !packet.partial)
         return exclusive(() => autoFinish(packet, hud));
@@ -1258,6 +1374,26 @@
     // Fill after the page's own app has taken over its inputs, or it may reset them while hydrating.
     for (let i = 0; i < 40 && document.readyState !== 'complete'; i++) await sleep(250);
     await sleep(400);
+    if (postingGone()) {
+      hud.state('POSTING GONE', '#FF5555');
+      hud.log('ERR', 'this posting no longer exists: the employer took it down', 'err');
+      if (AUTO) return park(hud, ['the posting no longer exists']);
+      ask({ type: 'gone' });
+      return;
+    }
+    if (WORKDAY) await enterWorkday(entry.packet, hud);
+    if (accountWall()) {
+      if (AUTO) return park(hud, ['this site needs you to sign in']);
+      hud.state('SIGN IN', '#FFB000');
+      hud.log(
+        'SYS',
+        `${location.hostname.split('.')[0]} asks for its own account: sign in or create one on this page. The password stays yours. RADAR fills the form the moment you are in.`,
+        'dim',
+      );
+      if (!(await formAppears(entry.packet, () => false, 1800))) return;
+      hud.state('FILLING');
+      return session(entry.packet, entry.version, hud);
+    }
     const inFrame = () => !!fromFrame;
     // A form embedded in a frame reports within a few seconds: only then say there is none yet.
     // No form yet: press the page's own Apply / I'm interested button once, and give the form a moment to open.

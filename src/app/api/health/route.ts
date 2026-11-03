@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createServerClient } from '@/lib/supabase/client';
-import { activeSpace, searchSimilarJobs } from '@/lib/ai/embeddings';
+import { activeSpace, similarityTo } from '@/lib/ai/embeddings';
 import { env, missingServerEnv } from '@/lib/env';
 
 const STALE_MS = 48 * 3600_000;
@@ -31,8 +31,12 @@ export async function GET() {
           if (error) throw new Error(error.message);
         }),
         probe(async () => {
+          // One job by id, not a search: a search scans every vector (no index on purpose) and took ~12 s here, so
+          // monitors saw a healthy site as down.
           const space = await activeSpace();
-          await searchSimilarJobs(new Array(space === 'v2' ? 768 : 1024).fill(1), 1, space);
+          const { data, error } = await createServerClient().from('jobs').select('id').limit(1).maybeSingle();
+          if (error) throw new Error(error.message);
+          if (data) await similarityTo(new Array(space === 'v2' ? 768 : 1024).fill(1), [data.id], space);
         }),
       ]);
   const ok = !missingEnv.length && database.ok && vectors.ok;

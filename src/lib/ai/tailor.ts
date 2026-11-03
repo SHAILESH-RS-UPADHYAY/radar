@@ -122,11 +122,16 @@ export interface TailorJob extends ScoringJob {
 }
 
 /** A model's JSON reply without the ```json fence some models wrap it in. */
-export const unfence = (text: string) =>
-  text
+export const unfence = (text: string) => {
+  const bare = text
     .trim()
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```$/, '');
+  // Some replies wrap the object in a sentence ("Here is the JSON: {…}. Good luck!").
+  const start = bare.indexOf('{');
+  const end = bare.lastIndexOf('}');
+  return start >= 0 && end > start ? bare.slice(start, end + 1) : bare;
+};
 
 /** A model's JSON reply as a value; unreadable JSON becomes a 502 the caller can retry. */
 export function parseJsonReply(text: string): unknown {
@@ -228,8 +233,16 @@ async function geminiText(model: string, system: string, user: string): Promise<
   return (candidate?.content?.parts || []).map((p) => p.text || '').join('');
 }
 
-const callGemini = async (model: string, user: string): Promise<TailorOutput> =>
-  parseTailored(await geminiText(model, SYSTEM + JSON_RULE, user));
+/** One tailoring from one model. A malformed reply gets one more try: it is a bad roll, not a broken model. */
+async function callGemini(model: string, user: string): Promise<TailorOutput> {
+  const text = await geminiText(model, SYSTEM + JSON_RULE, user);
+  try {
+    return parseTailored(text);
+  } catch {
+    console.warn('[OVERCLOCK]', model, 'bad reply, once more. Length', text.length, 'ends:', text.slice(-80));
+    return parseTailored(await geminiText(model, SYSTEM + JSON_RULE, user));
+  }
+}
 
 /**
  * One JSON reply for any prompt from the configured AI: AI_PROVIDER first, then the others, like tailoring.

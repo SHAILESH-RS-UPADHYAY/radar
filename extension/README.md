@@ -24,6 +24,10 @@ RADAR       C2 · OPS: applied, with the resume that went out
 - **The icon (or Alt+Shift+R)** on a careers page RADAR did not open: RADAR takes that tab over, registers the job as
   one of yours and fills it the same way. Submitting it logs it in C2 · OPS, and replies from that company are tracked.
   LinkedIn and Indeed are never filled: their terms forbid automating them.
+- **Workday**: RADAR presses Apply and picks its way in (your last application, else your resume, else manual), stops at the
+  employer's sign-in or create-account page (the password is yours; RADAR never reads it), then fills each step, including
+  Workday's pop-up dropdowns, and presses Save and Continue when a step has nothing empty. It stops at Review: Submit is yours.
+- **A posting that is gone**: an error page says POSTING GONE in the panel and in RADAR, instead of leaving you with an empty tab.
 - **Job boards that pass you on** (Adzuna, Jooble): their listing page is never filled. RADAR follows its Apply link in
   the same tab to the employer's form, and remembers where it led, so next time it opens there directly (and reads an
   ATS form ahead). A tab that an Apply button opens is RADAR's too.
