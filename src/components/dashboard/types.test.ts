@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { formatSalary, opsSignals, postedTag, timeAgo, todaysTen, type MatchedJob } from './types';
+import type { Stage } from '@/types';
+import { formatSalary, opsFunnel, opsSignals, postedTag, timeAgo, todaysTen, type MatchedJob } from './types';
 
 describe('timeAgo', () => {
   const now = Date.parse('2026-09-26T12:00:00Z');
@@ -93,5 +94,38 @@ describe('formatSalary', () => {
     expect(formatSalary({ ...job, salary_min: 120000, salary_max: 150000, salary_currency: 'USD' })).toBe(
       'USD 120k – 150k',
     );
+  });
+});
+
+describe('opsFunnel', () => {
+  const app = (stage: Stage, over: Partial<MatchedJob> = {}) =>
+    ({
+      stage,
+      resume_version_id: null,
+      first_seen_at: '2026-10-01T00:00:00Z',
+      applied_at: '2026-10-10T00:00:00Z',
+      ...over,
+    }) as MatchedJob;
+
+  it('counts how far applications got and which habits got callbacks', () => {
+    const tailored = { resume_version_id: 'r1', applied_at: '2026-10-02T00:00:00Z' };
+    const f = opsFunnel([
+      app('interview', tailored),
+      app('screening', tailored),
+      app('rejected', tailored),
+      app('applied'),
+      app('rejected'),
+      app('offer', { applied_at: null }),
+    ]);
+    expect(f).toMatchObject({ applied: 6, heardBack: 5, callbacks: 3, interviews: 2, offers: 1 });
+    expect(f.splits).toEqual([
+      { label: 'TAILORED RESUME', yes: [2, 3], no: [1, 3] },
+      // The offer has no apply date, so it is left out of the timing split.
+      { label: 'APPLIED WITHIN 48H', yes: [2, 3], no: [0, 2] },
+    ]);
+  });
+
+  it('hides a split with nothing to compare against', () => {
+    expect(opsFunnel([app('applied'), app('screening')]).splits).toEqual([]);
   });
 });

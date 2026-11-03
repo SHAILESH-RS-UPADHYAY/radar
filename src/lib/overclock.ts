@@ -7,7 +7,9 @@
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { isSchemaMissing } from '@/lib/supabase/errors';
 import { toPortfolio } from '@/lib/profile';
-import { projectScore, resumeToText, tailorResume, TailorError, type TailorOutput } from '@/lib/ai/tailor';
+import { atsCoverage, projectScore, resumeToText, tailorResume, TailorError, type TailorOutput } from '@/lib/ai/tailor';
+import { extractSkills } from '@/lib/scraper/utils';
+import { guardPosting } from '@/lib/posting-guard';
 import { OVERCLOCK_MAX, OVERCLOCK_MIN } from '@/components/dashboard/types';
 
 const TAILORED_COLUMNS = 'id, job_id, content, base_score, projected_score, model, created_at';
@@ -22,8 +24,16 @@ interface TailoredRow {
   created_at: string;
 }
 
+/** What OVERCLOCK stores besides the model's tailoring. */
+export interface TailorChecks {
+  /** The posting's skills an ATS finds in the tailored text. */
+  ats?: ReturnType<typeof atsCoverage>;
+  /** Lines in the posting that addressed an AI and were kept out of the prompt. */
+  flagged?: string[];
+}
+
 /** What the browser gets for a tailored resume. */
-export interface TailoredView extends TailorOutput {
+export interface TailoredView extends TailorOutput, TailorChecks {
   id: string;
   jobId: string;
   baseScore: number | null;
@@ -33,9 +43,10 @@ export interface TailoredView extends TailorOutput {
 }
 
 export function toView(row: TailoredRow): TailoredView {
-  const out = JSON.parse(row.content) as TailorOutput;
+  const out = JSON.parse(row.content) as TailorOutput & TailorChecks;
   return {
     ...out,
+    cover_letter: out.cover_letter || '', // tailorings made before cover letters existed
     id: row.id,
     jobId: row.job_id,
     baseScore: row.base_score,
@@ -138,13 +149,18 @@ export async function overclockMatch(
     return null;
   });
 
+  const tailoredText = resumeToText(output.resume);
+  const checks: TailorChecks = {
+    ats: atsCoverage(tailoredText, [...(job.skills || []), ...extractSkills(job.description || '')]),
+    flagged: guardPosting(job.description).flagged,
+  };
   const { data: saved, error } = await supabase
     .from('tailored_resumes')
     .upsert(
       {
         user_id: userId,
         job_id: job.id,
-        content: JSON.stringify(output),
+        content: JSON.stringify({ ...output, ...checks }),
         gaps: output.gaps,
         base_score: match.score,
         projected_score: projected,

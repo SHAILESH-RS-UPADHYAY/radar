@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { STAGES, type Stage } from '@/types';
 import { Brackets, StatusLight } from '@/components/hud/Hud';
 import { JobTitle, openOnClick, JobFacts } from './SkillChips';
+import { CoachPanel, kindsFor } from './CoachPanel';
 import { ACTIVE_STAGES, STAGE_META, opsSignals, timeAgo, type MatchAction, type MatchedJob } from './types';
 
 const SIGNAL_STYLE = {
@@ -198,6 +199,8 @@ export function OpsCard({
             {match.notes ? <span className="line-clamp-3 whitespace-pre-line">{match.notes}</span> : '+ ADD NOTE'}
           </button>
         ))}
+
+      <CoachPanel matchId={match.id} stage={stage} kinds={kindsFor(stage)} />
 
       <div className="mt-4 flex flex-wrap items-center gap-1.5">
         {editable && next && (

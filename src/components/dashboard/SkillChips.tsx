@@ -5,7 +5,8 @@ import { ageDays, formatSalary, scoreColor, sourceLabel, timeAgo, type MatchedJo
 export const openOnClick = (open: (() => void) | undefined) =>
   open
     ? (e: MouseEvent) => {
-        if (!(e.target as HTMLElement).closest('a,button,input,select,textarea,label')) open();
+        // [data-no-open]: panels inside a card whose text you read or select (COACH answers).
+        if (!(e.target as HTMLElement).closest('a,button,input,select,textarea,label,[data-no-open]')) open();
       }
     : undefined;
 

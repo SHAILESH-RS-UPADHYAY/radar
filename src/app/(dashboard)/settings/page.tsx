@@ -16,6 +16,7 @@ import { useEscapeTo } from '@/lib/use-escape';
 import { GmailLink } from '@/components/settings/GmailLink';
 import { TargetImport } from '@/components/settings/TargetImport';
 import { PortfolioSection } from '@/components/settings/PortfolioSection';
+import { ResumeAuditView } from '@/components/settings/ResumeAuditView';
 import { ApplicationKitSection } from '@/components/settings/ApplicationKitSection';
 import { ScanConsole, type ScanDone } from '@/components/dashboard/ScanConsole';
 
@@ -696,6 +697,7 @@ export default function SettingsPage() {
                     )}
                   </div>
                 )}
+                {profile.resume_audit && <ResumeAuditView audit={profile.resume_audit} />}
                 <label
                   onDragOver={(e) => {
                     e.preventDefault();

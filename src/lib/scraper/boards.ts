@@ -11,7 +11,6 @@
 //   himalayas   himalayas.app/jobs/api
 //   jobicy      jobicy.com/api/v2 — ToS: keep Jobicy as the source, link its canonical job URL, at most hourly
 //   themuse     themuse.com/api/public/jobs — public, 500 requests/hour without a key; link back to The Muse
-//   adzuna      api.adzuna.com — official API, needs ADZUNA_APP_ID + ADZUNA_APP_KEY; descriptions are snippets
 //   jooble      jooble.org/api — official API, needs JOOBLE_API_KEY; descriptions are snippets
 //   weworkremotely  weworkremotely.com category RSS (robots.txt allows it); link back to the WWR listing
 //   workingnomads   workingnomads.com/api/exposed_jobs (robots.txt allows everything); link back to Working Nomads
@@ -55,8 +54,6 @@ export async function scrapeBoard(provider: string): Promise<ScrapedJob[]> {
       return scrapeJobicy();
     case 'themuse':
       return scrapeTheMuse();
-    case 'adzuna':
-      return scrapeAdzuna();
     case 'jooble':
       return scrapeJooble();
     case 'weworkremotely':
@@ -415,22 +412,11 @@ async function scrapeTheMuse(): Promise<ScrapedJob[]> {
   return [...jobs.values()];
 }
 
-// ---------- Adzuna (official API, many countries) ----------
-const ADZUNA_CURRENCY: Record<string, string> = {
-  in: 'INR',
-  gb: 'GBP',
-  us: 'USD',
-  sg: 'SGD',
-  de: 'EUR',
-  nl: 'EUR',
-  fr: 'EUR',
-};
-
 /**
- * Adzuna's geographical database uses legacy or specific spellings for some Indian cities.
+ * Job search APIs' geographical databases use legacy or specific spellings for some Indian cities.
  * For example, "Gurugram" returns 0 jobs while "Gurgaon" returns 2,600+ jobs.
  */
-export function adzunaSearchCity(city: string): string {
+export function searchCity(city: string): string {
   const c = city.trim().toLowerCase();
   if (c === 'gurugram' || c === 'gurgaon') return 'Gurgaon';
   if (c === 'bengaluru' || c === 'banglore' || c === 'bangalore') return 'Bangalore';
@@ -457,7 +443,7 @@ export async function preferenceCities(): Promise<string[]> {
   for (const rawCity of (data || []).flatMap((p) => splitList(p.location as string))) {
     if (/^(remote|worldwide|anywhere|global|india|test)$/i.test(rawCity) || notHere.has(rawCity.toLowerCase()))
       continue;
-    const mapped = adzunaSearchCity(rawCity);
+    const mapped = searchCity(rawCity);
     seen.set(mapped.toLowerCase(), mapped);
     // If Mohali or Chandigarh is present, ensure both are searched in the Tricity job market
     if (/^(mohali|chandigarh|sas nagar)$/i.test(rawCity)) {
@@ -466,75 +452,6 @@ export async function preferenceCities(): Promise<string[]> {
     }
   }
   return [...seen.values()].slice(0, 12);
-}
-
-const ADZUNA_GAP_MS = 2_500;
-
-async function scrapeAdzuna(): Promise<ScrapedJob[]> {
-  const id = process.env.ADZUNA_APP_ID?.trim();
-  const key = process.env.ADZUNA_APP_KEY?.trim();
-  if (!id || !key) {
-    console.warn('[SCRAPE] Adzuna skipped: set ADZUNA_APP_ID and ADZUNA_APP_KEY to enable it.');
-    return [];
-  }
-  const jobs = new Map<string, ScrapedJob>();
-  // Adzuna allows 25 calls a minute (and 250 a day): one search every 2.5 s keeps a run under it.
-  let lastCall = 0;
-  const pace = async () => {
-    const wait = lastCall + ADZUNA_GAP_MS - Date.now();
-    if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
-    lastCall = Date.now();
-  };
-  // Country-wide searches, then India city by city for your cities.
-  const searches: [string, string][] = splitEnvList(process.env.RADAR_ADZUNA_COUNTRIES || 'in,gb,de,nl,fr,sg,us').map(
-    (c) => [c, ''],
-  );
-  for (const city of await preferenceCities().catch(() => [])) searches.push(['in', city]);
-  for (const [country, where] of searches) {
-    // For specific Indian cities, query skill pillars (python, react, node, etc.) so returned jobs match user profile
-    const terms = where ? citySearchTerms() : searchTerms();
-    for (const term of terms) {
-      const cityQuery = where ? adzunaSearchCity(where) : undefined;
-      const params = new URLSearchParams({
-        app_id: id,
-        app_key: key,
-        what: term,
-        ...(cityQuery ? { where: cityQuery } : {}),
-        results_per_page: '50',
-        max_days_old: '30',
-        'content-type': 'application/json',
-      });
-      await pace();
-      const data = await fetchJson<any>(
-        'https://api.adzuna.com/v1/api/jobs/' + encodeURIComponent(country) + '/search/1?' + params,
-      ).catch((e) => {
-        console.warn('[SCRAPE] Adzuna search failed for', country, where || 'all', term, ':', e.message);
-        return { results: [] };
-      });
-      for (const job of data.results || []) {
-        if (!job.id || !job.redirect_url) continue;
-        // A predicted salary is Adzuna's estimate, not the employer's figure.
-        const stated = String(job.salary_is_predicted) !== '1' && Number(job.salary_min) > 0;
-        jobs.set(
-          country + ':' + job.id,
-          finalizeJob({
-            external_id: country + ':' + job.id,
-            title: htmlToText(job.title),
-            description: htmlToText(job.description) + '\n\nSource: Adzuna',
-            location: job.location?.display_name || where || country.toUpperCase(),
-            apply_url: job.redirect_url,
-            department: job.category?.label || null,
-            salary_min: stated ? Math.round(job.salary_min) : null,
-            salary_max: stated && job.salary_max ? Math.round(job.salary_max) : null,
-            salary_currency: stated ? ADZUNA_CURRENCY[country] || null : null,
-            posted_at: toIso(job.created),
-            employer: job.company?.display_name || null,
-          }),
-        );
-      }
-    }
-  }
-  return [...jobs.values()];
 }
 
 // ---------- Jooble (official API, many countries) ----------

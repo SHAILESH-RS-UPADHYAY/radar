@@ -41,7 +41,7 @@ GitHub Actions workflow runs all three on demand.
 │      embed new/changed only       sha1 content_hash; unchanged jobs are not re-embedded
 │      close missing jobs           closurePolicy(): ATS feeds after two misses (10 h); boards and search APIs
 │                                   after 5 days unseen, alert emails after 21, unless a link check proved
-│                                   them open; quota-limited APIs (Adzuna, Jooble) run once or twice a day
+│                                   them open; quota-limited APIs (Jooble) run once or twice a day
 │    alert emails                   src/lib/scraper/alert-email.ts: Indeed, LinkedIn, Welcome to the Jungle
 │
 └─ matchAllUsers()                  src/lib/pipeline/match.ts

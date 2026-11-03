@@ -6,7 +6,8 @@ import { Modal } from '@/components/hud/Modal';
 import { headerLines, jdLines, salaryFromText, sectionLine, type JobFacts, type TermLine, type Tone } from '@/lib/jd';
 import { drawWords } from '@/lib/status-words';
 import { useApi } from '@/lib/use-api';
-import { timeAgo, type MatchAction, type MatchedJob } from './types';
+import type { PayBand } from '@/lib/pay';
+import { formatSalary, timeAgo, type MatchAction, type MatchedJob } from './types';
 
 /** GET /api/jobs/:id */
 export interface JobDetail {
@@ -30,6 +31,10 @@ export interface JobDetail {
   /** The reader's experience, so "3+ years" lines can say whether they fit. */
   you?: { experienceYears: number | null };
   posting: { state: 'live' | 'closed' | 'unknown'; checkedAt: string | null; via: 'feed' | 'link' | 'none' };
+  /** Reasons to think twice before applying. */
+  flags?: string[];
+  /** What the roles most like this one pay, from postings RADAR holds. */
+  market?: PayBand | null;
 }
 
 // The reference: a colour terminal printing a code diff — Monokai colours on pure black,
@@ -284,6 +289,13 @@ function buildLines(d: JobDetail, fallback: MatchedJob): TermLine[] {
         .join(' · ') || 'Not specified',
     salary: feedPay || jdPay,
     salaryNote: feedPay || jdPay ? null : 'not disclosed',
+    market: d.market
+      ? formatSalary({ salary_min: d.market.p25, salary_max: d.market.p75, salary_currency: d.market.currency })
+      : null,
+    marketNote: d.market
+      ? `median ${formatSalary({ salary_min: d.market.p50, salary_max: null, salary_currency: d.market.currency })} · ${d.market.n} similar roles in RADAR`
+      : null,
+    flags: d.flags,
     score: match?.score ?? fallback.score,
     have,
     missing,

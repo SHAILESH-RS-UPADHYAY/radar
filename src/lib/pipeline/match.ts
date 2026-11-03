@@ -21,11 +21,15 @@ import { extractSkills, jobKey } from '@/lib/scraper/utils';
 import { splitList } from '@/lib/profile';
 import { cityAliases } from '@/lib/geo/city-companies';
 import { gateForVault } from './verify';
+import { gateJob } from '@/lib/posting-guard';
 import type { ScanEvent } from '@/lib/scan-events';
 import { PER_COMPANY, isOpenApplication } from '@/types';
 
 /** How many of the closest jobs the SCAN://LIVE console plots. */
 const SCOPE_SAMPLE = 160;
+
+/** Where a gated job's score is capped: below OVERCLOCK's range, so it is never tailored or vaulted. */
+export const GATED_SCORE = 30;
 
 export interface UserMatchSummary {
   userId: string;
@@ -191,7 +195,7 @@ export async function matchUser(
     for (const j of data || []) if (!simById.has(j.id)) dreamJobIds.push(j.id);
   }
 
-  // Jobs in your cities always get scored too, with their real similarity: local listings (short Adzuna snippets)
+  // Jobs in your cities always get scored too, with their real similarity: local listings (short snippets)
   // rarely reach the vector top-K, which is why Mohali showed nothing.
   const aliases = [...new Set(splitList(profile.location).flatMap((c) => cityAliases(c)))].filter(
     (a) => a.length > 2 && !/[,()%]/.test(a),
@@ -278,11 +282,14 @@ export async function matchUser(
       }),
     );
     if (result.tooSenior) tooSenior.add(job.id);
+    // A deal-breaker or a language you do not speak caps the score below the Vault, whatever the vector says.
+    // ponytail: checks title/employer/location only (descriptions are not loaded here); OVERCLOCK checks the full JD.
+    const blocked = gateJob(job, profile.application_kit);
     return {
       user_id: userId,
       job_id: job.id,
-      score: result.score,
-      reasoning: result.reasoning,
+      score: blocked ? Math.min(result.score, GATED_SCORE) : result.score,
+      reasoning: blocked ? blocked + ' · ' + result.reasoning : result.reasoning,
       matching_skills: result.matchingSkills,
       missing_skills: result.missingSkills,
       section: result.section,

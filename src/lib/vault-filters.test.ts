@@ -96,7 +96,7 @@ describe('lanes', () => {
   it('puts a dream startup in both DREAM and STARTUPS, and board jobs in JOB BOARDS', () => {
     expect(lanesOf(job({ section: 'dream', category: 'Startup' }))).toEqual(['dream', 'startup']);
     expect(lanesOf(job({ category: 'MNC' }))).toEqual(['mnc']);
-    expect(lanesOf(job({ category: 'Board', provider: 'adzuna' }))).toEqual(['board']);
+    expect(lanesOf(job({ category: 'Board', provider: 'jooble' }))).toEqual(['board']);
   });
 });
 
@@ -128,21 +128,21 @@ describe('applyFilters and signalFacets', () => {
     }),
     job({ category: 'Startup', provider: 'lever', exp: null, posted: '2026-10-04' }),
     job({ category: 'MNC', provider: 'workday', exp: 'fresher', pay: [400_000, 600_000, 'INR'] }),
-    job({ category: 'Board', provider: 'adzuna', exp: '3-5', pay: [100_000, 140_000, 'USD'] }),
+    job({ category: 'Board', provider: 'jooble', exp: '3-5', pay: [100_000, 140_000, 'USD'] }),
   ];
 
   it('narrows by lane, experience, sources and pay together', () => {
     expect(applyFilters(list, { ...DEFAULT_FILTERS, lane: 'startup' })).toHaveLength(2);
     expect(applyFilters(list, { ...DEFAULT_FILTERS, lane: 'startup', exp: ['1'] })).toHaveLength(1);
-    expect(applyFilters(list, { ...DEFAULT_FILTERS, sources: ['adzuna'] })).toHaveLength(1);
-    expect(applyFilters(list, { ...DEFAULT_FILTERS, sources: ['adzuna', 'lever'] })).toHaveLength(2);
+    expect(applyFilters(list, { ...DEFAULT_FILTERS, sources: ['jooble'] })).toHaveLength(1);
+    expect(applyFilters(list, { ...DEFAULT_FILTERS, sources: ['jooble', 'lever'] })).toHaveLength(2);
     expect(applyFilters(list, { ...DEFAULT_FILTERS, pay: 'disclosed' })).toHaveLength(3);
     expect(applyFilters(list, { ...DEFAULT_FILTERS, pay: 'lpa10' })).toHaveLength(1);
   });
 
   it('sorts by pay (INR first, then other disclosed pay) and by newest', () => {
     const byPay = applyFilters(list, { ...DEFAULT_FILTERS, sort: 'pay' });
-    expect(byPay.map((m) => m.job.company.provider)).toEqual(['ashby', 'workday', 'adzuna', 'lever']);
+    expect(byPay.map((m) => m.job.company.provider)).toEqual(['ashby', 'workday', 'jooble', 'lever']);
     const newest = applyFilters(list, { ...DEFAULT_FILTERS, sort: 'newest' });
     expect(newest[0].job.company.provider).toBe('lever');
   });
@@ -184,7 +184,7 @@ describe('when a job reached you', () => {
   });
 
   it('groups sources by where they reach RADAR', () => {
-    expect(['linkedin_email', 'greenhouse', 'adzuna', 'custom'].map(originOf)).toEqual([
+    expect(['linkedin_email', 'greenhouse', 'jooble', 'custom'].map(originOf)).toEqual([
       'alert',
       'ats',
       'board',
@@ -215,7 +215,7 @@ describe('filterCommand and parseFilters', () => {
       pay: 'lpa5',
     });
     // A single source saved by an older version becomes the source list.
-    expect(parseFilters('{"source":"adzuna"}').sources).toEqual(['adzuna']);
+    expect(parseFilters('{"source":"jooble"}').sources).toEqual(['jooble']);
     expect(parseFilters('not json')).toEqual(DEFAULT_FILTERS);
   });
 });

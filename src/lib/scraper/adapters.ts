@@ -18,6 +18,8 @@
 //   teamtailor       career-site host     e.g. "careers.neat.no" or "chip.teamtailor.com"
 //   workday          tenant/wdN/site      e.g. "nvidia/wd5/NVIDIAExternalCareerSite"
 //   amazon           ISO-3 country code   e.g. "IND"
+//   rippling         board slug           e.g. "rippling"
+//   bamboohr         subdomain            e.g. "acme"
 
 import {
   fetchJson,
@@ -317,6 +319,59 @@ export async function scrapePersonio(subdomain: string): Promise<ScrapedJob[]> {
   });
 }
 
+// ---------- Rippling ----------
+// The list has no descriptions; each job's detail does (company, role and pay sections as HTML).
+export async function scrapeRippling(slug: string): Promise<ScrapedJob[]> {
+  const base = 'https://api.rippling.com/platform/api/ats/v1/board/' + encodeURIComponent(slug) + '/jobs';
+  const list = (await fetchJson<any[]>(base)).filter((j) => isRelevantTitle(String(j.name || '').trim()));
+  return mapLimit(list.slice(0, MAX_PER_COMPANY), 4, async (job: any) => {
+    const detail = await fetchJson<any>(base + '/' + job.uuid).catch(() => null);
+    const d = detail?.description || {};
+    return finalizeJob({
+      external_id: job.uuid,
+      title: String(job.name || '').trim(),
+      description: [d.company, d.role]
+        .filter(Boolean)
+        .map((h: string) => htmlToText(h))
+        .join('\n\n'),
+      location: job.workLocation?.label || '',
+      apply_url: job.url || '',
+      department: job.department?.label || null,
+      salary_min: null,
+      salary_max: null,
+      salary_currency: null,
+      posted_at: toIso(detail?.createdOn),
+      employer: null,
+    });
+  });
+}
+
+// ---------- BambooHR ----------
+export async function scrapeBambooHR(subdomain: string): Promise<ScrapedJob[]> {
+  const site = 'https://' + subdomain + '.bamboohr.com/careers';
+  const data = await fetchJson<any>(site + '/list');
+  const list = (data.result || []).filter((j: any) => isRelevantTitle(j.jobOpeningName || ''));
+  return mapLimit(list.slice(0, MAX_PER_COMPANY), 4, async (job: any) => {
+    const detail = await fetchJson<any>(site + '/' + job.id + '/detail').catch(() => null);
+    const o = detail?.result?.jobOpening || {};
+    const where = [job.location?.city, job.location?.state, job.location?.country].filter(Boolean).join(', ');
+    return finalizeJob({
+      external_id: String(job.id),
+      title: job.jobOpeningName || '',
+      description: htmlToText(o.description || ''),
+      location: where || (job.isRemote ? 'Remote' : ''),
+      apply_url: site + '/' + job.id,
+      department: job.departmentLabel || null,
+      work_type: job.isRemote ? 'remote' : null,
+      salary_min: null,
+      salary_max: null,
+      salary_currency: null,
+      posted_at: toIso(o.datePosted),
+      employer: null,
+    });
+  });
+}
+
 // ---------- Breezy HR ----------
 async function scrapeBreezy(subdomain: string): Promise<ScrapedJob[]> {
   const data = await fetchJson<any[]>('https://' + subdomain + '.breezy.hr/json');
@@ -497,6 +552,12 @@ export async function scrapeCompany(provider: string | null, identifier: string 
       break;
     case 'eightfold':
       jobs = await scrapeEightfold(identifier || '');
+      break;
+    case 'rippling':
+      jobs = await scrapeRippling(identifier!);
+      break;
+    case 'bamboohr':
+      jobs = await scrapeBambooHR(identifier!);
       break;
     default:
       if ((BOARD_PROVIDERS as readonly string[]).includes(provider)) {

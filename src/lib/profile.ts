@@ -3,6 +3,7 @@ import type { ApplicationKit, Portfolio, SettingsProfile } from '@/types';
 import { cleanKit } from '@/lib/validate';
 import { extractSkills } from '@/lib/scraper/utils';
 import { isSchemaMissing } from '@/lib/supabase/errors';
+import { auditResume } from '@/lib/resume-audit';
 
 interface ProfileRow {
   full_name: string | null;
@@ -63,6 +64,7 @@ export async function loadSettingsProfile(supabase: SupabaseClient, userId: stri
     target_roles: splitList(p.current_role),
     has_resume: !!p.resume_text,
     resume_skills: extractSkills(p.resume_text || ''),
+    resume_audit: p.resume_text ? auditResume(p.resume_text.split(MANUAL_DETAILS)[0]) : null,
     vault_min_score: p.vault_min_score ?? 80,
     auto_vault: p.auto_vault !== false,
     auto_overclock: typeof p.auto_overclock === 'boolean' ? p.auto_overclock : null,

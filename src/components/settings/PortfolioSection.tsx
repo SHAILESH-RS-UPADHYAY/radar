@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { HudPanel } from '@/components/hud/Hud';
 import type { Portfolio } from '@/types';
 import { cleanUrl, MAX_PROJECTS } from '@/lib/validate';
+import { githubProjects, githubUser, type GithubRepo } from '@/lib/github';
 
 const LINKS: [key: 'portfolio' | 'github' | 'linkedin' | 'website', label: string, placeholder: string][] = [
   ['portfolio', 'PORTFOLIO', 'yourname.dev'],
@@ -36,7 +37,35 @@ export function PortfolioSection({
 }) {
   const [draft, setDraft] = useState({ name: '', url: '', note: '' });
   const [error, setError] = useState('');
+  const [importing, setImporting] = useState(false);
   const links = portfolio ? LINKS.filter(([k]) => portfolio[k]).length : 0;
+  const ghUser = portfolio ? githubUser(portfolio.github) : null;
+
+  // Your public repos become projects OVERCLOCK can cite. Read straight from GitHub's public API in this browser.
+  const importGithub = async () => {
+    if (!portfolio || !ghUser) return;
+    setImporting(true);
+    try {
+      const res = await fetch(`https://api.github.com/users/${ghUser}/repos?per_page=100&sort=pushed`, {
+        headers: { accept: 'application/vnd.github+json' },
+      });
+      if (res.status === 404) throw new Error(`No GitHub user "${ghUser}".`);
+      if (res.status === 403 || res.status === 429)
+        throw new Error('GitHub’s hourly limit for this network is used up. Try again in an hour.');
+      if (!res.ok) throw new Error('GitHub answered ' + res.status + '.');
+      const found = githubProjects(
+        (await res.json()) as GithubRepo[],
+        portfolio.projects,
+        MAX_PROJECTS - portfolio.projects.length,
+      );
+      if (found.length) onSave({ ...portfolio, projects: [...portfolio.projects, ...found] });
+      setImporting(false);
+      setError(found.length ? '' : 'Every public repo is already listed (forks and archived repos are skipped).');
+    } catch (err) {
+      setImporting(false);
+      setError(err instanceof Error ? err.message : String(err));
+    }
+  };
 
   const add = () => {
     if (!portfolio) return;
@@ -92,7 +121,18 @@ export function PortfolioSection({
           <div className="mt-7">
             <div className="mb-2 flex items-center justify-between font-mono text-[10px] tracking-[0.3em]">
               <span className="text-phosphor/80">BUILT://PROJECTS</span>
-              <span className="text-dim">
+              <span className="flex items-center gap-4 text-dim">
+                {ghUser && portfolio.projects.length < MAX_PROJECTS && (
+                  <button
+                    type="button"
+                    onClick={importGithub}
+                    disabled={importing}
+                    title="Adds your best public repos (no forks or archived ones) as projects"
+                    className="border border-phosphor/40 px-2 py-1 font-bold text-phosphor transition-colors hover:bg-phosphor/10 disabled:opacity-50"
+                  >
+                    {importing ? 'READING GITHUB' : '⇣ IMPORT FROM GITHUB'}
+                  </button>
+                )}
                 {portfolio.projects.length} / {MAX_PROJECTS}
               </span>
             </div>

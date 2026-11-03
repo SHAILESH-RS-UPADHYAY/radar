@@ -386,7 +386,7 @@ const DEFAULT_TITLE_KEYWORDS = [
   'sdet',
 ];
 
-/** Keywords used where a source needs a search (Workday, Amazon, Adzuna, Jooble). */
+/** Keywords used where a source needs a search (Workday, Amazon, Jooble). */
 export function searchTerms(): string[] {
   return splitEnvList(process.env.RADAR_SEARCH_TERMS || 'software engineer,developer,data');
 }

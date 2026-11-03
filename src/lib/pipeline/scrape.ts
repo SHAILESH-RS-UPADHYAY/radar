@@ -69,9 +69,8 @@ export function closurePolicy(provider: string): { graceMs: number; liveProofMs:
   return { graceMs: 10 * HOUR, liveProofMs: null };
 }
 
-/** Search APIs with daily or monthly quotas (Adzuna: 250 a day, 2,500 a month) run at most this often. */
+/** Search APIs with daily or monthly quotas run at most this often. */
 const QUOTA_INTERVAL: Record<string, number> = {
-  adzuna: 23 * HOUR,
   jsearch: 23 * HOUR,
   googlejobs: 23 * HOUR,
   jooble: 11 * HOUR,

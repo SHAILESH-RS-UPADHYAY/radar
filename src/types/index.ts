@@ -14,7 +14,9 @@ export type AtsProvider =
   | 'teamtailor'
   | 'workday'
   | 'amazon'
-  | 'eightfold';
+  | 'eightfold'
+  | 'rippling'
+  | 'bamboohr';
 /** Sources that list many employers each; the real employer is stored on the job. */
 export const BOARD_PROVIDERS = [
   'hackernews',
@@ -24,7 +26,6 @@ export const BOARD_PROVIDERS = [
   'himalayas',
   'jobicy',
   'themuse',
-  'adzuna',
   'jooble',
   'weworkremotely',
   'workingnomads',
@@ -67,6 +68,8 @@ export interface SettingsProfile {
   has_resume: boolean;
   /** Skills found in the resume; used for matching until the user confirms their own. */
   resume_skills: string[];
+  /** Rule checks on the resume (numbers, openers, contact, sections); null without a resume. */
+  resume_audit: ResumeAudit | null;
   vault_min_score: number;
   auto_vault: boolean;
   /** Auto-OVERCLOCK (migration 007); null until that migration has run. */
@@ -77,6 +80,12 @@ export interface SettingsProfile {
   portfolio: Portfolio | null;
   /** What application forms ask (migration 009); null until that migration has run. */
   application_kit: ApplicationKit | null;
+}
+
+export interface ResumeAudit {
+  /** 0–100: the weight of the checks passed. */
+  score: number;
+  checks: { ok: boolean; label: string; detail: string }[];
 }
 
 /** Answers application forms ask for again and again, saved once. Every value is plain text; '' = not set. */
@@ -97,6 +106,10 @@ export interface ApplicationKit {
   disability_status: string;
   /** Facts and phrasing in the candidate's own words, for AI-drafted answers. */
   voice_notes: string;
+  /** Comma-separated phrases that rule a job out ("crypto, night shift"). */
+  deal_breakers: string;
+  /** Comma-separated languages you work in; a posting demanding another is ruled out. Empty = gate off. */
+  languages: string;
   /** Answers you taught RADAR from a form ("What is your current salary?" → "12 LPA"), by question. */
   learned?: Record<string, string>;
 }

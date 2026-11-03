@@ -46,9 +46,12 @@ const PIPELINE: [string, string][] = [
   ['03 EMBED', 'new or changed jobs → Pinecone'],
   ['04 CLOSE', 'missing postings → inactive, vectors deleted'],
   ['05 MATCH', 'every user with a resume → match_scores'],
-  ['06 VERIFY', 'board postings opened before the Vault'],
-  ['07 VAULT', 'score ≥ your bar (80 by default) → saved'],
-  ['08 AUTOPILOT', 'Vault re-check · Gmail replies · auto-OVERCLOCK'],
+  ['06 GATE', 'deal-breakers and languages you do not speak → capped below the Vault'],
+  ['07 VERIFY', 'board postings opened before the Vault'],
+  ['08 VAULT', 'score ≥ your bar (80 by default) → saved'],
+  ['09 AUTOPILOT', 'Vault re-check · Gmail replies · auto-OVERCLOCK'],
+  ['10 OVERCLOCK', 'posting guard → draft → reviewer → ATS scan → cover letter'],
+  ['11 COACH', 'prep · mock interview · referrals · pay talks · follow-ups · upskill · LinkedIn'],
 ];
 
 export default function ArchitecturePage() {

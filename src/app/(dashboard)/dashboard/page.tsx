@@ -26,6 +26,8 @@ import { RadarLogo } from '@/components/brand/RadarLogo';
 import { HudPanel, StatusLight } from '@/components/hud/Hud';
 import { Toast, type Notice } from '@/components/hud/Toast';
 import { OpsCard } from '@/components/dashboard/OpsCard';
+import { FunnelStrip } from '@/components/dashboard/FunnelStrip';
+import { LinkedInPanel, UpskillPanel } from '@/components/dashboard/CoachPanel';
 import { DiscoveryCard } from '@/components/dashboard/DiscoveryCard';
 import { VaultCard } from '@/components/dashboard/VaultCard';
 import { FilterRail, QueryBar, useStoredFilters } from '@/components/dashboard/SignalFilters';
@@ -61,7 +63,7 @@ import {
   type TailoredSummary,
 } from '@/components/dashboard/types';
 
-type PrimaryTab = 'DISCOVERY' | 'VAULT' | 'OVERCLOCK' | 'OPS';
+type PrimaryTab = 'DISCOVERY' | 'VAULT' | 'OVERCLOCK' | 'OPS' | 'UPSKILL';
 type Section = 'dream' | 'recommended' | 'startup';
 
 interface VaultSettings {
@@ -641,11 +643,12 @@ export default function DashboardPage() {
   });
   useEffect(() => onExtension((e) => onExtensionEvent.current(e)), []);
 
-  const TABS: { key: PrimaryTab; label: string; short: string; count: number }[] = [
+  const TABS: { key: PrimaryTab; label: string; short: string; count: number | null }[] = [
     { key: 'DISCOVERY', label: 'DISCOVERY', short: 'DISCOVER', count: available.length },
     { key: 'VAULT', label: 'THE VAULT', short: 'VAULT', count: saved.length },
     { key: 'OVERCLOCK', label: 'OVERCLOCK', short: 'BOOST', count: candidates.length },
     { key: 'OPS', label: 'C2 · OPS', short: 'OPS', count: activeOps.length },
+    { key: 'UPSKILL', label: 'LEVEL UP', short: 'LEVEL', count: null },
   ];
   const minScore = vaultSettings?.vault_min_score ?? 80;
   const autoVault = vaultSettings?.auto_vault !== false;
@@ -728,7 +731,7 @@ export default function DashboardPage() {
                   (primaryTab === t.key ? 'bg-phosphor text-black' : 'text-dim hover:text-phosphor')
                 }
               >
-                {t.label} <span className="opacity-60">{t.count}</span>
+                {t.label} {t.count !== null && <span className="opacity-60">{t.count}</span>}
               </button>
             ))}
           </nav>
@@ -765,7 +768,7 @@ export default function DashboardPage() {
                 (primaryTab === t.key ? 'bg-phosphor text-black' : 'text-dim')
               }
             >
-              {t.short} {t.count}
+              {t.short} {t.count ?? ''}
             </button>
           ))}
         </nav>
@@ -933,7 +936,7 @@ export default function DashboardPage() {
                       {emptyCity && (
                         <p className="mt-2 text-[11px] leading-relaxed text-hud-amber">
                           No open jobs here yet. RADAR&apos;s company feeds rarely list smaller cities; local employers
-                          come through Adzuna and Jooble, which need their free API keys (see the README).
+                          come through Jooble, which needs its free API key (see the README).
                         </p>
                       )}
                     </>
@@ -1356,6 +1359,28 @@ export default function DashboardPage() {
             </motion.section>
           )}
 
+          {primaryTab === 'UPSKILL' && (
+            <motion.section
+              key="UPSKILL"
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -16 }}
+            >
+              <PageTitle kicker="// LEVEL UP" title="Close the gaps, get found">
+                The skills your matches ask for most and your resume does not show yet, as a plan with a proof project
+                for each. Then a LinkedIn profile written for the roles you target, so recruiters come to you.
+              </PageTitle>
+              <div className="space-y-6">
+                <HudPanel label="SKILL://GAPS" status="FROM YOUR MATCHES" tone="info">
+                  <UpskillPanel />
+                </HudPanel>
+                <HudPanel label="INBOUND://LINKEDIN" status="RECRUITERS SEARCH HERE" tone="info">
+                  <LinkedInPanel />
+                </HudPanel>
+              </div>
+            </motion.section>
+          )}
+
           {primaryTab === 'OPS' && (
             <motion.section
               key="OPS"
@@ -1378,6 +1403,8 @@ export default function DashboardPage() {
                   </HudPanel>
                 </div>
               )}
+
+              {applied.length > 0 && <FunnelStrip applied={applied} />}
 
               {applied.length === 0 ? (
                 <EmptyState

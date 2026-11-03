@@ -17,6 +17,7 @@ import { computeMatchScore } from '@/lib/ai/matcher';
 import { readEnv } from '@/lib/env';
 import { matchInput, profileSkills, type ScoringJob, type ScoringProfile } from '@/lib/pipeline/match';
 import { extractSkills } from '@/lib/scraper/utils';
+import { guardPosting } from '@/lib/posting-guard';
 
 export type AiProvider = 'groq' | 'gemini' | 'anthropic' | 'grok';
 const PROVIDERS: AiProvider[] = ['gemini', 'groq', 'anthropic', 'grok'];
@@ -83,6 +84,7 @@ export const TailorOutput = z.object({
   gaps: z.array(z.object({ requirement: z.string(), advice: z.string() })),
   changes: z.array(z.string()),
   cover_note: z.string(),
+  cover_letter: z.string(),
 });
 export type TailoredResume = z.infer<typeof Resume>;
 export type TailorOutput = z.infer<typeof TailorOutput>;
@@ -97,6 +99,7 @@ Rules:
 - If the posting asks for something the resume does not show, keep it out of the resume and add it to gaps with one line of honest advice: add it if the candidate genuinely has it, otherwise how to close the gap.
 - changes: each edit you made, one short line each.
 - cover_note: two or three sentences the candidate can paste into a "why this role" field, grounded only in the resume.
+- cover_letter: a 180 to 260 word letter in three short paragraphs (why this company and role, the two strongest matching proofs from the resume, a plain close). No "Dear Hiring Manager" cliches, no flattery, no facts outside the resume.
 - Plain text only: no markdown, no emojis. Use an empty string or empty list when the resume has nothing for a field.`;
 
 // Providers without schema-enforced output get the schema in the instructions; zod checks the reply either way.
@@ -124,6 +127,15 @@ export const unfence = (text: string) =>
     .trim()
     .replace(/^```(?:json)?\s*/i, '')
     .replace(/\s*```$/, '');
+
+/** A model's JSON reply as a value; unreadable JSON becomes a 502 the caller can retry. */
+export function parseJsonReply(text: string): unknown {
+  try {
+    return JSON.parse(unfence(text));
+  } catch {
+    throw new TailorError('The AI returned an unreadable answer. Try again.', 502);
+  }
+}
 
 /** A model's JSON reply → the checked tailoring, or a 502 the caller can retry on another provider. */
 export function parseTailored(text: string): TailorOutput {
@@ -344,7 +356,7 @@ export async function tailorResume(
     'JOB: ' + job.title + ' at ' + job.company,
     job.location ? 'LOCATION: ' + job.location : '',
     job.skills?.length ? 'LISTED SKILLS: ' + job.skills.join(', ') : '',
-    'DESCRIPTION:\n' + (job.description || '(no description provided)'),
+    'DESCRIPTION:\n' + (guardPosting(job.description).text || '(no description provided)'),
   ]
     .filter(Boolean)
     .join('\n');
@@ -368,7 +380,7 @@ export async function tailorResume(
   for (const provider of providers) {
     try {
       const { output, model } = await CALL[provider](user);
-      return { output, model: provider + ':' + model };
+      return { output: await reviewTailored(output, user), model: provider + ':' + model };
     } catch (err) {
       last = err instanceof TailorError ? err : new TailorError('AI error: ' + (err as Error).message, 502);
       // A refusal is about the content; another provider will not see it differently.
@@ -377,6 +389,48 @@ export async function tailorResume(
     }
   }
   throw last!;
+}
+
+const REVIEW = `You are a hiring manager at the company in the posting, reading a resume and cover letter that were tailored for the role. You have not seen how they were written.
+
+Check, in this order:
+1. Truth: every employer, title, date, metric, link and skill must appear in <resume> or <profile>. Remove anything that does not.
+2. Fit: would the first third of the page make you keep reading for THIS posting? Reorder or sharpen bullets if not.
+3. Plain writing: cut buzzwords, keyword stuffing and filler; keep the posting's wording only where it is true.
+4. The cover letter must stay 180 to 260 words and only use resume facts.
+
+Return the full revised tailoring with the same fields. Keep gaps honest. In changes, keep the drafter's lines and add one line per fix you made, each starting with "Review: ". If nothing needs fixing, return the draft unchanged.`;
+
+/**
+ * The second pair of eyes: a reviewer with fresh context critiques the draft against the posting and returns the
+ * revision. A failed or unreadable review keeps the draft; the first call has already been paid for.
+ */
+export async function reviewTailored(draft: TailorOutput, context: string): Promise<TailorOutput> {
+  try {
+    const { text } = await completeJson(
+      REVIEW + JSON_RULE,
+      context + '\n\n<draft>\n' + JSON.stringify(draft) + '\n</draft>',
+    );
+    return parseTailored(text);
+  } catch (err) {
+    console.warn('[OVERCLOCK] review skipped:', err instanceof Error ? err.message : err);
+    return draft;
+  }
+}
+
+/**
+ * ATS check: which of the posting's skills an applicant-tracking system finds in the resume text. Counted on the
+ * same skill dictionary as the scorer, so a keyword only counts when it is really there, never stuffed.
+ */
+export function atsCoverage(resumeText: string, wanted: string[]): { pct: number; found: string[]; missing: string[] } {
+  const have = new Set(extractSkills(resumeText).map((s) => s.toLowerCase()));
+  const asks = [...new Set(wanted.map((s) => s.toLowerCase()))];
+  const found = asks.filter((s) => have.has(s));
+  return {
+    pct: asks.length ? Math.round((found.length / asks.length) * 100) : 100,
+    found,
+    missing: asks.filter((s) => !have.has(s)),
+  };
 }
 
 /** Plain-text rendering, used for scoring and as the body of the PDF. */

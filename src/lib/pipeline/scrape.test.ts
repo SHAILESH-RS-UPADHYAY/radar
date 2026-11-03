@@ -19,9 +19,9 @@ describe('closurePolicy', () => {
   });
 
   it('gives boards and alert emails days, and lets a recent link check keep them open', () => {
-    expect(hours('adzuna')).toBe(5 * 24);
+    expect(hours('jooble')).toBe(5 * 24);
     expect(hours('linkedin_email')).toBe(21 * 24);
-    expect(closurePolicy('adzuna').liveProofMs).toBe(2 * 24 * 3600_000);
+    expect(closurePolicy('jooble').liveProofMs).toBe(2 * 24 * 3600_000);
   });
 });
 
@@ -30,9 +30,8 @@ describe('dueForScrape', () => {
   const ago = (h: number) => new Date(now - h * 3600_000).toISOString();
   it('runs every feed every cycle, and quota-limited search APIs only once their interval has passed', () => {
     expect(dueForScrape({ ats_provider: 'greenhouse', last_scraped_at: ago(1) }, now)).toBe(true);
-    expect(dueForScrape({ ats_provider: 'adzuna', last_scraped_at: ago(6) }, now)).toBe(false);
-    expect(dueForScrape({ ats_provider: 'adzuna', last_scraped_at: ago(23) }, now)).toBe(true);
+    expect(dueForScrape({ ats_provider: 'jooble', last_scraped_at: ago(6) }, now)).toBe(false);
     expect(dueForScrape({ ats_provider: 'jooble', last_scraped_at: ago(12) }, now)).toBe(true);
-    expect(dueForScrape({ ats_provider: 'adzuna', last_scraped_at: null }, now)).toBe(true);
+    expect(dueForScrape({ ats_provider: 'jooble', last_scraped_at: null }, now)).toBe(true);
   });
 });

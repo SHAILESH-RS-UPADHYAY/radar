@@ -3,6 +3,7 @@
 import { motion } from 'framer-motion';
 import { Brackets } from '@/components/hud/Hud';
 import { BriefingButton, JobFacts, JobTitle, openOnClick, ScoreMeter, SkillChips } from './SkillChips';
+import { CoachPanel } from './CoachPanel';
 import { postedTag, type MatchAction, type MatchedJob } from './types';
 
 const PILL =
@@ -77,6 +78,8 @@ export function VaultCard({
             {match.reasoning}
           </p>
           {open && <BriefingButton onOpen={open} />}
+          {/* A referral before applying beats a cold application. */}
+          <CoachPanel matchId={match.id} stage="vault" kinds={['referral']} />
         </div>
 
         <div className="flex w-full flex-col gap-2 sm:w-44">

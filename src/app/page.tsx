@@ -137,7 +137,7 @@ const QUOTES = [
 const FAQ = [
   {
     q: 'Where do jobs come from?',
-    a: 'Straight from company careers pages through their public ATS feeds (Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Recruitee, Personio, Workday, Amazon Jobs), including European companies you know from Welcome to the Jungle, plus job boards and official job APIs: Hacker News "Who is hiring", Remotive, Remote OK, Arbeitnow, Himalayas, Jobicy, The Muse, Adzuna and Jooble.',
+    a: 'Straight from company careers pages through their public ATS feeds (Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Recruitee, Personio, Workday, Amazon Jobs), including European companies you know from Welcome to the Jungle, plus job boards and official job APIs: Hacker News "Who is hiring", Remotive, Remote OK, Arbeitnow, Himalayas, Jobicy, The Muse and Jooble.',
   },
   {
     q: 'How is the match score calculated?',

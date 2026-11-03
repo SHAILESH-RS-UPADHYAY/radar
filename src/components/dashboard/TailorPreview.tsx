@@ -111,6 +111,29 @@ export function TailorPreview({ id }: { id: string }) {
         >
           ⬇ DOWNLOAD PDF
         </a>
+        {view.ats && (
+          <section>
+            <Heading>{`ATS SCAN · ${view.ats.pct}% OF THE POSTING'S SKILLS FOUND`}</Heading>
+            <div className="h-1.5 bg-phosphor/10">
+              <div className="h-full bg-phosphor" style={{ width: view.ats.pct + '%' }} />
+            </div>
+            {view.ats.missing.length > 0 && (
+              <p className="mt-2 font-mono text-[11px] text-dim">
+                not in text: <span className="text-hud-amber">{view.ats.missing.join(', ')}</span>
+              </p>
+            )}
+          </section>
+        )}
+        {!!view.flagged?.length && (
+          <section>
+            <Heading>⚠ POSTING TRIED TO INSTRUCT THE AI</Heading>
+            <ul className="space-y-1 font-mono text-[11px] text-hud-amber">
+              {view.flagged.map((f, i) => (
+                <li key={i}>- {f}</li>
+              ))}
+            </ul>
+          </section>
+        )}
         <section>
           <Heading>WHAT CHANGED</Heading>
           <ul className="space-y-1.5 text-sm text-dim">
@@ -142,6 +165,17 @@ export function TailorPreview({ id }: { id: string }) {
               <CopyButton value={view.cover_note} />
             </div>
             <p className="border-l-2 border-phosphor/40 pl-3 text-sm text-ink/90">{view.cover_note}</p>
+          </section>
+        )}
+        {view.cover_letter && (
+          <section>
+            <div className="mb-2 flex items-center justify-between gap-3">
+              <Heading>COVER LETTER</Heading>
+              <CopyButton value={view.cover_letter} />
+            </div>
+            <p className="whitespace-pre-line border-l-2 border-phosphor/40 pl-3 text-sm text-ink/90">
+              {view.cover_letter}
+            </p>
           </section>
         )}
       </aside>

@@ -29,6 +29,13 @@ const GROUPS: { title: string; fields: [TextKey, string, string][] }[] = [
     ],
   },
   {
+    title: 'GATE · NEVER SHOW ME',
+    fields: [
+      ['deal_breakers', 'DEAL-BREAKERS', 'crypto, night shift, unpaid'],
+      ['languages', 'LANGUAGES I WORK IN', 'English, Hindi'],
+    ],
+  },
+  {
     title: 'OPTIONAL · EEO (US FORMS)',
     fields: [
       ['gender', 'GENDER', 'Decline to self-identify'],

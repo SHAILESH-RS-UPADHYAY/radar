@@ -58,6 +58,8 @@ const EMPTY_KIT: ApplicationKit = {
   veteran_status: '',
   disability_status: '',
   voice_notes: '',
+  deal_breakers: '',
+  languages: '',
 };
 
 /** How a question is remembered: the same words, whatever their case, punctuation or asterisks. */
@@ -78,7 +80,7 @@ export function cleanKit(input: unknown): ApplicationKit {
   const kit = { ...EMPTY_KIT };
   for (const k of Object.keys(EMPTY_KIT) as Exclude<keyof ApplicationKit, 'learned'>[]) {
     if (k === 'needs_sponsorship' || k === 'willing_to_relocate') kit[k] = yesNo(k);
-    else kit[k] = text(k, k === 'voice_notes' ? 1500 : k === 'work_authorization' ? 200 : 120);
+    else kit[k] = text(k, k === 'voice_notes' ? 1500 : k === 'work_authorization' || k === 'deal_breakers' ? 200 : 120);
   }
   // What you taught RADAR on forms: kept through every save, so a Settings edit never forgets it.
   if (o.learned && typeof o.learned === 'object') {

@@ -32,7 +32,6 @@ const BOARD_NOTES: Partial<Record<Provider, string>> = {
   himalayas: 'Remote roles worldwide',
   jobicy: 'Remote engineering and data roles, credited to Jobicy',
   themuse: 'Software engineering in major cities and remote',
-  adzuna: 'Official API across India, UK, EU, Singapore and US (needs a key)',
   jooble: 'Official multi-country search API (needs a key)',
 };
 const perProvider = (p: Provider) => COMPANY_SEEDS.filter((c) => c.ats_provider === p).length;

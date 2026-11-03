@@ -63,6 +63,9 @@ export function atsFromUrl(raw: string): AtsRef | null {
   if (host.endsWith('.breezy.hr') && !RESERVED_SUBDOMAINS.has(sub)) return ref('breezy', sub);
   if (host.endsWith('.teamtailor.com') && host.split('.').length === 3 && !RESERVED_SUBDOMAINS.has(sub))
     return { provider: 'teamtailor', identifier: host };
+  if (host === 'ats.rippling.com') return ref('rippling', path[0]);
+  if (host === 'api.rippling.com' && path[4] === 'board') return ref('rippling', path[5]);
+  if (host.endsWith('.bamboohr.com') && !RESERVED_SUBDOMAINS.has(sub)) return ref('bamboohr', sub);
   const workday = host.match(/^([a-z0-9-]+)\.(wd\d+)\.myworkdayjobs\.com$/);
   if (workday) {
     const site = path.find((s) => !/^[a-z]{2}-[A-Z]{2}$/.test(s));
@@ -180,6 +183,10 @@ export function boardUrl({ provider, identifier: id }: AtsRef): string {
       const [tenant, wd, site] = id.split('/');
       return `https://${tenant}.${wd}.myworkdayjobs.com/${site}`;
     }
+    case 'rippling':
+      return 'https://ats.rippling.com/' + id + '/jobs';
+    case 'bamboohr':
+      return 'https://' + id + '.bamboohr.com/careers';
     case 'amazon':
       return 'https://www.amazon.jobs/';
     case 'eightfold':

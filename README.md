@@ -59,7 +59,7 @@ past 60 seconds.
 src/lib/scraper/adapters.ts   11 ATS adapters (Greenhouse, Lever, Ashby, Workable, SmartRecruiters, Recruitee,
                               Personio, Breezy, Teamtailor, Workday, Amazon)
 src/lib/scraper/boards.ts     9 boards (HN Who is hiring, Remotive, Remote OK, Arbeitnow, Himalayas, Jobicy,
-                              The Muse, Adzuna, Jooble)
+                              The Muse, Jooble)
 src/lib/pipeline/scrape.ts    least recently scraped first · upsert · embed changed · close missing · time caps
 ```
 
@@ -204,7 +204,7 @@ flowchart LR
 ```diff
 + robots.txt is law: disallowed paths (every directory's /api) are never requested
 + an honest bot name, one request at a time, a 24h pause after 429 / 403 / 503
-+ official feeds and APIs first: ATS boards, Adzuna, Jooble
++ official feeds and APIs first: ATS boards, Jooble
 - no LinkedIn or Indeed scraping, and your logins are never used
 - no fake browsers, rotating IPs or CAPTCHA solving
 - FundedStartupsDaily is not scraped (its Terms forbid it): import its licensed CSV export instead
@@ -240,7 +240,7 @@ In **Vercel → Settings → Environment Variables** (Production), paste values 
 | `AI_PROVIDER` + `GEMINI_API_KEY` / `GROQ_API_KEY` / `ANTHROPIC_API_KEY` / `XAI_API_KEY`    | AI          | at least one key (Gemini Flash and Groq are free); the others become fallbacks   |
 | `GOOGLE_CLIENT_ID` · `GOOGLE_CLIENT_SECRET` · `GMAIL_TOKEN_KEY`                            | Gmail link  | Google Cloud OAuth (redirect `https://<domain>/api/gmail/callback`)              |
 | `NEXT_PUBLIC_SITE_URL`                                                                     | recommended | your public URL                                                                  |
-| `ADZUNA_APP_ID` · `ADZUNA_APP_KEY` · `JOOBLE_API_KEY`                                      | optional    | more job-board reach                                                             |
+| `JOOBLE_API_KEY`                                                                           | optional    | more job-board reach                                                             |
 
 - **Crons:** `vercel.json` runs the loop every 6 hours: `/api/cron` at 02:30, 08:30, 14:30, 20:30 UTC and
   `/api/cron/autopilot` an hour after each; `/api/cron/discover` daily. `.github/workflows/radar-cron.yml` runs it on

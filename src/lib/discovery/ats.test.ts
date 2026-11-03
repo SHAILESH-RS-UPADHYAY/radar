@@ -21,6 +21,8 @@ describe('atsFromUrl', () => {
       ['https://jobs.smartrecruiters.com/ServiceNow/7443', 'smartrecruiters:ServiceNow'],
       ['https://bunq.recruitee.com/o/backend', 'recruitee:bunq'],
       ['https://acme.jobs.personio.de/job/123', 'personio:acme'],
+      ['https://ats.rippling.com/rippling/jobs/ef0b7266', 'rippling:rippling'],
+      ['https://acme.bamboohr.com/careers/42', 'bamboohr:acme'],
       ['https://chip.teamtailor.com/jobs/8429681-senior-data-analyst', 'teamtailor:chip.teamtailor.com'],
       [
         'https://nvidia.wd5.myworkdayjobs.com/en-US/NVIDIAExternalCareerSite/job/x',

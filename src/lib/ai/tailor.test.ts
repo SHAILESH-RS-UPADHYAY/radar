@@ -95,6 +95,7 @@ describe('AI providers (Anthropic · Gemini · Grok)', () => {
     gaps: [{ requirement: 'Kubernetes', advice: 'Add it only if you have used it.' }],
     changes: ['Led with the RAG project.'],
     cover_note: 'I build retrieval systems.',
+    cover_letter: 'Dear Northwind team, I build retrieval systems.',
   };
   const profile = {
     skills: ['python'],
@@ -211,7 +212,8 @@ describe('AI providers (Anthropic · Gemini · Grok)', () => {
     vi.stubGlobal('fetch', fetchMock);
     const result = await tailorResume('resume', profile, job);
     expect(result.model).toBe('groq:openai/gpt-oss-120b');
-    const urls = fetchMock.mock.calls.map((c) => String(c[0]));
+    // The draft only; the reviewer's calls come after it.
+    const urls = fetchMock.mock.calls.slice(0, 3).map((c) => String(c[0]));
     // Flash, then Flash-Lite (its own free quota), then Groq.
     expect(urls.filter((u) => u.includes('googleapis')).map((u) => u.split('/models/')[1].split(':')[0])).toEqual([
       'gemini-3.8-flash',

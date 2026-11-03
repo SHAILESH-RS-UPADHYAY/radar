@@ -10,6 +10,8 @@ import { checkPosting, checkUrl, recordChecks, VERIFY_TTL_MS, type PostingState 
 import { sourceName } from '@/lib/scraper/catalog';
 import { formatDescription } from '@/lib/jd';
 import { greenhousePay } from '@/lib/scraper/adapters';
+import { postingFlags } from '@/lib/posting-guard';
+import { marketBand } from '@/lib/pay';
 
 export const maxDuration = 30;
 export const dynamic = 'force-dynamic';
@@ -40,7 +42,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
   if (!isUuid(id)) return NextResponse.json({ error: 'Not found' }, { status: 404 });
 
   const supabase = createServerClient();
-  const [jobResult, { data: match }, { data: me }] = await Promise.all([
+  const [jobResult, { data: match }, { data: me }, { data: kit }] = await Promise.all([
     (async () => {
       let result = await supabase.from('jobs').select(TIERS[0]).eq('id', id).maybeSingle();
       for (let i = 1; i < TIERS.length && isSchemaMissing(result.error); i++)
@@ -54,6 +56,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
       .eq('job_id', id)
       .maybeSingle(),
     supabase.from('user_profiles').select('experience_years, is_fresher').eq('id', userId).maybeSingle(),
+    // Its own read: before migration 009 the column is missing, and only the pay band goes without it.
+    supabase.from('user_profiles').select('application_kit').eq('id', userId).maybeSingle(),
   ] as const);
   if (jobResult.error) return NextResponse.json({ error: jobResult.error.message }, { status: 500 });
   const job = jobResult.data as any;
@@ -87,6 +91,16 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
     const pay = await greenhousePay(company.ats_identifier, job.external_id);
     if (pay) Object.assign(salary, pay);
   }
+  // The band in the job's currency when it states pay, else in the one you are paid in (Application Kit).
+  const yours = String(kit?.application_kit?.currency || '')
+    .trim()
+    .toUpperCase();
+  const market = await marketBand(supabase, job, salary.currency || (/^[A-Z]{3}$/.test(yours) ? yours : null)).catch(
+    (err) => {
+      console.warn('[JOB] pay band skipped:', err instanceof Error ? err.message : err);
+      return null;
+    },
+  );
 
   return NextResponse.json({
     job: {
@@ -119,6 +133,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ id: 
         }
       : null,
     posting,
+    flags: postingFlags(job),
+    market,
     you: { experienceYears: me ? (me.is_fresher ? 0 : (me.experience_years ?? null)) : null },
   });
 }

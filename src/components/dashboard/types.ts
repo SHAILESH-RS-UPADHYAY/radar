@@ -76,7 +76,9 @@ export const ACTION_STATUS: Record<MatchAction, MatchStatus> = {
   MARK_APPLIED: 'applied',
 };
 
-export function formatSalary(job: MatchedJob['job']): string | null {
+export function formatSalary(
+  job: Pick<MatchedJob['job'], 'salary_min' | 'salary_max' | 'salary_currency'>,
+): string | null {
   if (!job.salary_min && !job.salary_max) return null;
   // Indian pay reads in lakhs per annum: 1800000–2600000 → "18–26 LPA".
   if (job.salary_currency === 'INR' && Math.max(job.salary_min || 0, job.salary_max || 0) >= 100_000) {
@@ -98,7 +100,6 @@ const BOARDS = new Set([
   'himalayas',
   'jobicy',
   'themuse',
-  'adzuna',
   'jooble',
   'weworkremotely',
   'workingnomads',
@@ -216,4 +217,42 @@ export function opsSignals(m: MatchedJob, now = Date.now()): OpsSignal[] {
     }
   }
   return signals;
+}
+
+/** An interview rate split by one thing you did: [callbacks, applications] with it and without it. */
+export interface FunnelSplit {
+  label: string;
+  yes: [number, number];
+  no: [number, number];
+}
+
+/**
+ * C2 · OPS in numbers: how far your applications got, and which habits got more callbacks (screening or further).
+ * A split shows only when both sides have applications. Pure.
+ */
+export function opsFunnel(applied: MatchedJob[]) {
+  const at = (stages: Stage[]) => applied.filter((m) => stages.includes(m.stage || 'applied')).length;
+  const callbacks = (list: MatchedJob[]): [number, number] => [
+    list.filter((m) => ['screening', 'interview', 'offer'].includes(m.stage || 'applied')).length,
+    list.length,
+  ];
+  const split = (label: string, test: (m: MatchedJob) => boolean | null): FunnelSplit => {
+    const known = applied.filter((m) => test(m) !== null);
+    return { label, yes: callbacks(known.filter((m) => test(m))), no: callbacks(known.filter((m) => !test(m))) };
+  };
+  const early = (m: MatchedJob) => {
+    const seen = Date.parse(m.first_seen_at || '');
+    const sent = Date.parse(m.applied_at || '');
+    return Number.isNaN(seen) || Number.isNaN(sent) ? null : sent - seen <= 2 * 86_400_000;
+  };
+  return {
+    applied: applied.length,
+    heardBack: at(['screening', 'interview', 'offer', 'rejected']),
+    callbacks: callbacks(applied)[0],
+    interviews: at(['interview', 'offer']),
+    offers: at(['offer']),
+    splits: [split('TAILORED RESUME', (m) => !!m.resume_version_id), split('APPLIED WITHIN 48H', early)].filter(
+      (s) => s.yes[1] > 0 && s.no[1] > 0,
+    ),
+  };
 }

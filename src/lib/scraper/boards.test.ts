@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { mockFetch } from '@/test/mock-fetch';
-import { adzunaSearchCity, parseHasjobEntry, parseHnPost, parseWwrItem, scrapeBoard } from './boards';
+import { searchCity, parseHasjobEntry, parseHnPost, parseWwrItem, scrapeBoard } from './boards';
 
 describe('parseHnPost', () => {
   it('parses the standard "Company | Role | Location | Salary | url" header', () => {
@@ -32,8 +32,7 @@ describe('keyed job APIs', () => {
     vi.unstubAllEnvs();
   });
 
-  it('skip Adzuna, Jooble, JSearch and Google Jobs without calling out when their keys are missing', async () => {
-    vi.stubEnv('ADZUNA_APP_ID', '');
+  it('skip Jooble, JSearch and Google Jobs without calling out when their keys are missing', async () => {
     vi.stubEnv('JOOBLE_API_KEY', '');
     vi.stubEnv('RAPIDAPI_KEY', '');
     vi.stubEnv('JSEARCH_API_KEY', '');
@@ -41,58 +40,10 @@ describe('keyed job APIs', () => {
     vi.spyOn(console, 'warn').mockImplementation(() => {});
     vi.spyOn(console, 'info').mockImplementation(() => {});
     const fetch = mockFetch({});
-    expect(await scrapeBoard('adzuna')).toEqual([]);
     expect(await scrapeBoard('jooble')).toEqual([]);
     expect(await scrapeBoard('jsearch')).toEqual([]);
     expect(await scrapeBoard('googlejobs')).toEqual([]);
     expect(fetch).not.toHaveBeenCalled();
-  });
-
-  it('maps Adzuna: country-scoped ids, clean titles, stated salaries only', async () => {
-    vi.stubEnv('ADZUNA_APP_ID', 'id');
-    vi.stubEnv('ADZUNA_APP_KEY', 'key');
-    vi.stubEnv('RADAR_ADZUNA_COUNTRIES', 'gb');
-    vi.stubEnv('RADAR_SEARCH_TERMS', 'engineer');
-    mockFetch({
-      'api.adzuna.com/v1/api/jobs/gb/search/1': {
-        results: [
-          {
-            id: '101',
-            title: '<strong>Backend</strong> Engineer',
-            description: 'Python and Postgres',
-            redirect_url: 'https://www.adzuna.co.uk/jobs/land/ad/101',
-            company: { display_name: 'Acme' },
-            location: { display_name: 'London, UK' },
-            created: '2026-09-20T10:00:00Z',
-            salary_min: 60000,
-            salary_max: 80000,
-            salary_is_predicted: '0',
-          },
-          {
-            id: '102',
-            title: 'Data Engineer',
-            description: 'Spark',
-            redirect_url: 'https://www.adzuna.co.uk/jobs/land/ad/102',
-            company: { display_name: 'Beta' },
-            location: { display_name: 'Leeds' },
-            salary_min: 50000,
-            salary_is_predicted: '1',
-          },
-        ],
-      },
-    });
-    const [stated, predicted] = await scrapeBoard('adzuna');
-    expect(stated).toMatchObject({
-      external_id: 'gb:101',
-      title: 'Backend Engineer',
-      employer: 'Acme',
-      location: 'London, UK',
-      salary_min: 60000,
-      salary_max: 80000,
-      salary_currency: 'GBP',
-    });
-    expect(stated.skills).toEqual(expect.arrayContaining(['python', 'postgresql']));
-    expect(predicted).toMatchObject({ external_id: 'gb:102', salary_min: null, salary_currency: null });
   });
 
   it('maps Jobicy to remote jobs that link to the canonical Jobicy URL', async () => {
@@ -142,26 +93,26 @@ describe('parseWwrItem', () => {
   });
 });
 
-describe('adzunaSearchCity', () => {
-  it('maps Gurugram to Gurgaon for Adzuna geographical index', () => {
-    expect(adzunaSearchCity('Gurugram')).toBe('Gurgaon');
-    expect(adzunaSearchCity('gurugram')).toBe('Gurgaon');
-    expect(adzunaSearchCity('gurgaon')).toBe('Gurgaon');
+describe('searchCity', () => {
+  it('maps Gurugram to Gurgaon for job search geography', () => {
+    expect(searchCity('Gurugram')).toBe('Gurgaon');
+    expect(searchCity('gurugram')).toBe('Gurgaon');
+    expect(searchCity('gurgaon')).toBe('Gurgaon');
   });
 
   it('maps Bengaluru to Bangalore', () => {
-    expect(adzunaSearchCity('Bengaluru')).toBe('Bangalore');
-    expect(adzunaSearchCity('banglore')).toBe('Bangalore');
+    expect(searchCity('Bengaluru')).toBe('Bangalore');
+    expect(searchCity('banglore')).toBe('Bangalore');
   });
 
   it('maps SAS Nagar to Mohali', () => {
-    expect(adzunaSearchCity('SAS Nagar')).toBe('Mohali');
+    expect(searchCity('SAS Nagar')).toBe('Mohali');
   });
 
   it('keeps other cities intact', () => {
-    expect(adzunaSearchCity('Mohali')).toBe('Mohali');
-    expect(adzunaSearchCity('Chandigarh')).toBe('Chandigarh');
-    expect(adzunaSearchCity('Noida')).toBe('Noida');
+    expect(searchCity('Mohali')).toBe('Mohali');
+    expect(searchCity('Chandigarh')).toBe('Chandigarh');
+    expect(searchCity('Noida')).toBe('Noida');
   });
 });
 

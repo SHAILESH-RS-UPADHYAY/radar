@@ -353,6 +353,11 @@ export interface JobFacts {
   /** From the ATS feed, else read out of the JD; null when the posting never says. */
   salary: string | null;
   salaryNote: string | null;
+  /** What similar roles in RADAR pay ("18–26 LPA"), with the median and sample size as its note. */
+  market?: string | null;
+  marketNote?: string | null;
+  /** Reasons to think twice before applying (postingFlags). */
+  flags?: string[];
   score: number | null;
   /** Your skills the posting asks for, and the ones it asks for that you have not listed. */
   have: string[];
@@ -395,10 +400,12 @@ export function headerLines(f: JobFacts): TermLine[] {
     field('company', [str(f.company)], f.companyNote),
     field('where', [str(f.where)]),
     field('salary', f.salary ? [str(f.salary)] : [{ text: 'null', tone: 'kw' }], f.salaryNote),
+    ...(f.market ? [field('market', [str(f.market)], f.marketNote)] : []),
     ...(f.score === null ? [] : [field('match', [{ text: String(f.score), tone: 'num' }])]),
     ...(f.missing.length ? [field('gaps', list(f.missing), null, '-')] : []),
     ...(f.have.length ? [field('yours', list(f.have), null, '+')] : []),
     field('posting', [str(f.posting)], f.postingNote, f.posting === 'CLOSED' ? '-' : null),
+    ...(f.flags?.length ? [field('flags', list(f.flags), null, '-')] : []),
     { kind: 'code', mark: null, segs: [{ text: '};', tone: 'plain' }] },
   ];
 }
