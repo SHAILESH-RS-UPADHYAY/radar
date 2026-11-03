@@ -33,13 +33,14 @@ export default function AutopilotPage() {
   const api = useApi();
   const extension = useExtension();
   const [today, setToday] = useState<Today | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState<Notice | null>(null);
   const runner = useRunner(api, today?.queue ?? [], today?.settings ?? null);
 
   const load = useCallback(
-    async (build: boolean) => {
-      const res = await api('/api/autopilot', { method: build ? 'POST' : 'GET' });
+    async (build: boolean, refresh = false) => {
+      const res = await api('/api/autopilot' + (refresh ? '?refresh=1' : ''), { method: build ? 'POST' : 'GET' });
       const d = await res.json().catch(() => ({}));
       if (!res.ok) return setError(d.error || 'HTTP ' + res.status);
       setError('');
@@ -170,6 +171,20 @@ export default function AutopilotPage() {
                     KILL
                   </button>
                 </div>
+                <button
+                  type="button"
+                  disabled={runner.running || refreshing}
+                  onClick={async () => {
+                    setRefreshing(true);
+                    const d = await load(true, true);
+                    setRefreshing(false);
+                    if (d) setNotice({ tone: 'ok', text: `Queue refreshed · ${d.queue.length} jobs for today.` });
+                  }}
+                  title="Pick again from what is eligible now. Jobs already started today keep their place."
+                  className="mt-2 w-full border border-phosphor/30 py-2 font-mono text-[10px] font-bold tracking-[0.2em] text-phosphor/80 transition-colors hover:bg-phosphor/10 disabled:opacity-40"
+                >
+                  {refreshing ? 'REFRESHING' : '↻ REFRESH QUEUE'}
+                </button>
                 <button
                   type="button"
                   onClick={() => void save({ dryRun: !s.dryRun })}

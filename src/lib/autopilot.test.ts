@@ -65,6 +65,13 @@ describe('notEligible', () => {
   });
 });
 
+describe('sources with no form RADAR can fill', () => {
+  it('stay out of the queue', () => {
+    for (const provider of ['indeed_email', 'linkedin_email', 'wttj_email', 'hackernews'])
+      expect(notEligible(job({ provider }), opts)).toBe('no form RADAR can fill');
+  });
+});
+
 describe('pickQueue', () => {
   it('ranks by score, keeps one per company + title and at most perCompany per company', () => {
     const picks = pickQueue(

@@ -78,7 +78,17 @@ async function inject(tabId, frameId) {
     const [frame] = await chrome.webNavigation
       .getAllFrames({ tabId })
       .then((all) => all.filter((f) => f.frameId === frameId));
-    if (frame && NEVER.test(frame.url)) return;
+    if (frame && NEVER.test(frame.url)) {
+      // ZERO-DAY would wait 8 minutes for a tab that can never report: say why at once.
+      const entry = frameId === 0 ? await read(tabId) : null;
+      if (entry && entry.auto)
+        tellRadar(entry, {
+          type: 'autopilot',
+          state: 'parked',
+          reasons: ['LinkedIn and Indeed forms are yours to fill'],
+        });
+      return;
+    }
     if (frameId === 0 && frame && AGGREGATOR.test(frame.url)) {
       const [{ result: href }] = await chrome.scripting.executeScript({ target: { tabId }, func: boardApplyLink });
       // A link that stays on the board is its sign-up or its own apply flow, on your account there: not RADAR's to open.

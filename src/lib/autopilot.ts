@@ -81,6 +81,8 @@ export function cleanAutopilot(raw: unknown): AutopilotSettings {
 
 /** Sites where applying needs an account and a password: never automated (they are left to you). */
 export const ACCOUNT_WALL = new Set(['workday', 'amazon']);
+/** Sources with no form RADAR may fill: LinkedIn and Indeed forbid it, a forum post has none. ↯ HACK opens them for you. */
+export const NO_FORM = new Set(['indeed_email', 'linkedin_email', 'wttj_email', 'hackernews']);
 
 export interface QueueCandidate {
   matchId: string;
@@ -120,6 +122,7 @@ export function notEligible(c: QueueCandidate, o: Omit<PickOptions, 'limit'>): s
   if (c.status === 'applied' || c.status === 'dismissed') return 'already handled';
   if (!inStrictCity(o.cities, c.location, c.workType, o.settings)) return 'outside your cities';
   if (c.provider && ACCOUNT_WALL.has(c.provider)) return 'needs an account';
+  if (c.provider && NO_FORM.has(c.provider)) return 'no form RADAR can fill';
   if (tooSeniorFor(c.experience, o.years)) return 'too senior';
   // Below your Vault bar only with a resume OVERCLOCK already tailored for it (50–79).
   if (c.score < o.bar && !(c.tailored && c.score >= 50)) return 'below your bar';
@@ -274,8 +277,11 @@ export async function parkedToday(supabase: SupabaseClient, userId: string) {
   return data || [];
 }
 
-/** Today's queue, building it the first time it is asked for (idempotent: one per day). */
-export async function todaysQueue(supabase: SupabaseClient, userId: string, build: boolean) {
+/**
+ * Today's queue, building it the first time it is asked for (idempotent: one per day). `refresh` picks again from what
+ * is eligible now for the jobs still waiting; a job already started, finished or parked today keeps its row.
+ */
+export async function todaysQueue(supabase: SupabaseClient, userId: string, build: boolean, refresh = false) {
   const loaded = await loadAutopilot(supabase, userId);
   if (!loaded) return null;
   const day = runDate();
@@ -285,8 +291,26 @@ export async function todaysQueue(supabase: SupabaseClient, userId: string, buil
   if (isSchemaMissing(error)) return null;
   if (error) throw new Error(error.message);
 
-  if (build && !queue?.length) {
-    const picks = pickQueue(loaded.candidates, { ...loaded.options, limit: Math.ceil(loaded.settings.target * 1.2) });
+  if (refresh && queue?.length) {
+    const { error: e } = await supabase
+      .from('apply_queue')
+      .delete()
+      .eq('user_id', userId)
+      .eq('run_date', day)
+      .eq('status', 'queued');
+    if (e) throw new Error(e.message);
+    ({ data: queue, error } = await read());
+    if (error) throw new Error(error.message);
+  }
+
+  if (build && (refresh || !queue?.length)) {
+    const kept = new Set((queue || []).map((r) => r.match_id as string));
+    const start = Math.max(0, ...(queue || []).map((r) => r.rank as number));
+    const limit = Math.max(0, Math.ceil(loaded.settings.target * 1.2) - kept.size);
+    const picks = pickQueue(
+      loaded.candidates.filter((c) => !kept.has(c.matchId)),
+      { ...loaded.options, limit },
+    );
     if (picks.length) {
       const { data: jobs } = await supabase
         .from('jobs')
@@ -309,7 +333,7 @@ export async function todaysQueue(supabase: SupabaseClient, userId: string, buil
           match_id: p.matchId,
           job_id: p.jobId,
           run_date: day,
-          rank: i + 1,
+          rank: start + i + 1,
           ats_provider: p.provider,
           tailored_id: loaded.tailoredByJob.get(p.jobId) ?? null,
           form_url: job

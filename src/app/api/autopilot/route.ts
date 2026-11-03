@@ -8,9 +8,9 @@ export const maxDuration = 60;
 
 const fail = (error: string, status: number) => NextResponse.json({ error }, { status });
 
-async function respond(userId: string, build: boolean) {
+async function respond(userId: string, build: boolean, refresh = false) {
   try {
-    const today = await todaysQueue(createServerClient(), userId, build);
+    const today = await todaysQueue(createServerClient(), userId, build, refresh);
     if (!today) return fail(MIGRATION_HINT, 503);
     return NextResponse.json(today);
   } catch (err) {
@@ -33,10 +33,11 @@ export async function GET(req: NextRequest) {
 }
 
 // POST — build today's queue (once a day; later calls return the same queue).
-export async function POST() {
+// POST ?refresh=1 — pick again for the jobs still waiting; anything already started today stays as it is.
+export async function POST(req: NextRequest) {
   const { userId } = await auth();
   if (!userId) return fail('Unauthorized', 401);
-  return respond(userId, true);
+  return respond(userId, true, req.nextUrl.searchParams.get('refresh') === '1');
 }
 
 // PATCH { settings } — save your autopilot settings (merged with what you have, then checked field by field).
