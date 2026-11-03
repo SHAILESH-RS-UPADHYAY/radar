@@ -265,6 +265,7 @@ export const COMPANY_SEEDS: CompanySeed[] = [
   c('Remote OK', 'https://remoteok.com/', 'remoteok', null, 'Board', 'Remote', 'Global'),
   c('Arbeitnow', 'https://www.arbeitnow.com/', 'arbeitnow', null, 'Board', 'Remote', 'Europe'),
   c('Himalayas', 'https://himalayas.app/', 'himalayas', null, 'Board', 'Remote', 'Global'),
+  c('4 Day Week', 'https://4dayweek.io/', 'fourdayweek', null, 'Board', 'Remote', 'Global'),
   c('Jobicy', 'https://jobicy.com/', 'jobicy', null, 'Board', 'Remote', 'Global'),
   c('The Muse', 'https://www.themuse.com/', 'themuse', null, 'Board', null, 'Global'),
   c('Jooble', 'https://jooble.org/', 'jooble', null, 'Board', null, 'Global'),

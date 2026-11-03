@@ -46,6 +46,31 @@ describe('keyed job APIs', () => {
     expect(fetch).not.toHaveBeenCalled();
   });
 
+  it('maps 4 Day Week: one job per id across its searches, linked to its page there', async () => {
+    const job = {
+      id: 'a1',
+      title: 'Backend Engineer',
+      description: '## **About**\nGo and Postgres',
+      url: 'https://4dayweek.io/job/a1',
+      category: 'engineering',
+      work_arrangement: 'remote',
+      locations: [{ city: 'Pune', country: 'India' }],
+      posted_at: '2026-11-01T00:00:00Z',
+      company: { name: 'Acme' },
+    };
+    mockFetch({ '4dayweek.io/api/v2/jobs': { data: [job], has_more: false } });
+    const jobs = await scrapeBoard('fourdayweek');
+    expect(jobs).toHaveLength(1);
+    expect(jobs[0]).toMatchObject({
+      external_id: 'a1',
+      location: 'Remote (Pune, India)',
+      apply_url: 'https://4dayweek.io/job/a1',
+      employer: 'Acme',
+      work_type: 'remote',
+    });
+    expect(jobs[0].description).toBe('About\nGo and Postgres');
+  });
+
   it('maps Jobicy to remote jobs that link to the canonical Jobicy URL', async () => {
     vi.stubEnv('RADAR_JOBICY_INDUSTRIES', 'engineering');
     mockFetch({

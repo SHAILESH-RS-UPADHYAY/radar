@@ -16,7 +16,7 @@ const Body = z.object({
 
 // The boards whose links pass through to the employer: their own page is never where you apply.
 const PASS_THROUGH =
-  /(^|\.)(adzuna\.[a-z.]+|jooble\.org|arbeitnow\.com|himalayas\.app|jobicy\.com|themuse\.com|remoteok\.com|remotive\.com|weworkremotely\.com|workingnomads\.com|hasjob\.co)$/i;
+  /(^|\.)(adzuna\.[a-z.]+|jooble\.org|arbeitnow\.com|himalayas\.app|jobicy\.com|4dayweek\.io|themuse\.com|remoteok\.com|remotive\.com|weworkremotely\.com|workingnomads\.com|hasjob\.co)$/i;
 
 // POST { matchId, url } — the extension followed a job board's link (Adzuna, Jooble) to the employer's page in your
 // own browser. RADAR keeps where the job really applies: the next ↯ HACK opens that page directly (and reads its form

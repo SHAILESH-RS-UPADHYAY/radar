@@ -100,6 +100,7 @@ const BOARDS = new Set([
   'arbeitnow',
   'himalayas',
   'jobicy',
+  'fourdayweek',
   'themuse',
   'jooble',
   'weworkremotely',

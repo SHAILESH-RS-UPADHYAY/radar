@@ -9,6 +9,7 @@
 //   remoteok    remoteok.com/api — ToS: credit Remote OK and link to the job URL
 //   arbeitnow   arbeitnow.com/api/job-board-api
 //   himalayas   himalayas.app/jobs/api
+//   fourdayweek  4dayweek.io/api/v2 — free, public, no key; asks for a link back: every job links to its page there
 //   jobicy      jobicy.com/api/v2 — ToS: keep Jobicy as the source, link its canonical job URL, at most hourly
 //   themuse     themuse.com/api/public/jobs — public, 500 requests/hour without a key; link back to The Muse
 //   jooble      jooble.org/api — official API, needs JOOBLE_API_KEY; descriptions are snippets
@@ -52,6 +53,8 @@ export async function scrapeBoard(provider: string): Promise<ScrapedJob[]> {
       return scrapeHimalayas();
     case 'jobicy':
       return scrapeJobicy();
+    case 'fourdayweek':
+      return scrapeFourDayWeek();
     case 'themuse':
       return scrapeTheMuse();
     case 'jooble':
@@ -332,6 +335,44 @@ async function scrapeHimalayas(): Promise<ScrapedJob[]> {
     if (!cursor) break;
   }
   return jobs;
+}
+
+// ---------- 4 Day Week (free public API: India, and remote anywhere) ----------
+async function scrapeFourDayWeek(): Promise<ScrapedJob[]> {
+  const jobs = new Map<string, ScrapedJob>();
+  for (const where of ['country=India', 'work_arrangement=remote']) {
+    for (let page = 1; page <= 3; page++) {
+      const data = await fetchJson<any>(
+        `https://4dayweek.io/api/v2/jobs?category=engineering,data&posted_after=30&limit=100&page=${page}&${where}`,
+      );
+      for (const job of data.data || []) {
+        const place = (job.locations || [])
+          .map((l: any) => [l.city, l.country].filter(Boolean).join(', '))
+          .filter(Boolean)
+          .join(' · ');
+        const remote = job.work_arrangement === 'remote';
+        jobs.set(
+          String(job.id),
+          finalizeJob({
+            external_id: String(job.id),
+            title: job.title || '',
+            description: String(job.description || '').replace(/\*\*|^#+\s*/gm, ''),
+            location: remote ? 'Remote' + (place ? ' (' + place + ')' : '') : place,
+            apply_url: job.url || '',
+            department: job.category || null,
+            work_type: remote ? 'remote' : null,
+            salary_min: null,
+            salary_max: null,
+            salary_currency: null,
+            posted_at: toIso(job.posted_at),
+            employer: job.company?.name || null,
+          }),
+        );
+      }
+      if (!data.has_more) break;
+    }
+  }
+  return [...jobs.values()];
 }
 
 // ---------- Jobicy (remote, worldwide) ----------

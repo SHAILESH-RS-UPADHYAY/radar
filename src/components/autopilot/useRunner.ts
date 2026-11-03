@@ -126,6 +126,10 @@ export function useRunner(api: ReturnType<typeof useApi>, rows: QueueRow[], sett
     if (!running || !settings) return;
     const tick = setInterval(() => {
       const now = Date.now();
+      // A job left filling when this page was reloaded: its tab may still report, and the watchdog covers it if not.
+      for (const r of viewRef.current)
+        if (r.status === 'filling' && !active.current.has(r.match_id))
+          active.current.set(r.match_id, { rowId: r.id, at: Date.parse(r.started_at || '') || now });
       for (const [matchId, a] of active.current)
         if (now - a.at > WATCHDOG_MS) {
           const row = viewRef.current.find((r) => r.id === a.rowId);

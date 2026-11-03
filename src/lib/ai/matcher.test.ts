@@ -77,7 +77,8 @@ describe('computeMatchScore', () => {
 
   it('boosts titles that match a target role, ignoring seniority words', () => {
     const roles = ['AI Engineer', 'Software Engineer'];
-    const hit = computeMatchScore({ ...base, targetRoles: roles, jobTitle: 'Senior Software Engineer II, Payments' });
+    // Seniority words do not stop the title match (the senior-title markdown has its own test).
+    const hit = computeMatchScore({ ...base, targetRoles: roles, jobTitle: 'Junior Software Engineer II, Payments' });
     expect(hit.score).toBe(computeMatchScore(base).score + 10);
     expect(hit.reasoning).toContain('Title matches Software Engineer');
     expect(matchedRole(roles, 'AI/ML Engineer')).toBe('AI Engineer');
@@ -122,5 +123,33 @@ describe('computeMatchScore', () => {
       computeMatchScore({ ...base, jobExperience: '3-5', userIsFresher: false, userExperienceYears: 3 }).tooSenior,
     ).toBe(false);
     expect(computeMatchScore({ ...base, jobExperience: '1-3' }).tooSenior).toBe(false);
+  });
+});
+
+describe('thin evidence and senior titles', () => {
+  const base = {
+    userSkills: ['ai agents', 'python'],
+    vectorSimilarity: 0.45,
+    isDreamCompany: false,
+    companyCategory: 'Mnc',
+    userIsFresher: false,
+    userExperienceYears: 1,
+    jobExperience: null,
+    userCities: [],
+    jobLocation: null,
+    jobWorkType: null,
+    targetRoles: [],
+    jobTitle: 'Analyst',
+    postedAt: null,
+  };
+  it('does not let one listed skill decide a match', () => {
+    const one = computeMatchScore({ ...base, jobSkills: ['ai agents'] } as never).score;
+    const three = computeMatchScore({ ...base, jobSkills: ['ai agents', 'python', 'python3'] } as never).score;
+    expect(one).toBeLessThan(three);
+  });
+  it('marks down a senior title when the posting states no years', () => {
+    const plain = computeMatchScore({ ...base, jobSkills: [], jobTitle: 'AI Engineer' } as never);
+    const lead = computeMatchScore({ ...base, jobSkills: [], jobTitle: 'Lead AI Engineer' } as never);
+    expect(plain.score - lead.score).toBe(15);
   });
 });

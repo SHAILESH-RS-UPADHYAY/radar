@@ -31,6 +31,7 @@ const BOARD_NOTES: Partial<Record<Provider, string>> = {
   arbeitnow: 'European tech roles, many visa-friendly',
   himalayas: 'Remote roles worldwide',
   jobicy: 'Remote engineering and data roles, credited to Jobicy',
+  fourdayweek: 'Engineering and data roles in India and remote, each linked to its page on 4dayweek.io',
   themuse: 'Software engineering in major cities and remote',
   jooble: 'Official multi-country search API (needs a key)',
 };

@@ -25,6 +25,7 @@ export const BOARD_PROVIDERS = [
   'arbeitnow',
   'himalayas',
   'jobicy',
+  'fourdayweek',
   'themuse',
   'jooble',
   'weworkremotely',

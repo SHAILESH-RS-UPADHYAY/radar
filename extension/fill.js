@@ -533,8 +533,12 @@
   let keptPdf;
   const keptResume = async () => (keptPdf === undefined ? (keptPdf = await ask({ type: 'resume-file' })) : keptPdf);
 
+  // Greenhouse takes the file and empties its input: remember it, or the next pass uploads it again and pre-flight
+  // says "no resume attached" about a form that shows your PDF.
+  let attachedHere = false;
   function attach(resume) {
     const input = fileInput();
+    if (attachedHere) return 'kept';
     if (!input || !resume) return 'none';
     if (input.files && input.files.length) return 'kept';
     const bin = atob(resume.data);
@@ -546,6 +550,7 @@
     input.dispatchEvent(new Event('input', { bubbles: true }));
     input.dispatchEvent(new Event('change', { bubbles: true }));
     glow(input);
+    attachedHere = true;
     return 'attached';
   }
 
@@ -1134,7 +1139,7 @@
       needs: open.filter((q) => q.kind !== 'checkbox' && q.kind !== 'file').map((q) => q.label),
       consents: open.filter((q) => q.kind === 'checkbox').map((q) => q.label),
       fileInput: !!input,
-      resume: input && input.files && input.files.length ? 'attached' : 'none',
+      resume: attachedHere || (input && input.files && input.files.length) ? 'attached' : 'none',
       captcha: captchaNow(),
       password: deepAll(document, 'input[type=password]').some(visible),
       submits: submitCandidates().length,

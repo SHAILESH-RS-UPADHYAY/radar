@@ -25,6 +25,7 @@ export const SOURCE_NAMES: Record<Exclude<Provider, 'custom'>, string> = {
   arbeitnow: 'Arbeitnow',
   himalayas: 'Himalayas',
   jobicy: 'Jobicy',
+  fourdayweek: '4 Day Week',
   themuse: 'The Muse',
   jooble: 'Jooble',
   weworkremotely: 'We Work Remotely',

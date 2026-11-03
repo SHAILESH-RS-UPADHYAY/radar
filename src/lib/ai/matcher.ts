@@ -102,6 +102,8 @@ export function tooSeniorFor(jobExperience: string | null | undefined, years: nu
   return (jobExperience === '5+' && years < 4) || (jobExperience === '3-5' && years < 2);
 }
 
+const SENIOR_TITLE = /\b(senior|sr\.?|lead|staff|principal|head of|director|architect)\b/i;
+
 export function computeMatchScore(input: MatchInput): MatchResult {
   const userSkills = new Set(input.userSkills.map(normalizeSkill));
   const jobSkills = [...new Set(input.jobSkills.map(normalizeSkill))];
@@ -113,7 +115,11 @@ export function computeMatchScore(input: MatchInput): MatchResult {
   // (A fixed "neutral" skill score used to lift non-tech jobs, which list no tech skills, above real matches.)
   const vectorScore = vectorToScore(input.vectorSimilarity);
   const comparable = jobSkills.length > 0 && userSkills.size > 0;
-  let score = comparable ? vectorScore * 0.6 + (matchingSkills.length / jobSkills.length) * 100 * 0.4 : vectorScore;
+  // Skills count fully from three listed: "1 of 1" is thin evidence, and it put a finance analyst at 89%.
+  const skillWeight = (0.4 * Math.min(jobSkills.length, 3)) / 3;
+  let score = comparable
+    ? vectorScore * (1 - skillWeight) + (matchingSkills.length / jobSkills.length) * 100 * skillWeight
+    : vectorScore;
 
   const role = matchedRole(input.targetRoles, input.jobTitle);
   if (role) score += 10;
@@ -130,6 +136,10 @@ export function computeMatchScore(input: MatchInput): MatchResult {
   } else if ((input.jobExperience === 'fresher' || input.jobExperience === '0-1') && years <= 2) {
     score += 5;
     seniorityNote = 'Entry-level friendly';
+  } else if (!input.jobExperience && years < 3 && SENIOR_TITLE.test(input.jobTitle || '')) {
+    // Many postings state no years; the title still says who they want.
+    score -= 15;
+    seniorityNote = 'Senior title';
   }
 
   // You asked for startups first: a small lift for startups and growth companies over large corporations.

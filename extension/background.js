@@ -50,7 +50,7 @@ const NEVER = /^https:\/\/([^/]+\.)?(linkedin\.com|indeed\.[a-z.]+)\//i;
 // Job boards whose page is a listing, not the form (Adzuna's /details/, Jooble): follow their Apply link in the same
 // tab, so the employer's form loads in a tab RADAR already tracks. Their own search forms are never filled.
 const AGGREGATOR =
-  /^https:\/\/([^/]+\.)?(adzuna\.[a-z.]+|jooble\.org|arbeitnow\.com|himalayas\.app|jobicy\.com|themuse\.com|remoteok\.com|remotive\.com|weworkremotely\.com|workingnomads\.com|hasjob\.co)\//i;
+  /^https:\/\/([^/]+\.)?(adzuna\.[a-z.]+|jooble\.org|arbeitnow\.com|himalayas\.app|jobicy\.com|4dayweek\.io|themuse\.com|remoteok\.com|remotive\.com|weworkremotely\.com|workingnomads\.com|hasjob\.co)\//i;
 // Boards an aggregator hands jobs to whose Apply is a one-click button on your account there, not a form.
 const HOSTED_BOARD =
   /(^|\.)(cutshort\.io|naukri\.com|foundit\.in|instahyre\.com|iimjobs\.com|hirist\.tech|shine\.com|timesjobs\.com)$/i;
