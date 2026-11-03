@@ -1387,14 +1387,22 @@
       return;
     }
     if (WORKDAY) await enterWorkday(entry.packet, hud);
-    if (accountWall()) {
-      if (AUTO) return park(hud, ['this site needs you to sign in']);
+    // A sign-in page, however late it draws: the wait below watches for it too.
+    let toldWall = false;
+    const tellWall = () => {
+      if (toldWall) return;
+      toldWall = true;
       hud.state('SIGN IN', '#FFB000');
       hud.log(
         'SYS',
         `${location.hostname.split('.')[0]} asks for its own account: sign in or create one on this page. The password stays yours. RADAR fills the form the moment you are in.`,
         'dim',
       );
+    };
+    if (WORKDAY) for (let i = 0; i < 12 && !accountWall() && !hasForm(entry.packet); i++) await sleep(500);
+    if (accountWall()) {
+      if (AUTO) return park(hud, ['this site needs you to sign in']);
+      tellWall();
       if (!(await formAppears(entry.packet, () => false, 1800))) return;
       hud.state('FILLING');
       return session(entry.packet, entry.version, hud);
@@ -1416,7 +1424,10 @@
         'dim',
       );
     }
-    if (!(await formAppears(entry.packet, inFrame, AUTO ? 90 : 600))) {
+    const watchWall = AUTO ? null : setInterval(() => accountWall() && tellWall(), 1000);
+    const appeared = await formAppears(entry.packet, inFrame, AUTO ? 90 : WORKDAY ? 1800 : 600);
+    clearInterval(watchWall);
+    if (!appeared) {
       if (fromFrame) return;
       if (AUTO) return park(hud, ['the form did not appear']);
       hud.state('NO FORM', '#FF5555');
