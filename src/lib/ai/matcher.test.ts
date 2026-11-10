@@ -40,7 +40,7 @@ describe('computeMatchScore', () => {
   it('penalizes senior roles for freshers', () => {
     const open = computeMatchScore(base).score;
     const senior = computeMatchScore({ ...base, jobExperience: '5+' });
-    expect(senior.score).toBe(open - 30);
+    expect(senior.score).toBe(open - 40);
     expect(senior.reasoning).toContain('Senior role');
   });
 
@@ -150,6 +150,33 @@ describe('thin evidence and senior titles', () => {
   it('marks down a senior title when the posting states no years', () => {
     const plain = computeMatchScore({ ...base, jobSkills: [], jobTitle: 'AI Engineer' } as never);
     const lead = computeMatchScore({ ...base, jobSkills: [], jobTitle: 'Lead AI Engineer' } as never);
-    expect(plain.score - lead.score).toBe(15);
+    expect(plain.score - lead.score).toBe(25);
+  });
+});
+
+describe('seniority after the cap', () => {
+  it('keeps a senior title off the top for someone with one year, whatever the bonuses', () => {
+    const strong = {
+      userSkills: ['python'],
+      jobSkills: [],
+      vectorSimilarity: SIM_CEIL,
+      isDreamCompany: false,
+      companyCategory: 'Startup',
+      userIsFresher: false,
+      userExperienceYears: 1,
+      jobExperience: null,
+      userCities: [],
+      jobLocation: null,
+      jobWorkType: null,
+      targetRoles: ['Full Stack Engineer'],
+      postedAt: null,
+    };
+    const senior = computeMatchScore({ ...strong, jobTitle: 'Senior Full Stack Engineer' } as never);
+    expect(senior.score).toBe(75);
+    expect(senior.tooSenior).toBe(true);
+    expect(computeMatchScore({ ...strong, jobTitle: 'Staff Full Stack Engineer' } as never).score).toBe(60);
+    const plain = computeMatchScore({ ...strong, jobTitle: 'Full Stack Engineer' } as never);
+    expect(plain.score).toBe(100);
+    expect(plain.tooSenior).toBe(false);
   });
 });

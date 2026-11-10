@@ -123,7 +123,7 @@ export function notEligible(c: QueueCandidate, o: Omit<PickOptions, 'limit'>): s
   if (!inStrictCity(o.cities, c.location, c.workType, o.settings)) return 'outside your cities';
   if (c.provider && ACCOUNT_WALL.has(c.provider)) return 'needs an account';
   if (c.provider && NO_FORM.has(c.provider)) return 'no form RADAR can fill';
-  if (tooSeniorFor(c.experience, o.years)) return 'too senior';
+  if (tooSeniorFor(c.experience, o.years, c.title)) return 'too senior';
   // Below your Vault bar only with a resume OVERCLOCK already tailored for it (50–79).
   if (c.score < o.bar && !(c.tailored && c.score >= 50)) return 'below your bar';
   const key = jobKey(c.company, c.title);

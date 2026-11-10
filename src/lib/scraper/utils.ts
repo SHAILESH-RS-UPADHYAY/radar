@@ -173,11 +173,19 @@ export function inferExperience(title: string, description = ''): ExperienceLeve
   // A title such as "Senior" or "Lead" says nothing reliable about years: only the years the JD states count.
 
   const d = description.toLowerCase();
-  const years = d.match(/(\d{1,2})\s*\+?\s*(?:-|–|to)?\s*(\d{1,2})?\s*\+?\s*years?/);
-  if (years) {
-    const min = parseInt(years[1], 10);
+  // The most years any line asks for ("1+ years with LLMs" beside "5+ years of software" is a 5-year role). It used to
+  // be the first number in the text, and only "years": "3+ yrs" was missed and a senior role read as 0-1.
+  let min = -1;
+  for (const m of d.matchAll(/(\d{1,2})\s*\+?\s*(?:(?:-|–|to)\s*\d{1,2}\s*\+?\s*)?(?:years?|yrs?)\b([^.\n]{0,24})/g)) {
+    const before = d.slice(Math.max(0, m.index - 28), m.index);
+    // Not experience: the company's age, a vesting or contract term, an age limit.
+    if (/\b(old|older|of age|ago|vest|contract|warranty|anniversary)/.test(m[2])) continue;
+    if (/\b(last|past|next|over|for more than|founded|every)\s*$/.test(before.trimEnd() + ' ')) continue;
+    min = Math.max(min, parseInt(m[1], 10));
+  }
+  if (min >= 0) {
     if (min <= 1) return '0-1';
-    if (min <= 3) return '1-3';
+    if (min <= 2) return '1-3';
     if (min <= 5) return '3-5';
     return '5+';
   }

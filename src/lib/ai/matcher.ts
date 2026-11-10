@@ -98,11 +98,19 @@ export function freshness(postedAt: string | null | undefined, now = Date.now())
 }
 
 /** A role asking for clearly more experience than you have: the auto-vault and autopilot both leave it out. */
-export function tooSeniorFor(jobExperience: string | null | undefined, years: number): boolean {
-  return (jobExperience === '5+' && years < 4) || (jobExperience === '3-5' && years < 2);
+export function tooSeniorFor(jobExperience: string | null | undefined, years: number, title = ''): boolean {
+  return (
+    (jobExperience === '5+' && years < 4) ||
+    (jobExperience === '3-5' && years < 3) ||
+    (!jobExperience && seniorTitlePenalty(title, years) > 0)
+  );
 }
 
-const SENIOR_TITLE = /\b(senior|sr\.?|lead|staff|principal|head of|director|architect)\b/i;
+// Most postings state no years; the title still says who they want. Senior usually means 4+, staff and up 7+.
+const SENIOR_TITLE = /\b(senior|sr\.?|lead)\b/i;
+const STAFF_TITLE = /\b(staff|principal|head of|director|architect|distinguished|fellow)\b/i;
+const seniorTitlePenalty = (title: string, years: number) =>
+  STAFF_TITLE.test(title) && years < 6 ? 40 : SENIOR_TITLE.test(title) && years < 3 ? 25 : 0;
 
 export function computeMatchScore(input: MatchInput): MatchResult {
   const userSkills = new Set(input.userSkills.map(normalizeSkill));
@@ -124,22 +132,24 @@ export function computeMatchScore(input: MatchInput): MatchResult {
   const role = matchedRole(input.targetRoles, input.jobTitle);
   if (role) score += 10;
 
-  // Seniority fit
+  // Seniority fit. The penalty comes off after the bonuses are capped at 100: a strong match with every bonus used
+  // to sit at 121 before the cap, so "Senior Full-Stack Engineer" stayed at 100% for someone with one year.
   const years = input.userIsFresher ? 0 : input.userExperienceYears;
   let seniorityNote = '';
+  let penalty = 0;
+  const titlePenalty = input.jobExperience ? 0 : seniorTitlePenalty(input.jobTitle || '', years);
   if (input.jobExperience === '5+' && years < 4) {
-    score -= 30;
+    penalty = 40;
     seniorityNote = 'Senior role (5+ yrs)';
-  } else if (input.jobExperience === '3-5' && years < 2) {
-    score -= 15;
-    seniorityNote = 'Asks for 3-5 yrs';
+  } else if (input.jobExperience === '3-5' && years < 3) {
+    penalty = years < 2 ? 25 : 10;
+    seniorityNote = 'Asks for 3+ yrs';
   } else if ((input.jobExperience === 'fresher' || input.jobExperience === '0-1') && years <= 2) {
     score += 5;
     seniorityNote = 'Entry-level friendly';
-  } else if (!input.jobExperience && years < 3 && SENIOR_TITLE.test(input.jobTitle || '')) {
-    // Many postings state no years; the title still says who they want.
-    score -= 15;
-    seniorityNote = 'Senior title';
+  } else if (titlePenalty) {
+    penalty = titlePenalty;
+    seniorityNote = titlePenalty >= 40 ? 'Staff-level title' : 'Senior title';
   }
 
   // You asked for startups first: a small lift for startups and growth companies over large corporations.
@@ -152,7 +162,7 @@ export function computeMatchScore(input: MatchInput): MatchResult {
   const fresh = freshness(input.postedAt, input.now);
   score += fresh.delta;
 
-  const finalScore = Math.round(Math.max(0, Math.min(100, score)));
+  const finalScore = Math.round(Math.max(0, Math.min(100, score) - penalty));
 
   const section: MatchResult['section'] = input.isDreamCompany
     ? 'dream'
@@ -178,6 +188,6 @@ export function computeMatchScore(input: MatchInput): MatchResult {
     matchingSkills,
     missingSkills,
     section,
-    tooSenior: tooSeniorFor(input.jobExperience, years),
+    tooSenior: tooSeniorFor(input.jobExperience, years, input.jobTitle || ''),
   };
 }

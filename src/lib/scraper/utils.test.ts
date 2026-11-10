@@ -78,7 +78,15 @@ describe('inferExperience', () => {
     expect(inferExperience('Associate Engineer')).toBe('0-1');
   });
   it('falls back to years in the description', () => {
-    expect(inferExperience('Backend Engineer', 'You have 3-5 years of experience')).toBe('1-3');
+    expect(inferExperience('Backend Engineer', 'You have 3-5 years of experience')).toBe('3-5');
+    expect(inferExperience('Backend Engineer', 'Experience: 3+ yrs')).toBe('3-5');
+    expect(inferExperience('Backend Engineer', '2+ years of Python')).toBe('1-3');
+    // The highest ask wins, and numbers that are not experience are skipped.
+    expect(inferExperience('AI Engineer', '1+ years with LLMs.\n5+ years of software engineering')).toBe('3-5');
+    expect(inferExperience('AI Engineer', 'Founded 12 years ago. Options vest over 4 years. 1+ years of Go')).toBe(
+      '0-1',
+    );
+    expect(inferExperience('AI Engineer', 'Over the last 10 years we grew. Must be 18 years or older.')).toBeNull();
     expect(inferExperience('Backend Engineer', '6+ years')).toBe('5+');
     expect(inferExperience('Backend Engineer', 'no numbers here')).toBeNull();
   });
