@@ -59,6 +59,17 @@ export function placeFit(cities: string[], location: string | null | undefined, 
     .find((c) => cityAliases(c).some((alias) => hasPlace(loc, alias)));
   if (city) return { kind: 'city', city };
   if (workType === 'remote' || hasPlace(loc, 'remote')) {
+    // Remote, but only for people in places abroad ("Remote (United States)", "Remote (Germany, Portugal)") while every
+    // city of yours is in India: not a job you can take from home, so it counts as elsewhere.
+    // A list that includes a region India is part of ("Remote (Europe, LATAM, APAC)") is still open to you.
+    const home = wanted.filter((c) => c.toLowerCase() !== 'remote');
+    if (
+      home.length &&
+      locatedInIndia(location) === false &&
+      !/\b(apac|asia|worldwide|global|anywhere|international)\b/.test(loc) &&
+      home.every((c) => locatedInIndia(c) === true)
+    )
+      return { kind: 'elsewhere' };
     return { kind: 'remote', wanted: wanted.some((c) => c.toLowerCase() === 'remote') };
   }
   return { kind: 'elsewhere' };
@@ -91,8 +102,18 @@ export const isKnownCity = (name: string) => {
 const FOREIGN_CITIES = new Set(['San Francisco', 'New York', 'London', 'Toronto', 'Singapore', 'Dubai']);
 const INDIA_PLACES =
   /\b(india|bharat|karnataka|maharashtra|telangana|tamil nadu|haryana|uttar pradesh|kerala|gujarat|west bengal|punjab|rajasthan|madhya pradesh|odisha|andhra pradesh|goa|indore|lucknow|bhubaneswar|nagpur|mysuru|mysore|visakhapatnam|vizag|surat|vadodara|bhopal|patna|mangaluru|mangalore|trichy|tiruchirappalli|dehradun|nashik)\b/;
+// Words that name nowhere in particular. They split a location too: "Remote (APAC)" says nothing, "Remote (United
+// States)" names a place.
 const NOWHERE_IN_PARTICULAR =
-  /^(remote|anywhere|worldwide|global|multiple locations?|various|flexible|hybrid|on-?site|apac|asia)?$/;
+  /\b(remote|anywhere|worldwide|global|international|multiple locations?|various|flexible|hybrid|on-?site|work from home|wfh|apac|asia[- ]pacific|asia)\b/g;
+// Every alias of every Indian city in one pattern, built once: this runs for each job on every scan and render.
+const INDIAN_CITY = new RegExp(
+  `(^|[^a-z])(${Object.keys(CITY_ALIASES)
+    .filter((k) => !FOREIGN_CITIES.has(k))
+    .flatMap((k) => CITY_ALIASES[k])
+    .map(escape)
+    .join('|')})($|[^a-z])`,
+);
 
 /**
  * Whether a job's location is in India: true, false (a place abroad), or null when it does not say ("Remote",
@@ -100,14 +121,13 @@ const NOWHERE_IN_PARTICULAR =
  */
 export function locatedInIndia(location: string | null | undefined): boolean | null {
   const loc = (location || '').toLowerCase();
-  if (INDIA_PLACES.test(loc) || /,\s*in\s*$/.test(loc)) return true;
-  const indian = Object.keys(CITY_ALIASES).filter((k) => !FOREIGN_CITIES.has(k));
-  if (indian.some((k) => CITY_ALIASES[k].some((alias) => hasPlace(loc, alias)))) return true;
+  if (INDIA_PLACES.test(loc) || /,\s*in\s*$/.test(loc) || INDIAN_CITY.test(loc)) return true;
   const rest = loc
     .replace(/[()[\]]/g, ' ')
+    .replace(NOWHERE_IN_PARTICULAR, ',')
     .split(/[,;/|·•]+|\s+(?:or|and)\s+/)
-    .map((p) => p.trim())
-    .filter((p) => !NOWHERE_IN_PARTICULAR.test(p));
+    .map((p) => p.replace(/^[\s\-–—:]+|[\s\-–—:]+$/g, ''))
+    .filter(Boolean);
   return rest.length ? false : null;
 }
 

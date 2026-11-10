@@ -11,13 +11,12 @@ import {
   activeSpace,
   embedText,
   parseEmbedding,
-  searchSimilarJobs,
-  similarityTo,
+  similarityAll,
   spaceColumns,
   toVectorLiteral,
 } from '@/lib/ai/embeddings';
 import { computeMatchScore, type MatchInput } from '@/lib/ai/matcher';
-import { extractSkills, jobKey } from '@/lib/scraper/utils';
+import { extractSkills, jobKey, mapLimit } from '@/lib/scraper/utils';
 import { splitList } from '@/lib/profile';
 import { cityAliases } from '@/lib/geo/city-companies';
 import { gateForVault } from './verify';
@@ -169,21 +168,34 @@ export async function matchUser(
   const dreamIds = new Set((dreamRows || []).map((d: { company_id: string }) => d.company_id));
 
   const empty = { userId, total: 0, vaulted: 0, sections: { dream: 0, recommended: 0, startup: 0 } };
-  const vectorMatches = await searchSimilarJobs(embedding, TOP_K, space);
+  // Every open job's similarity to the resume, once. The closest TOP_K are the candidates; the groups below (dream
+  // companies, your cities, your alerts, the matches you already see) are scored with their real value from it.
+  const sims = await similarityAll(embedding, space);
+  const vectorMatches = [...sims]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, TOP_K)
+    .map(([id, score]) => ({ id, score }));
   if (vectorMatches.length === 0) return { ...empty, message: 'No jobs indexed yet. Run a scrape first.' };
 
-  const simById = new Map(vectorMatches.map((m) => [m.id, m.score || 0]));
+  const simById = new Map(vectorMatches.map((m) => [m.id, m.score]));
   const sample = vectorMatches.slice(0, SCOPE_SAMPLE);
   report({
     stage: 'search',
     candidates: vectorMatches.length,
     min: Math.min(...simById.values()),
     max: Math.max(...simById.values()),
-    sims: sample.map((m) => Math.round((m.score || 0) * 1000) / 1000),
+    sims: sample.map((m) => Math.round(m.score * 1000) / 1000),
   });
-  const ids = [...simById.keys()];
+  /** Score these jobs too. One without a vector yet is skipped: it has nothing to be compared by. */
+  const alsoScore = (jobIds: string[]) => {
+    for (const id of jobIds) {
+      const sim = sims.get(id);
+      if (sim !== undefined) simById.set(id, sim);
+    }
+  };
 
-  // Dream-company jobs always get scored, even if they fell outside the vector top-K.
+  // Dream-company jobs always get scored, even if they fell outside the vector top-K; one not embedded yet still
+  // shows, at the floor (see floorSim).
   const dreamJobIds: string[] = [];
   if (dreamIds.size) {
     const { data } = await supabase
@@ -193,10 +205,11 @@ export async function matchUser(
       .eq('is_active', true)
       .limit(1000);
     for (const j of data || []) if (!simById.has(j.id)) dreamJobIds.push(j.id);
+    alsoScore(dreamJobIds);
   }
 
-  // Jobs in your cities always get scored too, with their real similarity: local listings (short snippets)
-  // rarely reach the vector top-K, which is why Mohali showed nothing.
+  // Jobs in your cities always get scored too: local listings (short snippets) rarely reach the vector top-K, which
+  // is why Mohali showed nothing.
   const aliases = [...new Set(splitList(profile.location).flatMap((c) => cityAliases(c)))].filter(
     (a) => a.length > 2 && !/[,()%]/.test(a),
   );
@@ -207,12 +220,7 @@ export async function matchUser(
       .eq('is_active', true)
       .or(aliases.map((a) => `location.ilike.%${a}%`).join(','))
       .limit(2000);
-    const local = (data || []).map((j) => j.id as string).filter((id) => !simById.has(id));
-    const sims = await similarityTo(embedding, local, space).catch((e) => {
-      console.error('[MATCH] city jobs not scored:', e instanceof Error ? e.message : e);
-      return new Map<string, number>();
-    });
-    for (const [id, sim] of sims) simById.set(id, sim);
+    alsoScore((data || []).map((j) => j.id as string));
   }
 
   // Jobs from your own alert emails always get scored too: you asked for them, and their short cards rarely reach
@@ -231,12 +239,23 @@ export async function matchUser(
       )
       .eq('is_active', true)
       .limit(2000);
-    const alerts = (data || []).map((j) => j.id as string).filter((id) => !simById.has(id));
-    const sims = await similarityTo(embedding, alerts, space).catch((e) => {
-      console.error('[MATCH] alert jobs not scored:', e instanceof Error ? e.message : e);
-      return new Map<string, number>();
-    });
-    for (const [id, sim] of sims) simById.set(id, sim);
+    alsoScore((data || []).map((j) => j.id as string));
+  }
+
+  // Every match you can still see (Discovery, the Vault) is scored again on each scan. Before, only today's candidates
+  // were: a match that had dropped out of them kept its old score for good. On 2026-11-10 that was 394 rows, 111 of them
+  // at 70+ and the oldest from September, with "Senior Full-Stack Engineer" still at 100 from a scan a month earlier.
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from('match_scores')
+      .select('job_id')
+      .eq('user_id', userId)
+      .in('status', ['new', 'saved'])
+      .order('job_id')
+      .range(from, from + 999);
+    if (error) throw new MatchError('Reading your matches failed: ' + error.message, 500);
+    alsoScore((data || []).map((m) => m.job_id as string));
+    if (!data || data.length < 1000) break;
   }
 
   type JobRow = {
@@ -251,24 +270,29 @@ export async function matchUser(
     company_id: string;
     companies: { category: string; name: string } | { category: string; name: string }[];
   };
-  const jobs: JobRow[] = [];
-  const allIds = [...new Set([...ids, ...simById.keys(), ...dreamJobIds])];
-  for (let i = 0; i < allIds.length; i += 100) {
-    const { data, error } = await supabase
-      .from('jobs')
-      .select(
-        'id, title, skills, experience_required, location, work_type, posted_at, employer, company_id, companies!inner(category, name)',
-      )
-      .in('id', allIds.slice(i, i + 100))
-      .eq('is_active', true);
-    if (error) throw new MatchError('Loading jobs failed: ' + error.message, 500);
-    jobs.push(...((data || []) as JobRow[]));
-  }
+  const allIds = [...new Set([...simById.keys(), ...dreamJobIds])];
+  const batches = Array.from({ length: Math.ceil(allIds.length / 100) }, (_, i) =>
+    allIds.slice(i * 100, (i + 1) * 100),
+  );
+  // Four requests at once (100 ids each keeps the URL short): one after another this took about 10 s of a scan.
+  const jobs = (
+    await mapLimit(batches, 4, async (batch) => {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select(
+          'id, title, skills, experience_required, location, work_type, posted_at, employer, company_id, companies!inner(category, name)',
+        )
+        .in('id', batch)
+        .eq('is_active', true);
+      if (error) throw new MatchError('Loading jobs failed: ' + error.message, 500);
+      return (data || []) as JobRow[];
+    })
+  ).flat();
   if (jobs.length === 0) return { ...empty, message: 'No active jobs found.' };
   report({ stage: 'load', jobs: jobs.length, dream: dreamJobIds.length });
 
-  // Jobs outside the vector top-K get the lowest similarity we saw as a conservative stand-in.
-  const floorSim = Math.min(...vectorMatches.map((m) => m.score || 0));
+  // A dream-company job with no vector yet gets the lowest similarity among the candidates as a stand-in.
+  const floorSim = Math.min(...vectorMatches.map((m) => m.score));
   const userSkills = profileSkills(profile);
   const now = new Date().toISOString();
   const tooSenior = new Set<string>();
@@ -444,7 +468,6 @@ export async function matchUser(
   report({ stage: 'vault', vaulted });
   await supabase.from('user_profiles').update({ last_matched_at: now }).eq('id', userId);
 
-  const sims = vectorMatches.map((m) => m.score || 0);
   console.log(
     '[MATCH]',
     userId,
@@ -452,9 +475,9 @@ export async function matchUser(
     'scored,',
     vaulted,
     'new in vault; similarity range',
-    Math.min(...sims).toFixed(3),
+    vectorMatches.at(-1)!.score.toFixed(3),
     '-',
-    Math.max(...sims).toFixed(3),
+    vectorMatches[0].score.toFixed(3),
   );
 
   return {

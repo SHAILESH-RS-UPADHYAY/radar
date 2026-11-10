@@ -55,6 +55,27 @@ describe('placeFit: whole words, every segment', () => {
     expect(placeFit(['Pune', 'Remote'], 'Remote', null)).toEqual({ kind: 'remote', wanted: true });
     expect(placeFit(['Pune'], 'Remoteville', null).kind).toBe('elsewhere');
   });
+
+  it('counts a remote role open only abroad as elsewhere when you live in India', () => {
+    const home = ['Pune', 'bengaluru', 'mohali'];
+    for (const loc of ['Remote (United States)', 'Remote (Germany, Portugal)', 'Remote - EMEA', 'US Remote'])
+      expect(placeFit(home, loc, 'remote').kind).toBe('elsewhere');
+    expect(placeFit(home, 'France', 'remote').kind).toBe('elsewhere');
+    // Open to India, or to nowhere in particular: still remote.
+    for (const loc of [
+      'Remote',
+      'Remote (APAC)',
+      'Remote, India',
+      'Remote (Worldwide)',
+      'Anywhere',
+      null,
+      'Remote (Europe, LATAM, APAC, the US)',
+    ])
+      expect(placeFit(home, loc, 'remote').kind).toBe('remote');
+    // Someone abroad, or with no home city, keeps every remote role.
+    expect(placeFit(['London'], 'Remote (United States)', 'remote').kind).toBe('remote');
+    expect(placeFit(['Remote'], 'Remote (United States)', 'remote').kind).toBe('remote');
+  });
 });
 
 describe('inStrictCity (autopilot)', () => {
@@ -76,9 +97,27 @@ describe('locatedInIndia', () => {
   it('reads Indian cities, states and the country, places abroad, and says nothing for remote or unstated', () => {
     for (const loc of ['Bengaluru', 'Gurgaon, Haryana', 'Remote, India', 'Indore', 'Hybrid - Mohali', 'Pune, MH, IN'])
       expect(locatedInIndia(loc)).toBe(true);
-    for (const loc of ['London', 'Toronto, ON (Hybrid)', 'Remote - US', 'Berlin, Germany', 'EMEA', 'Singapore'])
+    for (const loc of [
+      'London',
+      'Toronto, ON (Hybrid)',
+      'Remote - US',
+      'Berlin, Germany',
+      'EMEA',
+      'Singapore',
+      'Remote (United States)',
+      'Malaysia',
+    ])
       expect(locatedInIndia(loc)).toBe(false);
-    for (const loc of ['Remote', 'Anywhere', '', null, 'Multiple locations', 'APAC'])
+    for (const loc of [
+      'Remote',
+      'Anywhere',
+      '',
+      null,
+      'Multiple locations',
+      'APAC',
+      'Remote (APAC)',
+      'Remote - Global',
+    ])
       expect(locatedInIndia(loc)).toBeNull();
   });
 

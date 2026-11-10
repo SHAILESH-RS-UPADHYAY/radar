@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { Pinecone } from '@pinecone-database/pinecone';
 import { env, readEnv } from '@/lib/env';
 import { createServerClient } from '@/lib/supabase/client';
+import { mapLimit } from '@/lib/scraper/utils';
 
 function getPinecone() {
   return new Pinecone({ apiKey: env.pineconeApiKey() });
@@ -370,31 +371,38 @@ export async function backfillEmbeddings(max = 500, space: Space = 'v1'): Promis
   return embedJobs(jobs, space);
 }
 
-/** The open jobs nearest to a resume, with similarities on v1's scale. */
-export async function searchSimilarJobs(resumeEmbedding: number[], topK: number = 50, space: Space = 'v1') {
-  // Every open job is scored 500 at a time and ranked here. One match_jobs call over all of them took 4.5 to 13 s
-  // with 11,540 open jobs (2026-11-10), past the API role's 8 s statement timeout, so every scan failed.
-  // ponytail: exact scan in chunks; past ~50k open jobs move the vectors to their own table with an HNSW index.
+/**
+ * A resume's similarity to every open job that has a vector in the space (on v1's scale), computed once per scan:
+ * the closest become the candidates, and every other group a scan scores reads its real value from the same map.
+ * Scored 500 jobs at a time: one match_jobs call over all of them took 4.5 to 13 s with 11,540 open jobs
+ * (2026-11-10), past the API role's 8 s statement timeout, so every scan failed.
+ * ponytail: exact scan in chunks; past ~50k open jobs move the vectors to their own narrow table with an index.
+ */
+export async function similarityAll(embedding: number[], space: Space = 'v1'): Promise<Map<string, number>> {
   const supabase = createServerClient();
-  const ids: string[] = [];
-  for (let from = 0; ; from += 1000) {
-    const { data, error } = await supabase
-      .from('jobs')
-      .select('id')
-      .eq('is_active', true)
-      .order('id')
-      .range(from, from + 999);
-    if (error) throw new Error('Reading open jobs failed: ' + error.message);
-    ids.push(...(data || []).map((j) => j.id as string));
-    if (!data || data.length < 1000) break;
-  }
-  // Three streams at once: enough to cut the wait, few enough for the free database.
-  const third = Math.ceil(ids.length / 3) || 1;
-  const parts = await Promise.all(
-    [0, 1, 2].map((k) => similarityTo(resumeEmbedding, ids.slice(k * third, (k + 1) * third), space)),
-  );
-  return parts
-    .flatMap((m) => [...m].map(([id, score]) => ({ id, score })))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, topK);
+  const { count, error } = await supabase
+    .from('jobs')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_active', true);
+  if (error) throw new Error('Counting open jobs failed: ' + error.message);
+  const pages = Array.from({ length: Math.ceil((count || 0) / 1000) }, (_, i) => i * 1000);
+  const ids = (
+    await mapLimit(pages, 4, async (from) => {
+      const { data, error: e } = await supabase
+        .from('jobs')
+        .select('id')
+        .eq('is_active', true)
+        .order('id')
+        .range(from, from + 999);
+      if (e) throw new Error('Reading open jobs failed: ' + e.message);
+      return (data || []).map((j) => j.id as string);
+    })
+  ).flat();
+  const chunks = Array.from({ length: Math.ceil(ids.length / 500) }, (_, i) => ids.slice(i * 500, (i + 1) * 500));
+  const out = new Map<string, number>();
+  // Three at once: enough to cut the wait, few enough for the free database.
+  await mapLimit(chunks, 3, async (chunk) => {
+    for (const [id, sim] of await similarityTo(embedding, chunk, space)) out.set(id, sim);
+  });
+  return out;
 }
