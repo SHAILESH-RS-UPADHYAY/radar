@@ -39,7 +39,7 @@ function RadarMark({ className = 'h-9 w-9', animated = true }: { className?: str
           y1={t.y1}
           x2={t.x2}
           y2={t.y2}
-          stroke="#00FF41"
+          stroke="var(--color-phosphor)"
           strokeOpacity={t.major ? 0.95 : 0.4}
           strokeWidth={t.major ? 1.1 : 0.6}
         />
@@ -48,7 +48,7 @@ function RadarMark({ className = 'h-9 w-9', animated = true }: { className?: str
         cx="24"
         cy="24"
         r="23.2"
-        stroke="#B6FFC6"
+        stroke="var(--color-phosphor-soft)"
         strokeWidth="0.9"
         strokeLinecap="round"
         strokeDasharray="10 136"
@@ -56,32 +56,48 @@ function RadarMark({ className = 'h-9 w-9', animated = true }: { className?: str
       />
 
       {/* scope */}
-      <circle cx="24" cy="24" r="17.5" fill="#000401" fillOpacity=".6" stroke="#00FF41" strokeOpacity=".6" />
-      <circle cx="24" cy="24" r="12" stroke="#00FF41" strokeOpacity=".3" strokeDasharray="1.2 2.2" />
+      <circle
+        cx="24"
+        cy="24"
+        r="17.5"
+        fill="var(--color-void)"
+        fillOpacity=".6"
+        stroke="var(--color-phosphor)"
+        strokeOpacity=".6"
+      />
+      <circle cx="24" cy="24" r="12" stroke="var(--color-phosphor)" strokeOpacity=".3" strokeDasharray="1.2 2.2" />
       <g clipPath={`url(#${clip})`}>
         <g className={a('radar-sweep')}>
-          <path d="M24 24V6.5a17.5 17.5 0 0 1 15.155 8.75Z" fill="#00FF41" fillOpacity=".1" />
-          <path d="M24 24l8.75-15.155a17.5 17.5 0 0 1 6.405 6.405Z" fill="#00FF41" fillOpacity=".14" />
-          <path d="M24 24l13.005-11.71a17.5 17.5 0 0 1 2.15 2.96Z" fill="#00FF41" fillOpacity=".24" />
-          <path d="M24 24l15.155-8.75" stroke="#B6FFC6" strokeWidth="1.3" strokeLinecap="round" />
+          <path d="M24 24V6.5a17.5 17.5 0 0 1 15.155 8.75Z" fill="var(--color-phosphor)" fillOpacity=".1" />
+          <path d="M24 24l8.75-15.155a17.5 17.5 0 0 1 6.405 6.405Z" fill="var(--color-phosphor)" fillOpacity=".14" />
+          <path d="M24 24l13.005-11.71a17.5 17.5 0 0 1 2.15 2.96Z" fill="var(--color-phosphor)" fillOpacity=".24" />
+          <path d="M24 24l15.155-8.75" stroke="var(--color-phosphor-soft)" strokeWidth="1.3" strokeLinecap="round" />
         </g>
-        <rect x="6.5" y="6.5" width="35" height="0.7" fill="#B6FFC6" fillOpacity=".45" className={a('logo-scan')} />
+        <rect
+          x="6.5"
+          y="6.5"
+          width="35"
+          height="0.7"
+          fill="var(--color-phosphor-soft)"
+          fillOpacity=".45"
+          className={a('logo-scan')}
+        />
       </g>
 
       {/* target blip: pings as the beam crosses it */}
-      <circle cx="35.2" cy="13.4" r="1.3" stroke="#FACC15" strokeWidth=".6" className={a('logo-ping')} />
-      <circle cx="35.2" cy="13.4" r="1.3" fill="#FACC15" className={a('logo-blip')} />
+      <circle cx="35.2" cy="13.4" r="1.3" stroke="var(--color-hud-amber)" strokeWidth=".6" className={a('logo-ping')} />
+      <circle cx="35.2" cy="13.4" r="1.3" fill="var(--color-hud-amber)" className={a('logo-blip')} />
 
       {/* R monogram, with a dark halo so it reads over the sweep */}
       <path
         d="M19.5 33V15H26a4.75 4.75 0 0 1 0 9.5h-6.5m5 0 6 8.5"
-        stroke="#000401"
+        stroke="var(--color-void)"
         strokeWidth="4.4"
         strokeLinejoin="miter"
       />
       <path
         d="M19.5 33V15H26a4.75 4.75 0 0 1 0 9.5h-6.5m5 0 6 8.5"
-        stroke="#00FF41"
+        stroke="var(--color-phosphor)"
         strokeWidth="2.2"
         strokeLinecap="square"
         strokeLinejoin="miter"
@@ -141,10 +157,10 @@ export function RadarLogo({
       className={'group inline-flex items-center gap-3 ' + className}
       onMouseEnter={() => animated && setRun((n) => n + 1)}
     >
-      <RadarMark className={s.mark + ' shrink-0 drop-shadow-[0_0_10px_rgba(0,255,65,0.45)]'} animated={animated} />
+      <RadarMark className={s.mark + ' shrink-0 drop-shadow-[0_0_10px_rgb(var(--glow)/0.45)]'} animated={animated} />
       <span className="flex flex-col font-mono leading-none">
         <span className={s.text + ' font-extrabold tracking-[0.3em]'}>
-          <span className="bg-[linear-gradient(90deg,#ffffff,#b6ffc6_55%,#00ff41)] bg-clip-text text-transparent">
+          <span className="bg-[linear-gradient(90deg,#ffffff,#b6ffc6_55%,var(--color-phosphor))] bg-clip-text text-transparent">
             {word}
           </span>
           <span className="caret-blink text-phosphor">_</span>

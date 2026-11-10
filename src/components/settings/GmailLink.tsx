@@ -135,7 +135,7 @@ export function GmailLink({ onNotice }: { onNotice: (n: Notice) => void }) {
       {status?.configured && status.ready && !link && (
         <a
           href="/api/gmail/connect"
-          className={button + ' inline-block border-phosphor bg-phosphor text-black hover:bg-[#33FF66]'}
+          className={button + ' inline-block border-phosphor bg-phosphor text-black hover:bg-phosphor-hi'}
         >
           [ CONNECT GMAIL ]
         </a>

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { RadarLogo } from '@/components/brand/RadarLogo';
 
 export const primaryAction =
-  'bg-phosphor px-8 py-3.5 font-mono text-xs font-bold tracking-[0.25em] text-black shadow-[0_0_25px_rgba(0,255,65,0.35)] transition-colors hover:bg-[#33FF66]';
+  'bg-phosphor px-8 py-3.5 font-mono text-xs font-bold tracking-[0.25em] text-black shadow-[0_0_25px_rgb(var(--glow)/0.35)] transition-colors hover:bg-phosphor-hi';
 export const secondaryAction =
   'border border-phosphor/50 px-8 py-3.5 font-mono text-xs font-bold tracking-[0.25em] text-phosphor transition-colors hover:bg-phosphor/10';
 
@@ -23,7 +23,7 @@ export function StatusScreen({
     <main className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-void px-4 py-16 text-center">
       <div className="hud-grid pointer-events-none absolute inset-0" aria-hidden="true" />
       <div
-        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(0,255,65,0.09),transparent_60%)]"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgb(var(--glow)/0.09),transparent_60%)]"
         aria-hidden="true"
       />
       <div className="relative">

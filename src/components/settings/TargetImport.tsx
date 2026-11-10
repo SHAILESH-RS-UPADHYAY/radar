@@ -156,7 +156,7 @@ export function TargetImport({ onNotice }: { onNotice: (n: Notice) => void }) {
           type="button"
           disabled={busy || !targets.length || !status?.ready}
           onClick={queue}
-          className={button + ' border-phosphor bg-phosphor text-black hover:bg-[#33FF66]'}
+          className={button + ' border-phosphor bg-phosphor text-black hover:bg-phosphor-hi'}
         >
           {busy ? 'QUEUEING…' : `QUEUE ${targets.length || ''} ${targets.length === 1 ? 'COMPANY' : 'COMPANIES'}`}
         </button>

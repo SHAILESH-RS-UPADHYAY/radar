@@ -144,7 +144,7 @@ export function OpsCard({
               {/* The full message on hover or focus: a HUD panel, with a way to the mail itself. */}
               <div
                 role="tooltip"
-                className="pointer-events-none absolute left-0 right-0 top-full z-30 mt-1 border border-phosphor/40 bg-black/95 p-3 font-mono text-[11px] leading-relaxed opacity-0 shadow-[0_0_24px_rgba(0,255,65,0.15)] transition-opacity duration-150 group-focus-within/event:pointer-events-auto group-focus-within/event:opacity-100 group-hover/event:pointer-events-auto group-hover/event:opacity-100"
+                className="pointer-events-none absolute left-0 right-0 top-full z-30 mt-1 border border-phosphor/40 bg-black/95 p-3 font-mono text-[11px] leading-relaxed opacity-0 shadow-[0_0_24px_rgb(var(--glow)/0.15)] transition-opacity duration-150 group-focus-within/event:pointer-events-auto group-focus-within/event:opacity-100 group-hover/event:pointer-events-auto group-hover/event:opacity-100"
               >
                 <p className={'tracking-[0.2em] ' + meta.tone}>
                   {'> '}

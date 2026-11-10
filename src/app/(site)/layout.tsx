@@ -7,7 +7,7 @@ export default function SiteLayout({ children }: { children: React.ReactNode }) 
     <div className="relative min-h-screen bg-void">
       <div className="hud-grid pointer-events-none fixed inset-0" aria-hidden="true" />
       <div
-        className="pointer-events-none fixed inset-x-0 top-0 h-[520px] bg-[radial-gradient(ellipse_at_top,rgba(0,255,65,0.09),transparent_65%)]"
+        className="pointer-events-none fixed inset-x-0 top-0 h-[520px] bg-[radial-gradient(ellipse_at_top,rgb(var(--glow)/0.09),transparent_65%)]"
         aria-hidden="true"
       />
       <SiteNav />

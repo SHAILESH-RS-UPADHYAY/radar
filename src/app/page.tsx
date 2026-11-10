@@ -396,9 +396,9 @@ export default function LandingPage() {
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="inline-flex items-center gap-3 mb-6 px-3 py-1.5 border border-[#00FF41]/40 bg-black/60 text-[11px] tracking-widest text-[#00FF41]"
+              className="inline-flex items-center gap-3 mb-6 px-3 py-1.5 border border-phosphor/40 bg-black/60 text-[11px] tracking-widest text-phosphor"
             >
-              <span className="w-2 h-2 rounded-full bg-[#00FF41] animate-pulse" />
+              <span className="w-2 h-2 rounded-full bg-phosphor animate-pulse" />
               <span>root@radar:~# ./scan --sources={CATALOG.sources} --mode=live</span>
             </motion.div>
 
@@ -416,17 +416,17 @@ export default function LandingPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ duration: 0.7, delay: 0.6 }}
-              className="mb-8 max-w-xl border-l-2 border-[#00FF41]/60 pl-4 space-y-1 text-sm sm:text-base text-[#9CA3AF]"
+              className="mb-8 max-w-xl border-l-2 border-phosphor/60 pl-4 space-y-1 text-sm sm:text-base text-[#9CA3AF]"
             >
               <p>
-                <span className="text-[#00FF41]">&gt;</span> AI job-intelligence engine for your target companies.
+                <span className="text-phosphor">&gt;</span> AI job-intelligence engine for your target companies.
               </p>
               <p>
-                <span className="text-[#00FF41]">&gt;</span> {CATALOG.sources} live sources · 1024-d embeddings · 6h
-                scan loop.
+                <span className="text-phosphor">&gt;</span> {CATALOG.sources} live sources · 1024-d embeddings · 6h scan
+                loop.
               </p>
               <p>
-                <span className="text-[#00FF41]">&gt;</span> Strong matches land in your Vault automatically.
+                <span className="text-phosphor">&gt;</span> Strong matches land in your Vault automatically.
               </p>
             </motion.div>
 
@@ -438,13 +438,13 @@ export default function LandingPage() {
             >
               <Link
                 href={isSignedIn ? '/dashboard' : '/sign-up'}
-                className="px-8 py-4 text-sm font-bold tracking-widest text-black bg-[#00FF41] hover:bg-[#33FF66] shadow-[0_0_25px_rgba(0,255,65,0.35)] transition-colors text-center"
+                className="px-8 py-4 text-sm font-bold tracking-widest text-black bg-phosphor hover:bg-phosphor-hi shadow-[0_0_25px_rgb(var(--glow)/0.35)] transition-colors text-center"
               >
                 {isSignedIn ? '[ ENTER DASHBOARD ]' : '[ START SCAN ]'}
               </Link>
               <a
                 href="#how-it-works"
-                className="px-8 py-4 text-sm font-bold tracking-widest text-[#00FF41] border border-[#00FF41]/50 hover:bg-[#00FF41]/10 transition-colors text-center"
+                className="px-8 py-4 text-sm font-bold tracking-widest text-phosphor border border-phosphor/50 hover:bg-phosphor/10 transition-colors text-center"
               >
                 ./how-it-works
               </a>
@@ -454,16 +454,16 @@ export default function LandingPage() {
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 1.2 }}
-              className="mt-10 grid grid-cols-3 max-w-md text-[11px] tracking-widest border border-[#00FF41]/20"
+              className="mt-10 grid grid-cols-3 max-w-md text-[11px] tracking-widest border border-phosphor/20"
             >
               {[
                 [String(CATALOG.sources), 'SOURCES'],
                 ['1024D', 'VECTORS'],
                 ['6H', 'CYCLE'],
               ].map(([v, l]) => (
-                <div key={l} className="p-3 border-r last:border-r-0 border-[#00FF41]/20">
-                  <div className="text-lg font-black text-[#00FF41]">{v}</div>
-                  <div className="text-[#00FF41]/50">{l}</div>
+                <div key={l} className="p-3 border-r last:border-r-0 border-phosphor/20">
+                  <div className="text-lg font-black text-phosphor">{v}</div>
+                  <div className="text-phosphor/50">{l}</div>
                 </div>
               ))}
             </motion.div>
@@ -476,7 +476,7 @@ export default function LandingPage() {
       {/* Everything below the hero shares its grid, so the page reads as one console. */}
       <div className="relative overflow-hidden">
         <div className="hud-grid pointer-events-none absolute inset-0" />
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_at_top,rgba(0,255,65,0.07),transparent_65%)]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_at_top,rgb(var(--glow)/0.07),transparent_65%)]" />
 
         {/* HOW IT WORKS: the user's side of the loop */}
         <section id="how-it-works" className="relative mx-auto max-w-[1280px] scroll-mt-24 px-4 py-24 sm:px-6 sm:py-32">
@@ -748,7 +748,7 @@ export default function LandingPage() {
                 </p>
                 <Link
                   href={isSignedIn ? '/dashboard' : '/sign-up'}
-                  className="mt-10 inline-flex items-center gap-3 bg-phosphor px-10 py-4 font-mono text-sm font-bold tracking-[0.25em] text-black shadow-[0_0_30px_rgba(0,255,65,0.35)] transition-colors hover:bg-[#33FF66]"
+                  className="mt-10 inline-flex items-center gap-3 bg-phosphor px-10 py-4 font-mono text-sm font-bold tracking-[0.25em] text-black shadow-[0_0_30px_rgb(var(--glow)/0.35)] transition-colors hover:bg-phosphor-hi"
                 >
                   {isSignedIn ? '[ ENTER DASHBOARD ]' : '[ FIND YOUR DREAM JOB ]'}
                 </Link>

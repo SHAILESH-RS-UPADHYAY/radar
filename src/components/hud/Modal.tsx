@@ -103,7 +103,7 @@ export function Modal({
             exit={{ opacity: 0, y: 24 }}
             transition={{ duration: 0.2 }}
             className={
-              'relative flex max-h-[92vh] w-full flex-col border border-phosphor/40 bg-void shadow-[0_0_60px_rgba(0,255,65,0.12)] focus:outline-none ' +
+              'relative flex max-h-[92vh] w-full flex-col border border-phosphor/40 bg-void shadow-[0_0_60px_rgb(var(--glow)/0.12)] focus:outline-none ' +
               (wide ? 'sm:max-w-4xl' : 'sm:max-w-2xl')
             }
           >

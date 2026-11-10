@@ -11,7 +11,7 @@ import { launchInExtension, onExtension, useExtension } from '@/lib/extension';
 import { oneClickApply } from '@/lib/apply/client';
 
 const primary =
-  'inline-flex items-center justify-center gap-2 bg-phosphor px-5 py-3 font-mono text-xs font-bold tracking-[0.22em] text-black shadow-[0_0_22px_rgba(0,255,65,0.35)] transition-colors hover:bg-[#33FF66] disabled:cursor-not-allowed disabled:bg-phosphor/30';
+  'inline-flex items-center justify-center gap-2 bg-phosphor px-5 py-3 font-mono text-xs font-bold tracking-[0.22em] text-black shadow-[0_0_22px_rgb(var(--glow)/0.35)] transition-colors hover:bg-phosphor-hi disabled:cursor-not-allowed disabled:bg-phosphor/30';
 const secondary =
   'inline-flex items-center justify-center gap-2 border border-phosphor/40 px-5 py-3 font-mono text-xs font-bold tracking-[0.22em] text-phosphor transition-colors hover:bg-phosphor/10';
 

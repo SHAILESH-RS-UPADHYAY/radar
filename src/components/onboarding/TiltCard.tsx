@@ -25,7 +25,7 @@ export function TiltCard({ children, className, style, onClick, active }: any) {
         y.set(0);
       }}
       style={{ rotateX, rotateY, ...style }}
-      className={`relative transform-gpu ${className} ${active ? 'ring-2 ring-[#00FF41]' : ''}`}
+      className={`relative transform-gpu ${className} ${active ? 'ring-2 ring-phosphor' : ''}`}
       whileHover={{ scale: 1.02 }}
       transition={{ type: 'spring', stiffness: 300, damping: 20 }}
     >

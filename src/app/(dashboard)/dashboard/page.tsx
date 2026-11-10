@@ -660,7 +660,7 @@ export default function DashboardPage() {
     <button
       onClick={handleScan}
       disabled={scanning}
-      className="flex items-center gap-2 bg-phosphor px-4 py-2 font-mono text-[11px] font-bold tracking-[0.2em] text-black shadow-[0_0_18px_rgba(0,255,65,0.3)] transition-colors hover:bg-[#33FF66] disabled:cursor-wait disabled:bg-phosphor/40"
+      className="flex items-center gap-2 bg-phosphor px-4 py-2 font-mono text-[11px] font-bold tracking-[0.2em] text-black shadow-[0_0_18px_rgb(var(--glow)/0.3)] transition-colors hover:bg-phosphor-hi disabled:cursor-wait disabled:bg-phosphor/40"
     >
       {scanning && <span className="h-3 w-3 animate-spin rounded-full border-2 border-black/30 border-t-black" />}
       {scanning ? 'SCANNING' : 'SCAN NOW'}
@@ -713,7 +713,7 @@ export default function DashboardPage() {
     <div className="relative min-h-screen bg-void">
       <div className="hud-grid pointer-events-none fixed inset-0" aria-hidden="true" />
       <div
-        className="pointer-events-none fixed inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_at_top,rgba(0,255,65,0.07),transparent_65%)]"
+        className="pointer-events-none fixed inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_at_top,rgb(var(--glow)/0.07),transparent_65%)]"
         aria-hidden="true"
       />
 
@@ -845,7 +845,7 @@ export default function DashboardPage() {
                           }
                         >
                           {active && (
-                            <span className="absolute inset-y-0 left-0 hidden w-0.5 bg-phosphor shadow-[0_0_10px_#00FF41] lg:block" />
+                            <span className="absolute inset-y-0 left-0 hidden w-0.5 bg-phosphor shadow-[0_0_10px_var(--color-phosphor)] lg:block" />
                           )}
                           <span>
                             <span
@@ -1124,7 +1124,7 @@ export default function DashboardPage() {
                           }
                         >
                           {active && (
-                            <span className="absolute inset-y-0 left-0 hidden w-0.5 bg-phosphor shadow-[0_0_10px_#00FF41] lg:block" />
+                            <span className="absolute inset-y-0 left-0 hidden w-0.5 bg-phosphor shadow-[0_0_10px_var(--color-phosphor)] lg:block" />
                           )}
                           <span>
                             <span
@@ -1194,7 +1194,7 @@ export default function DashboardPage() {
                       <button
                         type="button"
                         onClick={() => startRun(filteredSaved.map((m) => m.id))}
-                        className="group/run flex w-full shrink-0 items-center justify-center gap-3 rounded-full border border-phosphor bg-phosphor/10 py-3.5 font-mono text-xs font-bold tracking-[0.35em] text-phosphor shadow-[0_0_28px_rgba(0,255,65,0.3)] transition-all hover:bg-phosphor hover:text-black sm:w-auto sm:px-10"
+                        className="group/run flex w-full shrink-0 items-center justify-center gap-3 rounded-full border border-phosphor bg-phosphor/10 py-3.5 font-mono text-xs font-bold tracking-[0.35em] text-phosphor shadow-[0_0_28px_rgb(var(--glow)/0.3)] transition-all hover:bg-phosphor hover:text-black sm:w-auto sm:px-10"
                       >
                         <span className="h-2 w-2 animate-pulse rounded-full bg-phosphor group-hover/run:bg-black" />
                         <span className="glitch" data-text={'INFILTRATE ALL · ' + filteredSaved.length}>

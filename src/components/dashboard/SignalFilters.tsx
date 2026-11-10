@@ -179,7 +179,7 @@ function Bars<K extends string | number>({
                 className={
                   'w-full transition-[height,background-color] duration-300 ' +
                   (on
-                    ? 'bg-phosphor shadow-[0_0_12px_rgba(0,255,65,0.55)]'
+                    ? 'bg-phosphor shadow-[0_0_12px_rgb(var(--glow)/0.55)]'
                     : dimmed
                       ? 'bg-phosphor/15 group-hover:bg-phosphor/35'
                       : 'bg-phosphor/45 group-hover:bg-phosphor/75')
@@ -267,7 +267,7 @@ export function FilterRail({
                   className={
                     'flex min-w-0 flex-col items-start gap-0.5 border px-2.5 py-2 text-left transition-colors ' +
                     (active
-                      ? 'border-phosphor bg-phosphor/[0.12] shadow-[inset_0_0_14px_rgba(0,255,65,0.08)]'
+                      ? 'border-phosphor bg-phosphor/[0.12] shadow-[inset_0_0_14px_rgb(var(--glow)/0.08)]'
                       : 'border-phosphor/15 hover:border-phosphor/45 hover:bg-phosphor/[0.04]')
                   }
                 >

@@ -264,7 +264,7 @@ export default function OnboardingPage() {
       <div
         className="absolute top-0 left-0 w-full h-full pointer-events-none"
         style={{
-          background: 'radial-gradient(circle at 50% 0%, rgba(0,255,65,0.05) 0%, transparent 70%)',
+          background: 'radial-gradient(circle at 50% 0%, rgb(var(--glow) / 0.05) 0%, transparent 70%)',
         }}
       />
 
@@ -274,12 +274,12 @@ export default function OnboardingPage() {
             <div
               key={s}
               className="flex-1 h-1.5 rounded-none relative overflow-hidden"
-              style={{ background: '#002200' }}
+              style={{ background: 'var(--color-phosphor-dark)' }}
             >
               <div
                 className="absolute top-0 left-0 h-full w-full transition-transform duration-500 origin-left"
                 style={{
-                  background: '#00FF41',
+                  background: 'var(--color-phosphor)',
                   transform: step > s ? 'scaleX(1)' : step === s ? 'scaleX(0.5)' : 'scaleX(0)',
                 }}
               />
@@ -299,10 +299,10 @@ export default function OnboardingPage() {
               {/* Step 1: Career Stage */}
               {step === 1 && (
                 <div>
-                  <h1 className="text-3xl md:text-3xl font-black font-mono text-[#00FF41] mb-2 tracking-tight">
+                  <h1 className="text-3xl md:text-3xl font-black font-mono text-phosphor mb-2 tracking-tight">
                     CAREER STAGE
                   </h1>
-                  <p className="text-sm mb-10" style={{ color: '#00aa00' }}>
+                  <p className="text-sm mb-10" style={{ color: 'var(--color-phosphor-mid)' }}>
                     Are you entering the workforce or bringing experience?
                   </p>
                   <div className="grid sm:grid-cols-3 gap-4">
@@ -310,13 +310,13 @@ export default function OnboardingPage() {
                       onClick={() => selectAndNext(setCareerStage, 'Intern', () => 3)}
                       className="p-4 text-left rounded-none transition-all hover:-translate-y-1"
                       style={{
-                        border: `2px solid ${careerStage === 'Intern' ? '#00FF41' : '#004400'}`,
-                        background: careerStage === 'Intern' ? 'rgba(0,255,65,0.1)' : '#000000',
+                        border: `2px solid ${careerStage === 'Intern' ? 'var(--color-phosphor)' : 'var(--color-phosphor-deep)'}`,
+                        background: careerStage === 'Intern' ? 'rgb(var(--glow) / 0.1)' : 'var(--color-black)',
                       }}
                     >
                       <div className="text-2xl mb-3">🌱</div>
-                      <h3 className="text-[#00FF41] font-bold mb-1">Intern</h3>
-                      <p className="text-xs" style={{ color: '#00aa00' }}>
+                      <h3 className="text-phosphor font-bold mb-1">Intern</h3>
+                      <p className="text-xs" style={{ color: 'var(--color-phosphor-mid)' }}>
                         Still studying
                       </p>
                     </button>
@@ -324,13 +324,13 @@ export default function OnboardingPage() {
                       onClick={() => selectAndNext(setCareerStage, 'Fresher', () => 3)}
                       className="p-4 text-left rounded-none transition-all hover:-translate-y-1"
                       style={{
-                        border: `2px solid ${careerStage === 'Fresher' ? '#00FF41' : '#004400'}`,
-                        background: careerStage === 'Fresher' ? 'rgba(0,255,65,0.1)' : '#000000',
+                        border: `2px solid ${careerStage === 'Fresher' ? 'var(--color-phosphor)' : 'var(--color-phosphor-deep)'}`,
+                        background: careerStage === 'Fresher' ? 'rgb(var(--glow) / 0.1)' : 'var(--color-black)',
                       }}
                     >
                       <div className="text-2xl mb-3">🎓</div>
-                      <h3 className="text-[#00FF41] font-bold mb-1">Fresher</h3>
-                      <p className="text-xs" style={{ color: '#00aa00' }}>
+                      <h3 className="text-phosphor font-bold mb-1">Fresher</h3>
+                      <p className="text-xs" style={{ color: 'var(--color-phosphor-mid)' }}>
                         Recent graduate
                       </p>
                     </button>
@@ -338,13 +338,13 @@ export default function OnboardingPage() {
                       onClick={() => selectAndNext(setCareerStage, 'Experienced', () => 2)}
                       className="p-4 text-left rounded-none transition-all hover:-translate-y-1"
                       style={{
-                        border: `2px solid ${careerStage === 'Experienced' ? '#00FF41' : '#004400'}`,
-                        background: careerStage === 'Experienced' ? 'rgba(0,255,65,0.1)' : '#000000',
+                        border: `2px solid ${careerStage === 'Experienced' ? 'var(--color-phosphor)' : 'var(--color-phosphor-deep)'}`,
+                        background: careerStage === 'Experienced' ? 'rgb(var(--glow) / 0.1)' : 'var(--color-black)',
                       }}
                     >
                       <div className="text-2xl mb-3">💼</div>
-                      <h3 className="text-[#00FF41] font-bold mb-1">Experienced</h3>
-                      <p className="text-xs" style={{ color: '#00aa00' }}>
+                      <h3 className="text-phosphor font-bold mb-1">Experienced</h3>
+                      <p className="text-xs" style={{ color: 'var(--color-phosphor-mid)' }}>
                         Mid/Senior level
                       </p>
                     </button>
@@ -355,17 +355,17 @@ export default function OnboardingPage() {
               {/* Step 2: Experience Details */}
               {step === 2 && careerStage === 'Experienced' && (
                 <div>
-                  <h1 className="text-3xl md:text-3xl font-black font-mono text-[#00FF41] mb-2 tracking-tight">
+                  <h1 className="text-3xl md:text-3xl font-black font-mono text-phosphor mb-2 tracking-tight">
                     PROFESSIONAL XP
                   </h1>
-                  <p className="text-sm mb-10" style={{ color: '#00aa00' }}>
+                  <p className="text-sm mb-10" style={{ color: 'var(--color-phosphor-mid)' }}>
                     Quantify your professional background.
                   </p>
 
                   <div className="mb-10">
                     <label
                       className="block text-xs uppercase tracking-wider font-bold mb-3"
-                      style={{ color: '#00aa00' }}
+                      style={{ color: 'var(--color-phosphor-mid)' }}
                     >
                       Current / Target Role
                     </label>
@@ -379,9 +379,9 @@ export default function OnboardingPage() {
                           }}
                           className="px-3 py-3 rounded-none text-sm font-bold transition-all text-center"
                           style={{
-                            border: `1px solid ${currentRole === role ? '#00FF41' : '#004400'}`,
-                            background: currentRole === role ? 'rgba(0,255,65,0.1)' : '#000000',
-                            color: currentRole === role ? '#00FF41' : '#00aa00',
+                            border: `1px solid ${currentRole === role ? 'var(--color-phosphor)' : 'var(--color-phosphor-deep)'}`,
+                            background: currentRole === role ? 'rgb(var(--glow) / 0.1)' : 'var(--color-black)',
+                            color: currentRole === role ? 'var(--color-phosphor)' : 'var(--color-phosphor-mid)',
                           }}
                         >
                           {role}
@@ -400,7 +400,7 @@ export default function OnboardingPage() {
                             placeholder="Specify your role..."
                             value={customRole}
                             onChange={(e) => setCustomRole(e.target.value)}
-                            className="w-full bg-black border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors focus:ring-1 focus:ring-[#00FF41]"
+                            className="w-full bg-black border border-phosphor-deep rounded-none px-4 py-3 text-phosphor focus:outline-none focus:border-phosphor transition-colors focus:ring-1 focus:ring-phosphor"
                           />
                         </motion.div>
                       )}
@@ -409,10 +409,13 @@ export default function OnboardingPage() {
 
                   <div>
                     <div className="flex justify-between items-center mb-3">
-                      <label className="text-xs uppercase tracking-wider font-bold" style={{ color: '#00aa00' }}>
+                      <label
+                        className="text-xs uppercase tracking-wider font-bold"
+                        style={{ color: 'var(--color-phosphor-mid)' }}
+                      >
                         Years of Experience
                       </label>
-                      <span className="text-[#00FF41] font-bold">
+                      <span className="text-phosphor font-bold">
                         {experienceYears} {experienceYears === 1 ? 'year' : 'years'}
                       </span>
                     </div>
@@ -422,7 +425,7 @@ export default function OnboardingPage() {
                       max="20"
                       value={experienceYears}
                       onChange={(e) => setExperienceYears(parseInt(e.target.value))}
-                      className="w-full accent-[#00FF41]"
+                      className="w-full accent-phosphor"
                     />
                   </div>
                 </div>
@@ -431,10 +434,10 @@ export default function OnboardingPage() {
               {/* Step 3: Education */}
               {step === 3 && (
                 <div>
-                  <h1 className="text-3xl md:text-3xl font-black font-mono text-[#00FF41] mb-2 tracking-tight">
+                  <h1 className="text-3xl md:text-3xl font-black font-mono text-phosphor mb-2 tracking-tight">
                     ACADEMICS
                   </h1>
-                  <p className="text-sm mb-10" style={{ color: '#00aa00' }}>
+                  <p className="text-sm mb-10" style={{ color: 'var(--color-phosphor-mid)' }}>
                     Tell us about your educational background.
                   </p>
 
@@ -448,9 +451,9 @@ export default function OnboardingPage() {
                         onClick={() => setEducationLevel(lvl)}
                         className="p-4 text-center rounded-none border transition-all text-sm font-bold"
                         style={{
-                          borderColor: educationLevel === lvl ? '#00FF41' : '#004400',
-                          background: educationLevel === lvl ? 'rgba(0,255,65,0.1)' : '#000000',
-                          color: educationLevel === lvl ? '#00FF41' : '#00aa00',
+                          borderColor: educationLevel === lvl ? 'var(--color-phosphor)' : 'var(--color-phosphor-deep)',
+                          background: educationLevel === lvl ? 'rgb(var(--glow) / 0.1)' : 'var(--color-black)',
+                          color: educationLevel === lvl ? 'var(--color-phosphor)' : 'var(--color-phosphor-mid)',
                         }}
                       >
                         {lvl.split(' ')[0]}
@@ -462,7 +465,7 @@ export default function OnboardingPage() {
                     <div>
                       <label
                         className="block text-xs uppercase tracking-wider font-bold mb-3"
-                        style={{ color: '#00aa00' }}
+                        style={{ color: 'var(--color-phosphor-mid)' }}
                       >
                         Field of Study
                       </label>
@@ -473,7 +476,7 @@ export default function OnboardingPage() {
                             setFieldOfStudy(e.target.value);
                             setCustomField('');
                           }}
-                          className="w-full bg-black border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors appearance-none focus:ring-1 focus:ring-[#00FF41]"
+                          className="w-full bg-black border border-phosphor-deep rounded-none px-4 py-3 text-phosphor focus:outline-none focus:border-phosphor transition-colors appearance-none focus:ring-1 focus:ring-phosphor"
                         >
                           <option value="" disabled>
                             Select Field
@@ -484,7 +487,7 @@ export default function OnboardingPage() {
                             </option>
                           ))}
                         </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-[#00aa00]">
+                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-phosphor-mid">
                           ▼
                         </div>
                       </div>
@@ -501,7 +504,7 @@ export default function OnboardingPage() {
                               placeholder="Specify your field"
                               value={customField}
                               onChange={(e) => setCustomField(e.target.value)}
-                              className="w-full bg-black border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors focus:ring-1 focus:ring-[#00FF41]"
+                              className="w-full bg-black border border-phosphor-deep rounded-none px-4 py-3 text-phosphor focus:outline-none focus:border-phosphor transition-colors focus:ring-1 focus:ring-phosphor"
                             />
                           </motion.div>
                         )}
@@ -510,7 +513,7 @@ export default function OnboardingPage() {
                     <div>
                       <label
                         className="block text-xs uppercase tracking-wider font-bold mb-3"
-                        style={{ color: '#00aa00' }}
+                        style={{ color: 'var(--color-phosphor-mid)' }}
                       >
                         Passing Year
                       </label>
@@ -518,7 +521,7 @@ export default function OnboardingPage() {
                         <select
                           value={passingYear}
                           onChange={(e) => setPassingYear(e.target.value)}
-                          className="w-full bg-black border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors appearance-none focus:ring-1 focus:ring-[#00FF41]"
+                          className="w-full bg-black border border-phosphor-deep rounded-none px-4 py-3 text-phosphor focus:outline-none focus:border-phosphor transition-colors appearance-none focus:ring-1 focus:ring-phosphor"
                         >
                           <option value="" disabled>
                             Select Year
@@ -529,7 +532,7 @@ export default function OnboardingPage() {
                             </option>
                           ))}
                         </select>
-                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-[#00aa00]">
+                        <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-phosphor-mid">
                           ▼
                         </div>
                       </div>
@@ -541,17 +544,17 @@ export default function OnboardingPage() {
               {/* Step 4: Work Model & Location */}
               {step === 4 && (
                 <div>
-                  <h1 className="text-3xl md:text-3xl font-black font-mono text-[#00FF41] mb-2 tracking-tight">
+                  <h1 className="text-3xl md:text-3xl font-black font-mono text-phosphor mb-2 tracking-tight">
                     OPERATING BASE
                   </h1>
-                  <p className="text-sm mb-10" style={{ color: '#00aa00' }}>
+                  <p className="text-sm mb-10" style={{ color: 'var(--color-phosphor-mid)' }}>
                     Define where and how you prefer to work.
                   </p>
 
                   <div className="mb-10">
                     <label
                       className="block text-xs uppercase tracking-wider font-bold mb-4"
-                      style={{ color: '#00aa00' }}
+                      style={{ color: 'var(--color-phosphor-mid)' }}
                     >
                       1. Work Model
                     </label>
@@ -565,11 +568,11 @@ export default function OnboardingPage() {
                           }}
                           className="p-4 rounded-none transition-all text-center"
                           style={{
-                            border: `1px solid ${workModel === model ? '#00FF41' : '#004400'}`,
-                            background: workModel === model ? 'rgba(0,255,65,0.1)' : '#000000',
+                            border: `1px solid ${workModel === model ? 'var(--color-phosphor)' : 'var(--color-phosphor-deep)'}`,
+                            background: workModel === model ? 'rgb(var(--glow) / 0.1)' : 'var(--color-black)',
                           }}
                         >
-                          <span className="font-bold text-sm text-[#00FF41]">{model}</span>
+                          <span className="font-bold text-sm text-phosphor">{model}</span>
                         </button>
                       ))}
                     </div>
@@ -580,7 +583,7 @@ export default function OnboardingPage() {
                       <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
                         <label
                           className="block text-xs uppercase tracking-wider font-bold mb-4"
-                          style={{ color: '#00aa00' }}
+                          style={{ color: 'var(--color-phosphor-mid)' }}
                         >
                           2. Preferred Geography (Select Multiple)
                         </label>
@@ -592,9 +595,11 @@ export default function OnboardingPage() {
                                 onClick={() => toggleLocation(reg)}
                                 className="px-4 py-4 rounded-none text-sm font-bold transition-all text-center hover:scale-105"
                                 style={{
-                                  border: `1px solid ${locations.includes(reg) ? '#00FF41' : '#004400'}`,
-                                  background: locations.includes(reg) ? 'rgba(0,255,65,0.1)' : '#000000',
-                                  color: locations.includes(reg) ? '#00FF41' : '#00aa00',
+                                  border: `1px solid ${locations.includes(reg) ? 'var(--color-phosphor)' : 'var(--color-phosphor-deep)'}`,
+                                  background: locations.includes(reg) ? 'rgb(var(--glow) / 0.1)' : 'var(--color-black)',
+                                  color: locations.includes(reg)
+                                    ? 'var(--color-phosphor)'
+                                    : 'var(--color-phosphor-mid)',
                                 }}
                               >
                                 {reg}
@@ -606,7 +611,7 @@ export default function OnboardingPage() {
                             <div className="mb-6">
                               <label
                                 className="block text-xs uppercase tracking-wider font-bold mb-2"
-                                style={{ color: '#00aa00' }}
+                                style={{ color: 'var(--color-phosphor-mid)' }}
                               >
                                 Country
                               </label>
@@ -618,7 +623,7 @@ export default function OnboardingPage() {
                                     setLocations([]);
                                     setShowCustomCity(false);
                                   }}
-                                  className="w-full bg-black border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors appearance-none focus:ring-1 focus:ring-[#00FF41]"
+                                  className="w-full bg-black border border-phosphor-deep rounded-none px-4 py-3 text-phosphor focus:outline-none focus:border-phosphor transition-colors appearance-none focus:ring-1 focus:ring-phosphor"
                                 >
                                   {Object.keys(TOP_CITIES).map((c) => (
                                     <option key={c} value={c}>
@@ -627,7 +632,7 @@ export default function OnboardingPage() {
                                   ))}
                                   <option value="Other">Other</option>
                                 </select>
-                                <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-[#00aa00]">
+                                <div className="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none text-phosphor-mid">
                                   ▼
                                 </div>
                               </div>
@@ -640,9 +645,13 @@ export default function OnboardingPage() {
                                     onClick={() => toggleLocation(city)}
                                     className="px-4 py-3 rounded-none text-sm font-bold transition-all text-center hover:scale-105"
                                     style={{
-                                      border: `1px solid ${locations.includes(city) ? '#00FF41' : '#004400'}`,
-                                      background: locations.includes(city) ? 'rgba(0,255,65,0.1)' : '#000000',
-                                      color: locations.includes(city) ? '#00FF41' : '#00aa00',
+                                      border: `1px solid ${locations.includes(city) ? 'var(--color-phosphor)' : 'var(--color-phosphor-deep)'}`,
+                                      background: locations.includes(city)
+                                        ? 'rgb(var(--glow) / 0.1)'
+                                        : 'var(--color-black)',
+                                      color: locations.includes(city)
+                                        ? 'var(--color-phosphor)'
+                                        : 'var(--color-phosphor-mid)',
                                     }}
                                   >
                                     {city}
@@ -654,7 +663,7 @@ export default function OnboardingPage() {
                                     <button
                                       key={custom}
                                       onClick={() => toggleLocation(custom)}
-                                      className="px-4 py-3 rounded-none text-sm font-bold transition-all text-center border-[#00FF41] bg-[#00FF41]/10 text-[#00FF41]"
+                                      className="px-4 py-3 rounded-none text-sm font-bold transition-all text-center border-phosphor bg-phosphor/10 text-phosphor"
                                     >
                                       {custom}
                                     </button>
@@ -662,7 +671,7 @@ export default function OnboardingPage() {
                                 {!showCustomCity ? (
                                   <button
                                     onClick={() => setShowCustomCity(true)}
-                                    className="px-4 py-3 rounded-none text-sm font-bold transition-all text-center border border-dashed border-[#004400] hover:border-[#00FF41] text-[#00aa00]"
+                                    className="px-4 py-3 rounded-none text-sm font-bold transition-all text-center border border-dashed border-phosphor-deep hover:border-phosphor text-phosphor-mid"
                                   >
                                     + Other
                                   </button>
@@ -674,11 +683,11 @@ export default function OnboardingPage() {
                                       value={customCity}
                                       onChange={(e) => setCustomCity(e.target.value)}
                                       onKeyDown={(e) => e.key === 'Enter' && addCustomCity()}
-                                      className="flex-1 bg-black border border-[#004400] rounded-none px-3 py-2 text-[#00FF41] text-sm focus:outline-none focus:border-[#00FF41]"
+                                      className="flex-1 bg-black border border-phosphor-deep rounded-none px-3 py-2 text-phosphor text-sm focus:outline-none focus:border-phosphor"
                                     />
                                     <button
                                       onClick={addCustomCity}
-                                      className="px-4 py-2 bg-[#00FF41] text-[#00FF41] rounded-none text-sm font-bold"
+                                      className="px-4 py-2 bg-phosphor text-phosphor rounded-none text-sm font-bold"
                                     >
                                       Add
                                     </button>
@@ -691,12 +700,12 @@ export default function OnboardingPage() {
                                   {locations.map((loc) => (
                                     <div
                                       key={loc}
-                                      className="px-3 py-1.5 rounded-none text-sm font-bold flex items-center gap-2 border-[#00FF41] bg-[#00FF41]/10 border text-[#00FF41]"
+                                      className="px-3 py-1.5 rounded-none text-sm font-bold flex items-center gap-2 border-phosphor bg-phosphor/10 border text-phosphor"
                                     >
                                       <span>{loc}</span>
                                       <button
                                         onClick={() => toggleLocation(loc)}
-                                        className="text-[#00FF41] hover:text-[#00FF41]"
+                                        className="text-phosphor hover:text-phosphor"
                                       >
                                         ×
                                       </button>
@@ -710,11 +719,11 @@ export default function OnboardingPage() {
                                     value={customCity}
                                     onChange={(e) => setCustomCity(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && addCustomCity()}
-                                    className="flex-1 bg-black border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors focus:ring-1 focus:ring-[#00FF41]"
+                                    className="flex-1 bg-black border border-phosphor-deep rounded-none px-4 py-3 text-phosphor focus:outline-none focus:border-phosphor transition-colors focus:ring-1 focus:ring-phosphor"
                                   />
                                   <button
                                     onClick={addCustomCity}
-                                    className="px-6 py-3 bg-[#00FF41] text-black rounded-none text-sm font-bold hover:bg-[#33FF66]"
+                                    className="px-6 py-3 bg-phosphor text-black rounded-none text-sm font-bold hover:bg-phosphor-hi"
                                   >
                                     Add
                                   </button>
@@ -732,10 +741,10 @@ export default function OnboardingPage() {
               {/* Step 5: Organization Culture */}
               {step === 5 && (
                 <div>
-                  <h1 className="text-3xl md:text-3xl font-black font-mono text-[#00FF41] mb-2 tracking-tight">
+                  <h1 className="text-3xl md:text-3xl font-black font-mono text-phosphor mb-2 tracking-tight">
                     THE BATTLEGROUND
                   </h1>
-                  <p className="text-sm mb-10" style={{ color: '#00aa00' }}>
+                  <p className="text-sm mb-10" style={{ color: 'var(--color-phosphor-mid)' }}>
                     Select the corporate environments where you thrive. (Select all that apply)
                   </p>
                   <div className="grid sm:grid-cols-2 gap-4">
@@ -746,15 +755,19 @@ export default function OnboardingPage() {
                         active={orgCultures.includes(culture.title)}
                         className={`p-5 rounded-none text-left flex flex-col gap-1 w-full ${index === 4 ? 'sm:col-span-2 sm:w-[calc(50%-0.5rem)] sm:mx-auto' : ''}`}
                         style={{
-                          background: orgCultures.includes(culture.title) ? 'rgba(0,255,65,0.1)' : '#000000',
-                          border: `1px solid ${orgCultures.includes(culture.title) ? '#00FF41' : '#004400'}`,
+                          background: orgCultures.includes(culture.title)
+                            ? 'rgb(var(--glow) / 0.1)'
+                            : 'var(--color-black)',
+                          border: `1px solid ${orgCultures.includes(culture.title) ? 'var(--color-phosphor)' : 'var(--color-phosphor-deep)'}`,
                         }}
                       >
                         <div className="text-3xl mb-1 pointer-events-none">{culture.icon}</div>
-                        <span className="font-bold text-lg text-[#00FF41] tracking-tight pointer-events-none">
+                        <span className="font-bold text-lg text-phosphor tracking-tight pointer-events-none">
                           {culture.title}
                         </span>
-                        <span className="text-xs font-medium text-[#00aa00] pointer-events-none">{culture.desc}</span>
+                        <span className="text-xs font-medium text-phosphor-mid pointer-events-none">
+                          {culture.desc}
+                        </span>
                       </TiltCard>
                     ))}
                   </div>
@@ -766,23 +779,23 @@ export default function OnboardingPage() {
                 <div>
                   <div className="flex justify-between items-end mb-10">
                     <div>
-                      <h1 className="text-3xl md:text-3xl font-black font-mono text-[#00FF41] mb-2 tracking-tight">
+                      <h1 className="text-3xl md:text-3xl font-black font-mono text-phosphor mb-2 tracking-tight">
                         DREAM STACK
                       </h1>
-                      <p className="text-sm" style={{ color: '#00aa00' }}>
+                      <p className="text-sm" style={{ color: 'var(--color-phosphor-mid)' }}>
                         Companies actually in{' '}
                         {workModel.toLowerCase().includes('remote')
                           ? 'remote hiring'
                           : locations.join(', ') || 'your cities'}
                         . Select at least {minDream}.
                       </p>
-                      <p className="text-[10px] mt-1" style={{ color: '#007700' }}>
+                      <p className="text-[10px] mt-1" style={{ color: 'var(--color-phosphor-dull)' }}>
                         ● = RADAR tracks their live jobs · number = open roles there right now
                       </p>
                     </div>
                     <div className="text-right">
-                      <span className="text-2xl font-black text-[#00FF41]">{dreamCompanies.length}</span>
-                      <span className="text-sm block" style={{ color: '#00aa00' }}>
+                      <span className="text-2xl font-black text-phosphor">{dreamCompanies.length}</span>
+                      <span className="text-sm block" style={{ color: 'var(--color-phosphor-mid)' }}>
                         Selected
                       </span>
                     </div>
@@ -790,10 +803,10 @@ export default function OnboardingPage() {
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                     {companiesLoading && (
-                      <p className="col-span-full text-sm text-[#00aa00] animate-pulse">SCANNING SECTOR...</p>
+                      <p className="col-span-full text-sm text-phosphor-mid animate-pulse">SCANNING SECTOR...</p>
                     )}
                     {!companiesLoading && displayedCompanies.length === 0 && (
-                      <p className="col-span-full text-sm text-[#00aa00]">
+                      <p className="col-span-full text-sm text-phosphor-mid">
                         No companies found for these cities yet. Go back and add a bigger city nearby, or run a scrape
                         so live jobs show up.
                       </p>
@@ -805,9 +818,13 @@ export default function OnboardingPage() {
                         active={dreamCompanies.includes(company.name)}
                         className="px-3 py-3 rounded-none text-sm font-bold text-center"
                         style={{
-                          background: dreamCompanies.includes(company.name) ? 'rgba(0,255,65,0.1)' : '#000000',
-                          border: `1px solid ${dreamCompanies.includes(company.name) ? '#00FF41' : '#004400'}`,
-                          color: dreamCompanies.includes(company.name) ? '#00FF41' : '#00aa00',
+                          background: dreamCompanies.includes(company.name)
+                            ? 'rgb(var(--glow) / 0.1)'
+                            : 'var(--color-black)',
+                          border: `1px solid ${dreamCompanies.includes(company.name) ? 'var(--color-phosphor)' : 'var(--color-phosphor-deep)'}`,
+                          color: dreamCompanies.includes(company.name)
+                            ? 'var(--color-phosphor)'
+                            : 'var(--color-phosphor-mid)',
                         }}
                       >
                         <span className="pointer-events-none block truncate">
@@ -828,10 +845,10 @@ export default function OnboardingPage() {
               {/* Step 7: Resume Upload / Manual Entry */}
               {step === 7 && (
                 <div>
-                  <h1 className="text-3xl md:text-3xl font-black font-mono text-[#00FF41] mb-2 tracking-tight">
+                  <h1 className="text-3xl md:text-3xl font-black font-mono text-phosphor mb-2 tracking-tight">
                     UPLOAD CONTEXT
                   </h1>
-                  <p className="text-sm mb-10" style={{ color: '#00aa00' }}>
+                  <p className="text-sm mb-10" style={{ color: 'var(--color-phosphor-mid)' }}>
                     Provide your resume or enter details manually for AI matching.
                   </p>
 
@@ -847,7 +864,7 @@ export default function OnboardingPage() {
                           onDragOver={onDragOver}
                           onDragLeave={onDragLeave}
                           onDrop={onDrop}
-                          className={`w-full flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-none cursor-pointer transition-all ${isDragging ? 'border-[#00FF41] bg-[#00FF41]/5' : 'border-[#004400] bg-black hover:border-[#00FF41]/50'}`}
+                          className={`w-full flex flex-col items-center justify-center p-12 border-2 border-dashed rounded-none cursor-pointer transition-all ${isDragging ? 'border-phosphor bg-phosphor/5' : 'border-phosphor-deep bg-black hover:border-phosphor/50'}`}
                         >
                           <input
                             type="file"
@@ -857,37 +874,37 @@ export default function OnboardingPage() {
                           />
                           <div
                             className="w-16 h-16 rounded-none flex items-center justify-center mb-4"
-                            style={{ background: 'rgba(0,255,65,0.1)' }}
+                            style={{ background: 'rgb(var(--glow) / 0.1)' }}
                           >
                             <span className="text-2xl">📄</span>
                           </div>
                           {resumeFile ? (
                             <div className="text-center">
-                              <p className="text-[#00FF41] font-bold text-lg mb-1">{resumeFile.name}</p>
-                              <p className="text-sm" style={{ color: '#00aa00' }}>
+                              <p className="text-phosphor font-bold text-lg mb-1">{resumeFile.name}</p>
+                              <p className="text-sm" style={{ color: 'var(--color-phosphor-mid)' }}>
                                 {(resumeFile.size / 1024 / 1024).toFixed(2)} MB
                               </p>
                             </div>
                           ) : (
                             <div className="text-center">
-                              <p className="text-[#00FF41] font-bold text-lg mb-2">Drop your resume here</p>
-                              <p className="text-sm" style={{ color: '#00aa00' }}>
+                              <p className="text-phosphor font-bold text-lg mb-2">Drop your resume here</p>
+                              <p className="text-sm" style={{ color: 'var(--color-phosphor-mid)' }}>
                                 PDF up to 4 MB
                               </p>
-                              <p className="text-xs mt-6" style={{ color: '#00FF41' }}>
+                              <p className="text-xs mt-6" style={{ color: 'var(--color-phosphor)' }}>
                                 Required for AI Matching
                               </p>
                             </div>
                           )}
                         </label>
 
-                        <div className="mt-8 text-center border-t border-[#002200] pt-8">
-                          <p className="text-sm text-[#00aa00] mb-4">
+                        <div className="mt-8 text-center border-t border-phosphor-dark pt-8">
+                          <p className="text-sm text-phosphor-mid mb-4">
                             Don't have a resume ready? No sweat. We can do this the hard way.
                           </p>
                           <button
                             onClick={() => setShowManualEntry(true)}
-                            className="px-6 py-2.5 border-2 border-[#00FF41] text-[#00FF41] rounded-none text-sm font-bold hover:bg-[#00FF41] hover:text-[#00FF41] transition-all shadow-[0_0_15px_rgba(0,255,65,0.15)]"
+                            className="px-6 py-2.5 border-2 border-phosphor text-phosphor rounded-none text-sm font-bold hover:bg-phosphor hover:text-phosphor transition-all shadow-[0_0_15px_rgb(var(--glow)/0.15)]"
                           >
                             Build Profile Manually ↯
                           </button>
@@ -899,22 +916,22 @@ export default function OnboardingPage() {
                         initial={{ opacity: 0, scale: 0.95 }}
                         animate={{ opacity: 1, scale: 1 }}
                         exit={{ opacity: 0, scale: 0.95 }}
-                        className="bg-black border border-[#004400] rounded-none p-4 shadow-2xl relative"
+                        className="bg-black border border-phosphor-deep rounded-none p-4 shadow-2xl relative"
                       >
                         <button
                           onClick={() => setShowManualEntry(false)}
-                          className="absolute top-4 right-4 text-[#00aa00] hover:text-[#00FF41] transition-colors text-sm font-bold"
+                          className="absolute top-4 right-4 text-phosphor-mid hover:text-phosphor transition-colors text-sm font-bold"
                         >
                           ✕ Cancel
                         </button>
 
-                        <h2 className="text-xl font-bold text-[#00FF41] mb-6 flex items-center gap-2">
-                          <span className="text-[#00FF41]">↯</span> The Builder Console
+                        <h2 className="text-xl font-bold text-phosphor mb-6 flex items-center gap-2">
+                          <span className="text-phosphor">↯</span> The Builder Console
                         </h2>
 
                         {/* Skills */}
                         <div className="mb-6">
-                          <label className="block text-xs uppercase tracking-wider font-bold mb-2 text-[#00aa00]">
+                          <label className="block text-xs uppercase tracking-wider font-bold mb-2 text-phosphor-mid">
                             Core Skills (Required)
                           </label>
                           <div className="flex flex-wrap gap-2 mb-3">
@@ -925,12 +942,12 @@ export default function OnboardingPage() {
                                   animate={{ scale: 1 }}
                                   exit={{ scale: 0 }}
                                   key={skill}
-                                  className="px-3 py-1.5 rounded-none text-sm font-bold flex items-center gap-2 bg-[#00FF41]/10 border border-[#00FF41] text-[#00FF41] shadow-[0_0_10px_rgba(0,255,65,0.2)]"
+                                  className="px-3 py-1.5 rounded-none text-sm font-bold flex items-center gap-2 bg-phosphor/10 border border-phosphor text-phosphor shadow-[0_0_10px_rgb(var(--glow)/0.2)]"
                                 >
                                   {skill}
                                   <button
                                     onClick={() => removeManualSkill(skill)}
-                                    className="text-[#00FF41] hover:text-[#EF4444] transition-colors"
+                                    className="text-phosphor hover:text-[#EF4444] transition-colors"
                                   >
                                     ×
                                   </button>
@@ -945,11 +962,11 @@ export default function OnboardingPage() {
                               value={skillInput}
                               onChange={(e) => setSkillInput(e.target.value)}
                               onKeyDown={(e) => e.key === 'Enter' && addManualSkill()}
-                              className="flex-1 bg-[#000000] border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors focus:ring-1 focus:ring-[#00FF41]"
+                              className="flex-1 bg-black border border-phosphor-deep rounded-none px-4 py-3 text-phosphor focus:outline-none focus:border-phosphor transition-colors focus:ring-1 focus:ring-phosphor"
                             />
                             <button
                               onClick={addManualSkill}
-                              className="px-6 py-3 bg-[#004400] text-[#00FF41] rounded-none font-bold hover:bg-[#00FF41] transition-colors"
+                              className="px-6 py-3 bg-phosphor-deep text-phosphor rounded-none font-bold hover:bg-phosphor transition-colors"
                             >
                               Add
                             </button>
@@ -958,7 +975,7 @@ export default function OnboardingPage() {
 
                         {/* Projects */}
                         <div className="mb-6">
-                          <label className="block text-xs uppercase tracking-wider font-bold mb-2 text-[#00aa00]">
+                          <label className="block text-xs uppercase tracking-wider font-bold mb-2 text-phosphor-mid">
                             Top Projects (Optional)
                           </label>
                           <textarea
@@ -966,13 +983,13 @@ export default function OnboardingPage() {
                             rows={3}
                             value={manualProjects}
                             onChange={(e) => setManualProjects(e.target.value)}
-                            className="w-full bg-[#000000] border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors focus:ring-1 focus:ring-[#00FF41] resize-none"
+                            className="w-full bg-black border border-phosphor-deep rounded-none px-4 py-3 text-phosphor focus:outline-none focus:border-phosphor transition-colors focus:ring-1 focus:ring-phosphor resize-none"
                           />
                         </div>
 
                         {/* Bio / Other */}
                         <div>
-                          <label className="block text-xs uppercase tracking-wider font-bold mb-2 text-[#00aa00]">
+                          <label className="block text-xs uppercase tracking-wider font-bold mb-2 text-phosphor-mid">
                             The X-Factor / Bio (Optional)
                           </label>
                           <textarea
@@ -980,7 +997,7 @@ export default function OnboardingPage() {
                             rows={2}
                             value={manualBio}
                             onChange={(e) => setManualBio(e.target.value)}
-                            className="w-full bg-[#000000] border border-[#004400] rounded-none px-4 py-3 text-[#00FF41] focus:outline-none focus:border-[#00FF41] transition-colors focus:ring-1 focus:ring-[#00FF41] resize-none"
+                            className="w-full bg-black border border-phosphor-deep rounded-none px-4 py-3 text-phosphor focus:outline-none focus:border-phosphor transition-colors focus:ring-1 focus:ring-phosphor resize-none"
                           />
                         </div>
                       </motion.div>
@@ -1005,13 +1022,13 @@ export default function OnboardingPage() {
         {/* Navigation Buttons */}
         <div
           className="flex justify-between items-center pt-6 shrink-0 mt-4"
-          style={{ borderTop: '1px solid #004400' }}
+          style={{ borderTop: '1px solid var(--color-phosphor-deep)' }}
         >
           {step > 1 ? (
             <button
               onClick={handleBack}
-              className="px-6 py-2.5 text-sm font-bold uppercase tracking-wider rounded-none transition-colors hover:bg-[#002200]"
-              style={{ color: '#00aa00', border: '1px solid #004400' }}
+              className="px-6 py-2.5 text-sm font-bold uppercase tracking-wider rounded-none transition-colors hover:bg-phosphor-dark"
+              style={{ color: 'var(--color-phosphor-mid)', border: '1px solid var(--color-phosphor-deep)' }}
             >
               Back
             </button>
@@ -1024,8 +1041,8 @@ export default function OnboardingPage() {
             step !== 1 && (
               <button
                 onClick={handleNext}
-                className="px-8 py-2.5 text-sm font-bold uppercase tracking-wider rounded-none text-black transition-all hover:-translate-y-0.5 shadow-[0_0_20px_rgba(0,255,65,0.3)] hover:shadow-[0_0_30px_rgba(0,255,65,0.5)]"
-                style={{ background: '#00FF41' }}
+                className="px-8 py-2.5 text-sm font-bold uppercase tracking-wider rounded-none text-black transition-all hover:-translate-y-0.5 shadow-[0_0_20px_rgb(var(--glow)/0.3)] hover:shadow-[0_0_30px_rgb(var(--glow)/0.5)]"
+                style={{ background: 'var(--color-phosphor)' }}
               >
                 Continue
               </button>
@@ -1034,8 +1051,8 @@ export default function OnboardingPage() {
             <button
               onClick={handleSubmit}
               disabled={loading}
-              className="px-8 py-2.5 text-sm font-bold uppercase tracking-wider rounded-none text-black transition-all hover:-translate-y-0.5 shadow-[0_0_30px_rgba(0,255,65,0.5)] disabled:opacity-50 disabled:hover:translate-y-0"
-              style={{ background: '#00FF41' }}
+              className="px-8 py-2.5 text-sm font-bold uppercase tracking-wider rounded-none text-black transition-all hover:-translate-y-0.5 shadow-[0_0_30px_rgb(var(--glow)/0.5)] disabled:opacity-50 disabled:hover:translate-y-0"
+              style={{ background: 'var(--color-phosphor)' }}
             >
               {loading ? 'INITIALIZING...' : 'LAUNCH RADAR'}
             </button>

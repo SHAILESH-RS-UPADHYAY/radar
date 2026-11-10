@@ -124,7 +124,7 @@ export function FormIntercept({ form }: { form: ReturnType<typeof useFormInterce
             <button
               type="button"
               onClick={() => void copyPacket()}
-              className="bg-phosphor px-3 py-1.5 font-mono text-[10px] font-bold tracking-[0.2em] text-black transition-colors hover:bg-[#33FF66]"
+              className="bg-phosphor px-3 py-1.5 font-mono text-[10px] font-bold tracking-[0.2em] text-black transition-colors hover:bg-phosphor-hi"
             >
               COPY FILL PACKET
             </button>

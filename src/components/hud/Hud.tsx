@@ -13,7 +13,7 @@ const TONE: Record<Tone, string> = {
   idle: 'text-dim',
 };
 const DOT: Record<Tone, string> = {
-  ok: 'bg-phosphor shadow-[0_0_8px_rgba(0,255,65,0.8)]',
+  ok: 'bg-phosphor shadow-[0_0_8px_rgb(var(--glow)/0.8)]',
   info: 'bg-hud-cyan shadow-[0_0_8px_rgba(34,211,238,0.8)]',
   warn: 'bg-hud-amber shadow-[0_0_8px_rgba(250,204,21,0.8)]',
   alert: 'bg-hud-red shadow-[0_0_8px_rgba(248,113,113,0.8)]',

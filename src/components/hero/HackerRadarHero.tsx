@@ -542,7 +542,7 @@ function RadarScope({ onLock }: { onLock: (lock: Lock) => void }) {
 }
 
 function Corner({ pos }: { pos: string }) {
-  return <span className={`absolute w-4 h-4 border-[#00FF41] ${pos}`} />;
+  return <span className={`absolute w-4 h-4 border-phosphor ${pos}`} />;
 }
 
 export default function HackerRadarHero({ children }: { children?: ReactNode }) {
@@ -592,79 +592,79 @@ export default function HackerRadarHero({ children }: { children?: ReactNode }) 
 
         {/* Right: scope console */}
         <div className="relative w-full max-w-[560px] mx-auto font-mono">
-          <div className="relative border border-[#00FF41]/40 bg-black/70 backdrop-blur-sm shadow-[0_0_60px_rgba(0,255,65,0.12)]">
+          <div className="relative border border-phosphor/40 bg-black/70 backdrop-blur-sm shadow-[0_0_60px_rgb(var(--glow)/0.12)]">
             <Corner pos="-top-px -left-px border-t-2 border-l-2" />
             <Corner pos="-top-px -right-px border-t-2 border-r-2" />
             <Corner pos="-bottom-px -left-px border-b-2 border-l-2" />
             <Corner pos="-bottom-px -right-px border-b-2 border-r-2" />
 
-            <div className="flex items-center justify-between px-3 py-2 border-b border-[#00FF41]/25 text-[10px] tracking-widest">
-              <span className="text-[#00FF41]">SIGINT://RADAR-01</span>
-              <span className="flex items-center gap-2 text-[#00FF41]/70">
-                <span className="w-1.5 h-1.5 rounded-full bg-[#F87171] animate-pulse" /> REC ·{' '}
+            <div className="flex items-center justify-between px-3 py-2 border-b border-phosphor/25 text-[10px] tracking-widest">
+              <span className="text-phosphor">SIGINT://RADAR-01</span>
+              <span className="flex items-center gap-2 text-phosphor/70">
+                <span className="w-1.5 h-1.5 rounded-full bg-hud-red animate-pulse" /> REC ·{' '}
                 {String(count).padStart(4, '0')} LOCKS
               </span>
             </div>
 
             <div className="p-3 sm:p-5">
               <RadarScope onLock={onLock} />
-              <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[9px] tracking-widest text-[#00FF41]/60">
+              <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1 text-[9px] tracking-widest text-phosphor/60">
                 <span>
-                  <span className="text-[#00FF41]">●</span> VAULT ≥80
+                  <span className="text-phosphor">●</span> VAULT ≥80
                 </span>
                 <span>
-                  <span className="text-[#FACC15]">◆</span> OVERCLOCK 50–79
+                  <span className="text-hud-amber">◆</span> OVERCLOCK 50–79
                 </span>
                 <span>
-                  <span className="text-[#22D3EE]">▲</span> NEW SIGNAL
+                  <span className="text-hud-cyan">▲</span> NEW SIGNAL
                 </span>
                 <span>CENTRE = 100% MATCH</span>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 border-t border-[#00FF41]/25 text-[10px]">
-              <div className="p-3 border-r border-[#00FF41]/25">
-                <div className="text-[#00FF41]/50 mb-1 tracking-widest">LOCKED TARGETS</div>
+            <div className="grid grid-cols-2 border-t border-phosphor/25 text-[10px]">
+              <div className="p-3 border-r border-phosphor/25">
+                <div className="text-phosphor/50 mb-1 tracking-widest">LOCKED TARGETS</div>
                 {locks.length ? (
                   locks.map((l, i) => (
                     <div key={l.label} className="flex justify-between" style={{ opacity: 1 - i * 0.2 }}>
                       <span style={{ color: `rgb(${BAND_RGB[l.band]})` }}>▸ {l.label}</span>
-                      <span className="text-[#00FF41]/60">{l.band === 'NEW' ? 'NEW' : l.score + '%'}</span>
+                      <span className="text-phosphor/60">{l.band === 'NEW' ? 'NEW' : l.score + '%'}</span>
                     </div>
                   ))
                 ) : (
-                  <div className="text-[#00FF41]/40">acquiring…</div>
+                  <div className="text-phosphor/40">acquiring…</div>
                 )}
               </div>
-              <div className="p-3 space-y-0.5 text-[#00FF41]/80">
-                <div className="text-[#00FF41]/50 mb-1 tracking-widest">TELEMETRY</div>
+              <div className="p-3 space-y-0.5 text-phosphor/80">
+                <div className="text-phosphor/50 mb-1 tracking-widest">TELEMETRY</div>
                 <div>
                   SOURCES{' '}
-                  <span className="float-right text-[#00FF41]">
+                  <span className="float-right text-phosphor">
                     {CATALOG.sources}/{CATALOG.sources}
                   </span>
                 </div>
                 <div>
-                  MODEL <span className="float-right text-[#22D3EE]">e5-L 1024D</span>
+                  MODEL <span className="float-right text-hud-cyan">e5-L 1024D</span>
                 </div>
                 <div>
-                  CYCLE <span className="float-right text-[#00FF41]">6h</span>
+                  CYCLE <span className="float-right text-phosphor">6h</span>
                 </div>
                 <div>
-                  MODE <span className="float-right text-[#FACC15] animate-pulse">SCANNING</span>
+                  MODE <span className="float-right text-hud-amber animate-pulse">SCANNING</span>
                 </div>
               </div>
             </div>
 
-            <div className="border-t border-[#00FF41]/25 p-3 h-[132px] overflow-hidden text-[10.5px] leading-[17px]">
+            <div className="border-t border-phosphor/25 p-3 h-[132px] overflow-hidden text-[10.5px] leading-[17px]">
               {log.map((l, i) => (
                 <div key={i} className="truncate hacker-log-line">
-                  <span className="text-[#00FF41]/40">{l.ts}</span>{' '}
+                  <span className="text-phosphor/40">{l.ts}</span>{' '}
                   <span style={{ color: TAG_COLOR[l.tag] }}>[{l.tag.padEnd(4, ' ')}]</span>{' '}
-                  <span className="text-[#00FF41]/85">{l.msg}</span>
+                  <span className="text-phosphor/85">{l.msg}</span>
                 </div>
               ))}
-              <span className="inline-block w-2 h-3 bg-[#00FF41] animate-pulse align-middle" />
+              <span className="inline-block w-2 h-3 bg-phosphor animate-pulse align-middle" />
             </div>
           </div>
         </div>

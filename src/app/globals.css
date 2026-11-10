@@ -12,17 +12,33 @@
   --color-hud-red: #f87171;
   --color-ink: #dcffe3;
   --color-dim: #7b9481;
+  /* The other greens the HUD is drawn in (brighter hover, mid and deep fills), so a look can re-ink them too. */
+  --color-phosphor-hi: #33ff66;
+  --color-phosphor-low: #00cc33;
+  --color-phosphor-mid: #00aa00;
+  --color-phosphor-deep: #004400;
+  --color-phosphor-dark: #002200;
+  --color-phosphor-dull: #007700;
+  --color-phosphor-mute: #2f4a35;
+  --color-hud-violet: #c792ea;
+  --color-hud-pink: #ff8fb1;
+  --color-hud-rose: #ff2a6d;
+}
+
+/* The glow colour as bare channels, for shadows at any strength: rgb(var(--glow) / 0.3). */
+:root {
+  --glow: 0 255 65;
 }
 
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(0, 255, 65, 0.25) transparent;
+  scrollbar-color: rgb(var(--glow) / 0.25) transparent;
 }
 html {
   scroll-behavior: auto;
 }
 ::selection {
-  background: rgba(0, 255, 65, 0.25);
+  background: rgb(var(--glow) / 0.25);
   color: #fff;
 }
 
@@ -59,7 +75,7 @@ body {
   height: 2px;
   z-index: 9999;
   background: linear-gradient(90deg, transparent, var(--color-phosphor), var(--color-phosphor-soft));
-  box-shadow: 0 0 10px rgba(0, 255, 65, 0.6);
+  box-shadow: 0 0 10px rgb(var(--glow) / 0.6);
   transform-origin: left;
 }
 
@@ -67,14 +83,14 @@ body {
   width: 6px;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(0, 255, 65, 0.25);
+  background: rgb(var(--glow) / 0.25);
 }
 
 /* ---- HUD surfaces ---- */
 .hud-grid {
   background-image:
-    linear-gradient(rgba(0, 255, 65, 0.04) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 255, 65, 0.04) 1px, transparent 1px);
+    linear-gradient(rgb(var(--glow) / 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(var(--glow) / 0.04) 1px, transparent 1px);
   background-size: 40px 40px;
 }
 .caret-blink {
@@ -86,7 +102,7 @@ body {
   }
 }
 .hud-flow {
-  background-image: linear-gradient(90deg, rgba(0, 255, 65, 0.7) 50%, transparent 50%);
+  background-image: linear-gradient(90deg, rgb(var(--glow) / 0.7) 50%, transparent 50%);
   background-size: 12px 1px;
   animation: hud-flow 0.8s linear infinite;
 }
@@ -214,7 +230,7 @@ body {
 /* ---- Terminal text ---- */
 /* Glow only: the text keeps its parent's colour (the hero title is white). */
 .text-matrix {
-  text-shadow: 0 0 5px rgba(0, 255, 65, 0.3);
+  text-shadow: 0 0 5px rgb(var(--glow) / 0.3);
 }
 .terminal-input-caret {
   display: inline-block;

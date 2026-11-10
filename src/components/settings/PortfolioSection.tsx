@@ -214,7 +214,7 @@ export function PortfolioSection({
                 />
                 <button
                   type="submit"
-                  className="bg-phosphor px-5 py-2 font-mono text-[11px] font-bold tracking-[0.2em] text-black transition-colors hover:bg-[#33FF66]"
+                  className="bg-phosphor px-5 py-2 font-mono text-[11px] font-bold tracking-[0.2em] text-black transition-colors hover:bg-phosphor-hi"
                 >
                   + ADD
                 </button>

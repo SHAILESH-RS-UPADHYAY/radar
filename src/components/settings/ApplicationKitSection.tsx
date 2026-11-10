@@ -200,7 +200,7 @@ export function ApplicationKitSection({
               onClick={(e) => e.preventDefault()}
               draggable
               title="Drag me to your bookmarks bar"
-              className="shrink-0 cursor-grab border border-phosphor bg-phosphor/10 px-5 py-2.5 text-center font-mono text-xs font-bold tracking-[0.25em] text-phosphor shadow-[0_0_20px_rgba(0,255,65,0.25)] active:cursor-grabbing"
+              className="shrink-0 cursor-grab border border-phosphor bg-phosphor/10 px-5 py-2.5 text-center font-mono text-xs font-bold tracking-[0.25em] text-phosphor shadow-[0_0_20px_rgb(var(--glow)/0.25)] active:cursor-grabbing"
             >
               ↯ RADAR FILL
             </a>

@@ -107,7 +107,7 @@ export function TailorPreview({ id }: { id: string }) {
       <aside className="space-y-6">
         <a
           href={`/api/overclock/${view.id}/pdf`}
-          className="block bg-phosphor py-3 text-center font-mono text-xs font-bold tracking-[0.25em] text-black shadow-[0_0_20px_rgba(0,255,65,0.3)] transition-colors hover:bg-[#33FF66]"
+          className="block bg-phosphor py-3 text-center font-mono text-xs font-bold tracking-[0.25em] text-black shadow-[0_0_20px_rgb(var(--glow)/0.3)] transition-colors hover:bg-phosphor-hi"
         >
           ⬇ DOWNLOAD PDF
         </a>

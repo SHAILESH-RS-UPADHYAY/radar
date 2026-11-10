@@ -12,7 +12,7 @@ export default function Loading() {
           <p className="flex items-center gap-2 font-mono text-[10px] tracking-[0.3em] text-phosphor/80">
             <span
               aria-hidden="true"
-              className="h-3 w-3 animate-spin rounded-full border border-phosphor bg-[conic-gradient(from_0deg,rgba(0,255,65,0.85),transparent_30%)]"
+              className="h-3 w-3 animate-spin rounded-full border border-phosphor bg-[conic-gradient(from_0deg,rgb(var(--glow)/0.85),transparent_30%)]"
             />
             LOADING
           </p>

@@ -90,7 +90,7 @@ export function JobFacts({ job, statedExp }: { job: MatchedJob['job']; statedExp
   const facts: [string, string | null, string][] = [
     ['⌖', job.location || null, 'border-hud-cyan/60 text-hud-cyan'],
     ['PAY', formatSalary(job), 'border-hud-amber/60 text-hud-amber'],
-    ['EXP', exp, 'border-[#c792ea]/60 text-[#c792ea]'],
+    ['EXP', exp, 'border-hud-violet/60 text-hud-violet'],
     [
       '◷',
       job.posted_at ? timeAgo(job.posted_at) : null,
@@ -100,7 +100,7 @@ export function JobFacts({ job, statedExp }: { job: MatchedJob['job']; statedExp
           ? 'border-hud-red/60 text-hud-red'
           : 'border-white/30 text-white/80',
     ],
-    ['SRC', sourceLabel(job), 'border-[#ff2a6d]/50 text-[#ff8fb1]'],
+    ['SRC', sourceLabel(job), 'border-hud-rose/50 text-hud-pink'],
   ];
   return (
     <div className="mt-2 flex flex-wrap gap-1.5">

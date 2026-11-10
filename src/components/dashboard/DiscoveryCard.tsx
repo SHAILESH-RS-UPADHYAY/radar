@@ -78,7 +78,7 @@ export function DiscoveryCard({
                 ? 'One click: the form opens filled with your answers and resume. You press Submit.'
                 : 'Step by step: the tailored resume, every answer of the form to review, then the form'
             }
-            className="mt-2 bg-phosphor py-2 text-center font-mono text-[11px] font-bold tracking-[0.25em] text-black transition-colors hover:bg-[#33FF66]"
+            className="mt-2 bg-phosphor py-2 text-center font-mono text-[11px] font-bold tracking-[0.25em] text-black transition-colors hover:bg-phosphor-hi"
           >
             {onHack ? '↯ HACK' : 'INFILTRATE ▸'}
           </button>

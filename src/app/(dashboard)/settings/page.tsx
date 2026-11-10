@@ -101,7 +101,7 @@ function ChipInput({
     <div>
       <div
         onClick={() => inputRef.current?.focus()}
-        className="flex min-h-[48px] cursor-text flex-wrap items-center gap-2 border border-phosphor/25 bg-black/60 p-2 transition-colors focus-within:border-phosphor/70 focus-within:shadow-[0_0_18px_rgba(0,255,65,0.12)]"
+        className="flex min-h-[48px] cursor-text flex-wrap items-center gap-2 border border-phosphor/25 bg-black/60 p-2 transition-colors focus-within:border-phosphor/70 focus-within:shadow-[0_0_18px_rgb(var(--glow)/0.12)]"
       >
         {values.map((v) => (
           <span
@@ -489,7 +489,7 @@ export default function SettingsPage() {
         type="button"
         onClick={rescan}
         disabled={rescanning || uploading}
-        className="mt-4 flex w-full items-center justify-center gap-2 bg-phosphor px-6 py-3 font-mono text-xs font-bold tracking-[0.2em] text-black shadow-[0_0_20px_rgba(0,255,65,0.3)] transition-colors hover:bg-[#33FF66] disabled:cursor-wait disabled:bg-phosphor/40"
+        className="mt-4 flex w-full items-center justify-center gap-2 bg-phosphor px-6 py-3 font-mono text-xs font-bold tracking-[0.2em] text-black shadow-[0_0_20px_rgb(var(--glow)/0.3)] transition-colors hover:bg-phosphor-hi disabled:cursor-wait disabled:bg-phosphor/40"
       >
         {rescanning && <span className="h-3 w-3 animate-spin rounded-full border-2 border-black/30 border-t-black" />}
         {rescanning ? 'RESCANNING' : '[ RESCAN NOW ]'}
@@ -579,7 +579,7 @@ export default function SettingsPage() {
                 tone={strength >= 80 ? 'ok' : strength >= 50 ? 'warn' : 'alert'}
               >
                 <div className="flex items-end justify-between gap-3 font-mono">
-                  <span className="text-5xl font-extrabold leading-none text-phosphor [text-shadow:0_0_20px_rgba(0,255,65,0.35)]">
+                  <span className="text-5xl font-extrabold leading-none text-phosphor [text-shadow:0_0_20px_rgb(var(--glow)/0.35)]">
                     {strength}
                     <span className="text-xl">%</span>
                   </span>
@@ -587,7 +587,7 @@ export default function SettingsPage() {
                 </div>
                 <div className="mt-4 h-1.5 bg-phosphor/10">
                   <div
-                    className="h-full bg-phosphor shadow-[0_0_10px_#00FF41] transition-[width] duration-500"
+                    className="h-full bg-phosphor shadow-[0_0_10px_var(--color-phosphor)] transition-[width] duration-500"
                     style={{ width: strength + '%' }}
                   />
                 </div>
@@ -790,7 +790,7 @@ export default function SettingsPage() {
                       max={20}
                       value={profile.experience_years}
                       aria-label="Years of experience"
-                      className="mt-2 w-full accent-[#00FF41]"
+                      className="mt-2 w-full accent-phosphor"
                       onChange={(e) => setProfile({ ...profile, experience_years: Number(e.target.value) })}
                       onPointerUp={() => save({ experience_years: profile.experience_years }, 'Experience')}
                       onKeyUp={() => save({ experience_years: profile.experience_years }, 'Experience')}
@@ -843,7 +843,9 @@ export default function SettingsPage() {
                     <span
                       className={
                         'absolute top-0.5 h-4 w-4 transition-all ' +
-                        (profile.auto_vault ? 'left-[22px] bg-phosphor shadow-[0_0_8px_#00FF41]' : 'left-0.5 bg-dim')
+                        (profile.auto_vault
+                          ? 'left-[22px] bg-phosphor shadow-[0_0_8px_var(--color-phosphor)]'
+                          : 'left-0.5 bg-dim')
                       }
                     />
                   </span>
@@ -861,7 +863,7 @@ export default function SettingsPage() {
                     value={profile.vault_min_score}
                     disabled={!profile.auto_vault}
                     aria-label="Minimum match score for auto-vault"
-                    className="mt-2 w-full accent-[#00FF41]"
+                    className="mt-2 w-full accent-phosphor"
                     onChange={(e) => setProfile({ ...profile, vault_min_score: Number(e.target.value) })}
                     onPointerUp={() => save({ vault_min_score: profile.vault_min_score }, 'Minimum score')}
                     onKeyUp={() => save({ vault_min_score: profile.vault_min_score }, 'Minimum score')}
@@ -900,7 +902,7 @@ export default function SettingsPage() {
                         className={
                           'absolute top-0.5 h-4 w-4 transition-all ' +
                           (profile.auto_overclock
-                            ? 'left-[22px] bg-phosphor shadow-[0_0_8px_#00FF41]'
+                            ? 'left-[22px] bg-phosphor shadow-[0_0_8px_var(--color-phosphor)]'
                             : 'left-0.5 bg-dim')
                         }
                       />
@@ -923,7 +925,7 @@ export default function SettingsPage() {
                         value={profile.overclock_daily_cap}
                         disabled={!profile.auto_overclock}
                         aria-label="Auto-OVERCLOCK tailorings per day"
-                        className="mt-2 w-full accent-[#00FF41]"
+                        className="mt-2 w-full accent-phosphor"
                         onChange={(e) => setProfile({ ...profile, overclock_daily_cap: Number(e.target.value) })}
                         onPointerUp={() => save({ overclock_daily_cap: profile.overclock_daily_cap }, 'Daily cap')}
                         onKeyUp={() => save({ overclock_daily_cap: profile.overclock_daily_cap }, 'Daily cap')}
@@ -1090,7 +1092,7 @@ export default function SettingsPage() {
                   type="button"
                   onClick={() => void rescan()}
                   disabled={rescanning || uploading}
-                  className="flex flex-1 items-center justify-center gap-2 bg-phosphor px-5 py-2.5 font-mono text-[11px] font-bold tracking-[0.25em] text-black shadow-[0_0_20px_rgba(0,255,65,0.3)] transition-colors hover:bg-[#33FF66] disabled:cursor-wait disabled:bg-phosphor/40 sm:flex-none"
+                  className="flex flex-1 items-center justify-center gap-2 bg-phosphor px-5 py-2.5 font-mono text-[11px] font-bold tracking-[0.25em] text-black shadow-[0_0_20px_rgb(var(--glow)/0.3)] transition-colors hover:bg-phosphor-hi disabled:cursor-wait disabled:bg-phosphor/40 sm:flex-none"
                 >
                   {rescanning && (
                     <span className="h-3 w-3 animate-spin rounded-full border-2 border-black/30 border-t-black" />

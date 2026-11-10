@@ -15,7 +15,9 @@ function Split({ s }: { s: FunnelSplit }) {
       <span className="h-1.5 bg-phosphor/10">
         {/* Grows from zero when it scrolls in (instant under reduced motion, see MotionConfig below). */}
         <motion.span
-          className={'block h-full ' + (strong ? 'bg-phosphor shadow-[0_0_10px_rgba(0,255,65,0.6)]' : 'bg-phosphor/40')}
+          className={
+            'block h-full ' + (strong ? 'bg-phosphor shadow-[0_0_10px_rgb(var(--glow)/0.6)]' : 'bg-phosphor/40')
+          }
           initial={{ width: 0 }}
           whileInView={{ width: pct(hit, of) + '%' }}
           viewport={{ once: true }}

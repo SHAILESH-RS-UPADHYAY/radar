@@ -7,7 +7,7 @@ import { CoachPanel } from './CoachPanel';
 import { postedTag, type MatchAction, type MatchedJob } from './types';
 
 const PILL =
-  'group/run mt-2 flex items-center justify-center gap-2.5 rounded-full border border-phosphor bg-phosphor/10 py-2.5 font-mono text-[11px] font-bold tracking-[0.3em] text-phosphor shadow-[0_0_22px_rgba(0,255,65,0.35)] transition-all hover:bg-phosphor hover:text-black hover:shadow-[0_0_32px_rgba(0,255,65,0.6)]';
+  'group/run mt-2 flex items-center justify-center gap-2.5 rounded-full border border-phosphor bg-phosphor/10 py-2.5 font-mono text-[11px] font-bold tracking-[0.3em] text-phosphor shadow-[0_0_22px_rgb(var(--glow)/0.35)] transition-all hover:bg-phosphor hover:text-black hover:shadow-[0_0_32px_rgb(var(--glow)/0.6)]';
 const badge = 'border px-2 py-1 font-mono text-[10px] font-bold tracking-[0.2em]';
 
 export function VaultCard({
@@ -39,7 +39,7 @@ export function VaultCard({
       exit={{ opacity: 0, x: -80 }}
       onClick={openOnClick(open)}
       className={
-        'group relative border border-phosphor/30 bg-black/75 p-5 shadow-[0_0_40px_rgba(0,255,65,0.04)] transition-colors hover:border-phosphor/60 sm:p-6' +
+        'group relative border border-phosphor/30 bg-black/75 p-5 shadow-[0_0_40px_rgb(var(--glow)/0.04)] transition-colors hover:border-phosphor/60 sm:p-6' +
         (open ? ' cursor-pointer' : '')
       }
     >
@@ -55,9 +55,9 @@ export function VaultCard({
                 className={
                   badge +
                   (job.company.category === 'Startup'
-                    ? ' border-[#22D3EE]/50 bg-[#22D3EE]/10 text-[#22D3EE]'
+                    ? ' border-hud-cyan/50 bg-hud-cyan/10 text-hud-cyan'
                     : job.company.category === 'Growth'
-                      ? ' border-[#c792ea]/50 bg-[#c792ea]/10 text-[#c792ea]'
+                      ? ' border-hud-violet/50 bg-hud-violet/10 text-hud-violet'
                       : ' border-phosphor/40 bg-phosphor/10 text-phosphor')
                 }
               >

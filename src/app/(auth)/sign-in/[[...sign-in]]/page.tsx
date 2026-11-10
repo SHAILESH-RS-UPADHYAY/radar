@@ -4,7 +4,7 @@ import { RadarLogo } from '@/components/brand/RadarLogo';
 
 export default function Page() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-black bg-[linear-gradient(rgba(0,255,65,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(0,255,65,0.03)_1px,transparent_1px)] bg-[size:20px_20px] font-mono relative overflow-hidden">
+    <div className="flex min-h-screen items-center justify-center bg-black bg-[linear-gradient(rgb(var(--glow)/0.03)_1px,transparent_1px),linear-gradient(90deg,rgb(var(--glow)/0.03)_1px,transparent_1px)] bg-[size:20px_20px] font-mono relative overflow-hidden">
       <Link
         href="/"
         aria-label="RADAR home"
@@ -19,23 +19,24 @@ export default function Page() {
         appearance={{
           elements: {
             formButtonPrimary:
-              'bg-[#00FF41] hover:bg-[#00CC33] text-black font-bold font-mono uppercase tracking-widest rounded-none border-none transition-colors',
-            card: 'bg-black border border-[#00FF41]/50 rounded-none shadow-[0_0_20px_rgba(0,255,65,0.15)] font-mono p-8 relative z-20',
-            headerTitle: 'text-[#00FF41] font-mono uppercase tracking-wider text-xl',
-            headerSubtitle: 'text-[#00FF41]/70 font-mono text-sm',
-            formFieldLabel: 'text-[#00FF41] font-mono uppercase text-xs tracking-wider',
+              'bg-phosphor hover:bg-phosphor-low text-black font-bold font-mono uppercase tracking-widest rounded-none border-none transition-colors',
+            card: 'bg-black border border-phosphor/50 rounded-none shadow-[0_0_20px_rgb(var(--glow)/0.15)] font-mono p-8 relative z-20',
+            headerTitle: 'text-phosphor font-mono uppercase tracking-wider text-xl',
+            headerSubtitle: 'text-phosphor/70 font-mono text-sm',
+            formFieldLabel: 'text-phosphor font-mono uppercase text-xs tracking-wider',
             formFieldInput:
-              'bg-black border border-[#00FF41]/30 text-[#00FF41] font-mono rounded-none focus:ring-1 focus:ring-[#00FF41] focus:border-[#00FF41] transition-colors',
-            footerActionText: 'text-[#00FF41]/70 font-mono text-sm',
-            footerActionLink: 'text-[#00FF41] hover:text-[#00CC33] hover:underline font-mono text-sm transition-colors',
-            identityPreviewText: 'text-[#00FF41] font-mono',
-            identityPreviewEditButton: 'text-[#00FF41]/70 hover:text-[#00FF41] font-mono',
-            dividerLine: 'bg-[#00FF41]/20',
-            dividerText: 'text-[#00FF41]/50 font-mono text-xs',
+              'bg-black border border-phosphor/30 text-phosphor font-mono rounded-none focus:ring-1 focus:ring-phosphor focus:border-phosphor transition-colors',
+            footerActionText: 'text-phosphor/70 font-mono text-sm',
+            footerActionLink:
+              'text-phosphor hover:text-phosphor-low hover:underline font-mono text-sm transition-colors',
+            identityPreviewText: 'text-phosphor font-mono',
+            identityPreviewEditButton: 'text-phosphor/70 hover:text-phosphor font-mono',
+            dividerLine: 'bg-phosphor/20',
+            dividerText: 'text-phosphor/50 font-mono text-xs',
             socialButtonsBlockButton:
-              'border border-[#00FF41]/30 text-[#00FF41] font-mono rounded-none hover:bg-[#00FF41]/10 transition-colors bg-black',
-            socialButtonsBlockButtonText: 'text-[#00FF41] font-mono font-normal',
-            formFieldSuccessText: 'text-[#00FF41] font-mono',
+              'border border-phosphor/30 text-phosphor font-mono rounded-none hover:bg-phosphor/10 transition-colors bg-black',
+            socialButtonsBlockButtonText: 'text-phosphor font-mono font-normal',
+            formFieldSuccessText: 'text-phosphor font-mono',
             formFieldErrorText: 'text-red-500 font-mono',
             logoImage: 'filter invert sepia hue-rotate-[80deg] saturate-[500%] brightness-[100%]',
           },

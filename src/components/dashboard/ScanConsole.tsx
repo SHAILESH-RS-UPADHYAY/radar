@@ -166,7 +166,13 @@ export function ScanConsole({
     const a = i * GOLDEN;
     const s = score?.scores[i];
     const tone =
-      s === undefined ? 'rgba(0,255,65,0.45)' : s >= score!.bar ? '#00FF41' : s >= 50 ? '#FACC15' : '#2F4A35';
+      s === undefined
+        ? 'rgb(var(--glow) / 0.45)'
+        : s >= score!.bar
+          ? 'var(--color-phosphor)'
+          : s >= 50
+            ? 'var(--color-hud-amber)'
+            : 'var(--color-phosphor-mute)';
     return { x: C + Math.cos(a) * r, y: C + Math.sin(a) * r, tone, hit: s !== undefined && s >= score!.bar, i };
   });
   const landed = !!(got.vault || done);
@@ -189,12 +195,12 @@ export function ScanConsole({
           <svg viewBox="0 0 240 240" className="mx-auto block w-full max-w-[320px]" role="img" aria-label="Radar scope">
             <defs>
               <radialGradient id="scan-glow" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#00FF41" stopOpacity="0.14" />
-                <stop offset="100%" stopColor="#00FF41" stopOpacity="0" />
+                <stop offset="0%" stopColor="var(--color-phosphor)" stopOpacity="0.14" />
+                <stop offset="100%" stopColor="var(--color-phosphor)" stopOpacity="0" />
               </radialGradient>
               <linearGradient id="scan-wedge" x1="0" y1="0" x2="1" y2="0">
-                <stop offset="0%" stopColor="#00FF41" stopOpacity="0" />
-                <stop offset="100%" stopColor="#00FF41" stopOpacity="0.35" />
+                <stop offset="0%" stopColor="var(--color-phosphor)" stopOpacity="0" />
+                <stop offset="100%" stopColor="var(--color-phosphor)" stopOpacity="0.35" />
               </linearGradient>
             </defs>
             <circle cx={C} cy={C} r={R} fill="url(#scan-glow)" />
@@ -205,12 +211,16 @@ export function ScanConsole({
                 cy={C}
                 r={R * k}
                 fill="none"
-                stroke="#00FF41"
+                stroke="var(--color-phosphor)"
                 strokeOpacity={k === 1 ? 0.45 : 0.14}
                 strokeDasharray={k === 1 ? undefined : '2 4'}
               />
             ))}
-            <path d={`M${C - R} ${C}H${C + R}M${C} ${C - R}V${C + R}`} stroke="#00FF41" strokeOpacity="0.12" />
+            <path
+              d={`M${C - R} ${C}H${C + R}M${C} ${C - R}V${C + R}`}
+              stroke="var(--color-phosphor)"
+              strokeOpacity="0.12"
+            />
             {Array.from({ length: 36 }, (_, i) => {
               const a = (i * Math.PI) / 18;
               const inner = i % 3 ? R - 3 : R - 7;
@@ -221,7 +231,7 @@ export function ScanConsole({
                   y1={C + Math.sin(a) * inner}
                   x2={C + Math.cos(a) * R}
                   y2={C + Math.sin(a) * R}
-                  stroke="#00FF41"
+                  stroke="var(--color-phosphor)"
                   strokeOpacity="0.35"
                 />
               );
@@ -232,7 +242,7 @@ export function ScanConsole({
                   d={`M${C} ${C}L${C + R} ${C}A${R} ${R} 0 0 0 ${C + R * Math.cos(-0.55)} ${C + R * Math.sin(-0.55)}Z`}
                   fill="url(#scan-wedge)"
                 />
-                <line x1={C} y1={C} x2={C + R} y2={C} stroke="#00FF41" strokeOpacity="0.9" />
+                <line x1={C} y1={C} x2={C + R} y2={C} stroke="var(--color-phosphor)" strokeOpacity="0.9" />
               </g>
             )}
             {blips.map((b) => (
@@ -243,14 +253,14 @@ export function ScanConsole({
                   initial={still ? false : { r: 0, opacity: 0 }}
                   animate={{ r: b.hit ? 3 : 2.1, opacity: 1, fill: b.tone }}
                   transition={{ delay: still ? 0 : Math.min(1.2, b.i * 0.007), duration: 0.35 }}
-                  style={b.hit ? { filter: 'drop-shadow(0 0 3px #00FF41)' } : undefined}
+                  style={b.hit ? { filter: 'drop-shadow(0 0 3px var(--color-phosphor))' } : undefined}
                 />
                 {landed && b.hit && !still && (
                   <motion.circle
                     cx={b.x}
                     cy={b.y}
                     fill="none"
-                    stroke="#00FF41"
+                    stroke="var(--color-phosphor)"
                     initial={{ r: 3, opacity: 0.9 }}
                     animate={{ r: 13, opacity: 0 }}
                     transition={{ duration: 1.1, repeat: 2, delay: (b.i % 7) * 0.08 }}
@@ -258,8 +268,21 @@ export function ScanConsole({
                 )}
               </g>
             ))}
-            <circle cx={C} cy={C} r="3.2" fill="#00FF41" className={running ? 'animate-pulse' : undefined} />
-            <text x={C + 7} y={C - 6} fill="#00FF41" fillOpacity="0.8" fontSize="7" fontFamily="monospace">
+            <circle
+              cx={C}
+              cy={C}
+              r="3.2"
+              fill="var(--color-phosphor)"
+              className={running ? 'animate-pulse' : undefined}
+            />
+            <text
+              x={C + 7}
+              y={C - 6}
+              fill="var(--color-phosphor)"
+              fillOpacity="0.8"
+              fontSize="7"
+              fontFamily="monospace"
+            >
               YOU
             </text>
           </svg>
@@ -292,7 +315,7 @@ export function ScanConsole({
                 <span className="text-hud-amber">●</span> 50–{score.bar - 1} NEAR
               </span>
               <span>
-                <span className="text-[#2F4A35]">●</span> LOW
+                <span className="text-phosphor-mute">●</span> LOW
               </span>
             </p>
           )}
@@ -363,7 +386,7 @@ export function ScanConsole({
         {log.length === 0 && running && <p className="text-dim">λ connecting to the pipeline…</p>}
         {log.map((l) => (
           <p key={l.id} className="hacker-log-line truncate">
-            <span className="text-[#FF2A6D]">λ </span>
+            <span className="text-hud-rose">λ </span>
             <span className="text-white/70">{l.text}</span>
             <span className="text-dim"> ⟶ </span>
             <span className="text-phosphor">{l.value}</span>
@@ -399,7 +422,7 @@ export function ScanConsole({
           <button
             type="button"
             onClick={onClose}
-            className="bg-phosphor px-6 py-2.5 font-mono text-[11px] font-bold tracking-[0.25em] text-black transition-colors hover:bg-[#33FF66]"
+            className="bg-phosphor px-6 py-2.5 font-mono text-[11px] font-bold tracking-[0.25em] text-black transition-colors hover:bg-phosphor-hi"
           >
             {done && done.vaulted ? 'OPEN THE VAULT ▸' : 'CLOSE'}
           </button>

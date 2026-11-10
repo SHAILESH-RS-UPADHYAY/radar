@@ -151,7 +151,7 @@ export default function AutopilotPage() {
                     type="button"
                     onClick={() => void start()}
                     disabled={runner.running}
-                    className="bg-phosphor py-2.5 font-mono text-[11px] font-bold tracking-[0.2em] text-black hover:bg-[#33FF66] disabled:opacity-40"
+                    className="bg-phosphor py-2.5 font-mono text-[11px] font-bold tracking-[0.2em] text-black hover:bg-phosphor-hi disabled:opacity-40"
                   >
                     START
                   </button>
@@ -274,7 +274,7 @@ export default function AutopilotPage() {
                       type="checkbox"
                       checked={s[k]}
                       onChange={(e) => void save({ [k]: e.target.checked })}
-                      className="accent-[#00FF41]"
+                      className="accent-phosphor"
                     />
                     {text}
                   </label>
@@ -293,7 +293,7 @@ export default function AutopilotPage() {
                           consents: e.target.checked ? [...s.consents, c] : s.consents.filter((x) => x !== c),
                         })
                       }
-                      className="accent-[#00FF41]"
+                      className="accent-phosphor"
                     />
                     {CONSENT_LABEL[c]}
                   </label>

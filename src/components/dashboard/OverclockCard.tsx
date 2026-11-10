@@ -102,7 +102,7 @@ export function OverclockCard({
             <div className="grid grid-cols-2 gap-2">
               <a
                 href={`/api/overclock/${tailored.id}/pdf`}
-                className={button + ' border-phosphor bg-phosphor text-center text-black hover:bg-[#33FF66]'}
+                className={button + ' border-phosphor bg-phosphor text-center text-black hover:bg-phosphor-hi'}
               >
                 ⬇ PDF
               </a>
