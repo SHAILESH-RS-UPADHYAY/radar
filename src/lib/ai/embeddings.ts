@@ -372,13 +372,29 @@ export async function backfillEmbeddings(max = 500, space: Space = 'v1'): Promis
 
 /** The open jobs nearest to a resume, with similarities on v1's scale. */
 export async function searchSimilarJobs(resumeEmbedding: number[], topK: number = 50, space: Space = 'v1') {
-  const { data, error } = await createServerClient().rpc(SPACE[space].match, {
-    query_embedding: toVectorLiteral(resumeEmbedding),
-    match_count: topK,
-  });
-  if (error) throw new Error(SPACE[space].match + ' failed: ' + error.message);
-  return ((data || []) as { id: string; similarity: number }[]).map((r) => ({
-    id: r.id,
-    score: calibrate(r.similarity, space),
-  }));
+  // Every open job is scored 500 at a time and ranked here. One match_jobs call over all of them took 4.5 to 13 s
+  // with 11,540 open jobs (2026-11-10), past the API role's 8 s statement timeout, so every scan failed.
+  // ponytail: exact scan in chunks; past ~50k open jobs move the vectors to their own table with an HNSW index.
+  const supabase = createServerClient();
+  const ids: string[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('id')
+      .eq('is_active', true)
+      .order('id')
+      .range(from, from + 999);
+    if (error) throw new Error('Reading open jobs failed: ' + error.message);
+    ids.push(...(data || []).map((j) => j.id as string));
+    if (!data || data.length < 1000) break;
+  }
+  // Three streams at once: enough to cut the wait, few enough for the free database.
+  const third = Math.ceil(ids.length / 3) || 1;
+  const parts = await Promise.all(
+    [0, 1, 2].map((k) => similarityTo(resumeEmbedding, ids.slice(k * third, (k + 1) * third), space)),
+  );
+  return parts
+    .flatMap((m) => [...m].map(([id, score]) => ({ id, score })))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, topK);
 }
