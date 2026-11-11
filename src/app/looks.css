@@ -1507,15 +1507,11 @@
 [data-look] [class*='text-[#8a9a8e]'] {
   color: var(--color-dim);
 }
-@media (prefers-reduced-motion: no-preference) {
-  .look-fab {
-    animation: look-fab-turn 9s linear infinite;
-  }
+.look-fab {
+  transition: rotate 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
-@keyframes look-fab-turn {
-  to {
-    rotate: 360deg;
-  }
+.look-fab:hover {
+  rotate: 180deg;
 }
 /* The scope is RADAR's instrument: it keeps its own dark glass on any page colour. */
 [data-look] .hero-stage .radar-native > div {
