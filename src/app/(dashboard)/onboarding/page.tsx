@@ -12,6 +12,8 @@ import { useApi } from '@/lib/use-api';
 import { keepResumeFile } from '@/lib/apply/client';
 import { motion, AnimatePresence } from 'framer-motion';
 import { TiltCard } from '@/components/onboarding/TiltCard';
+import { LookWall } from '@/components/looks/LookWall';
+import { useExtension } from '@/lib/extension';
 import { TOP_CITIES, REMOTE_REGIONS, FIELDS_OF_STUDY, ROLES, ORG_CULTURES } from '@/components/onboarding/constants';
 
 export default function OnboardingPage() {
@@ -21,6 +23,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const extension = useExtension();
 
   // 1. Career State
   const [careerStage, setCareerStage] = useState<'Fresher' | 'Experienced' | 'Intern' | null>(null);
@@ -213,7 +216,8 @@ export default function OnboardingPage() {
       }
       if (resumeFile) await keepResumeFile(resumeFile); // attached by one-click apply when there is no tailored PDF
 
-      router.push('/dashboard');
+      setLoading(false);
+      setStep(8); // saved: the optional extras, then the dashboard
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
@@ -258,7 +262,13 @@ export default function OnboardingPage() {
           <RadarLogo />
         </Link>
         <span className="font-mono text-[11px] tracking-[0.3em] text-phosphor/70">
-          STEP <span className="text-phosphor">{step}</span>/7
+          {step > 7 ? (
+            'READY'
+          ) : (
+            <>
+              STEP <span className="text-phosphor">{step}</span>/7
+            </>
+          )}
         </span>
       </header>
       <div
@@ -1006,6 +1016,51 @@ export default function OnboardingPage() {
                 </div>
               )}
 
+              {/* Step 8 (after the profile is saved): optional extras. Nothing here is required. */}
+              {step === 8 && (
+                <div className="normal-case">
+                  <h1 className="text-3xl font-black font-mono text-phosphor mb-2 tracking-tight uppercase">
+                    You're in.
+                  </h1>
+                  <p className="text-sm mb-8" style={{ color: 'var(--color-phosphor-mid)' }}>
+                    Your profile is saved and RADAR is ready. These three are optional. Skip any of them; they all wait
+                    for you in Preferences.
+                  </p>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div className="hud-panel border border-phosphor/25 p-5">
+                      <p className="font-mono text-[10px] tracking-[0.3em] text-phosphor/70">OPTIONAL · 01</p>
+                      <h2 className="mt-2 font-mono text-lg font-extrabold text-white">Connect Gmail</h2>
+                      <p className="mt-2 text-sm leading-relaxed text-dim">
+                        Read-only. RADAR spots interview invites and rejections and moves your applications along by
+                        itself. It never sends or deletes mail.
+                      </p>
+                      <a
+                        href="/api/gmail/connect"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-4 inline-block border border-phosphor/50 px-4 py-2 font-mono text-[11px] font-bold tracking-[0.2em] text-phosphor transition-colors hover:bg-phosphor/10"
+                      >
+                        CONNECT GMAIL ↗
+                      </a>
+                    </div>
+                    <div className="hud-panel border border-phosphor/25 p-5">
+                      <p className="font-mono text-[10px] tracking-[0.3em] text-phosphor/70">OPTIONAL · 02</p>
+                      <h2 className="mt-2 font-mono text-lg font-extrabold text-white">The RADAR extension</h2>
+                      <p className="mt-2 text-sm leading-relaxed text-dim">
+                        For Chrome on a computer. Application forms open already filled with your answers and resume;
+                        you check them and press Submit.
+                      </p>
+                      <p className="mt-4 font-mono text-[11px] font-bold tracking-[0.2em] text-phosphor">
+                        {extension ? `● CONNECTED · v${extension}` : '○ NOT ADDED YET · RADAR WORKS WITHOUT IT'}
+                      </p>
+                    </div>
+                  </div>
+                  <p className="mt-8 font-mono text-[10px] tracking-[0.3em] text-phosphor/70">OPTIONAL · 03</p>
+                  <h2 className="mt-2 font-mono text-lg font-extrabold text-white">Pick your look</h2>
+                  <LookWall />
+                </div>
+              )}
+
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
@@ -1024,7 +1079,7 @@ export default function OnboardingPage() {
           className="flex justify-between items-center pt-6 shrink-0 mt-4"
           style={{ borderTop: '1px solid var(--color-phosphor-deep)' }}
         >
-          {step > 1 ? (
+          {step > 1 && step < 8 ? (
             <button
               onClick={handleBack}
               className="px-6 py-2.5 text-sm font-bold uppercase tracking-wider rounded-none transition-colors hover:bg-phosphor-dark"
@@ -1037,7 +1092,15 @@ export default function OnboardingPage() {
           )}
 
           {/* Hide Continue button on auto-continue steps */}
-          {step < 7 ? (
+          {step === 8 ? (
+            <button
+              onClick={() => router.push('/dashboard?tour=1')}
+              className="px-8 py-2.5 text-sm font-bold uppercase tracking-wider rounded-none text-black transition-all hover:-translate-y-0.5 shadow-[0_0_30px_rgb(var(--glow)/0.5)]"
+              style={{ background: 'var(--color-phosphor)' }}
+            >
+              Enter dashboard →
+            </button>
+          ) : step < 7 ? (
             step !== 1 && (
               <button
                 onClick={handleNext}

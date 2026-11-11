@@ -48,6 +48,7 @@ import { ScanConsole, type ScanDone } from '@/components/dashboard/ScanConsole';
 import { TailorPreview } from '@/components/dashboard/TailorPreview';
 import { JobTerminal } from '@/components/dashboard/JobTerminal';
 import { Modal } from '@/components/hud/Modal';
+import { Tour } from '@/components/dashboard/Tour';
 import { cityAliases, placeFit } from '@/lib/geo/city-companies';
 import {
   ACTION_STATUS,
@@ -658,6 +659,7 @@ export default function DashboardPage() {
 
   const scanButton = (
     <button
+      data-tour="scan"
       onClick={handleScan}
       disabled={scanning}
       className="flex items-center gap-2 bg-phosphor px-4 py-2 font-mono text-[11px] font-bold tracking-[0.2em] text-black shadow-[0_0_18px_rgb(var(--glow)/0.3)] transition-colors hover:bg-phosphor-hi disabled:cursor-wait disabled:bg-phosphor/40"
@@ -711,6 +713,7 @@ export default function DashboardPage() {
 
   return (
     <div className="relative min-h-screen bg-void">
+      <Tour />
       <div className="hud-grid pointer-events-none fixed inset-0" aria-hidden="true" />
       <div
         className="pointer-events-none fixed inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_at_top,rgb(var(--glow)/0.07),transparent_65%)]"
@@ -723,7 +726,11 @@ export default function DashboardPage() {
             <RadarLogo />
           </Link>
 
-          <nav className="hidden items-center border border-phosphor/20 md:flex" aria-label="Dashboard sections">
+          <nav
+            data-tour="tabs"
+            className="hidden items-center border border-phosphor/20 md:flex"
+            aria-label="Dashboard sections"
+          >
             {TABS.map((t) => (
               <button
                 key={t.key}
@@ -741,6 +748,7 @@ export default function DashboardPage() {
 
           <div className="flex items-center gap-2 sm:gap-3">
             <Link
+              data-tour="zeroday"
               href="/zero-day"
               title="ZERO-DAY: today's jobs filled and checked one after another"
               className="hidden border border-phosphor/20 px-3 py-2 font-mono text-[11px] tracking-[0.2em] text-dim transition-colors hover:border-phosphor/60 hover:text-phosphor md:inline-block"
@@ -748,6 +756,7 @@ export default function DashboardPage() {
               ◈ ZERO-DAY
             </Link>
             <Link
+              data-tour="prefs"
               href="/settings"
               className="group flex items-center gap-2 border border-phosphor/20 px-3 py-2 font-mono text-[11px] tracking-[0.2em] text-dim transition-colors hover:border-phosphor/60 hover:text-phosphor"
             >

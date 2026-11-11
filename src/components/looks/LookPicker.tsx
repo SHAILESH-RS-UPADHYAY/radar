@@ -71,6 +71,12 @@ export function LookPicker() {
           );
         })}
       </div>
+      <a
+        href="/dashboard?tour=1"
+        className="mt-5 inline-block font-mono text-[11px] tracking-[0.2em] text-phosphor/70 transition-colors hover:text-phosphor"
+      >
+        NEW HERE? REPLAY THE DASHBOARD TOUR →
+      </a>
     </HudPanel>
   );
 }
