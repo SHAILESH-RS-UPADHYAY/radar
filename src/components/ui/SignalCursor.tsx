@@ -494,6 +494,8 @@ export default function SignalCursor() {
       prev = now;
       const ease = (k: number) => 1 - Math.pow(1 - k, dt / 16.7); // frame-rate independent lerp
       ctx.clearRect(0, 0, w, h);
+      // The reticle belongs to the RADAR look; under another look the system cursor is left alone.
+      if (document.documentElement.hasAttribute('data-look')) return;
 
       // The wake.
       ctx.font = `500 12px ${family}`;

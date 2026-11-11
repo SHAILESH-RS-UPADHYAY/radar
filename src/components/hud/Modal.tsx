@@ -78,7 +78,8 @@ export function Modal({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 24 }}
             transition={{ duration: 0.22 }}
-            className="relative flex h-[90vh] w-full flex-col overflow-hidden border border-[#303030] bg-black shadow-[0_30px_90px_rgba(0,0,0,0.9)] focus:outline-none sm:h-[84vh] sm:max-w-5xl sm:rounded-lg 2xl:max-w-6xl"
+            // radar-native: the briefing terminal is a terminal in every look.
+            className="radar-native relative flex h-[90vh] w-full flex-col overflow-hidden border border-[#303030] bg-black shadow-[0_30px_90px_rgba(0,0,0,0.9)] focus:outline-none sm:h-[84vh] sm:max-w-5xl sm:rounded-lg 2xl:max-w-6xl"
           >
             {children}
           </motion.div>

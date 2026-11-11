@@ -1,7 +1,7 @@
 'use client';
 
 import { HudPanel } from '@/components/hud/Hud';
-import { postedTag, scoreColor, type MatchedJob } from './types';
+import { postedTag, scoreBand, scoreColor, type MatchedJob } from './types';
 
 /** TODAY://10 in the Vault: the jobs to apply to first (see todaysTen), each opening its briefing, and one INFILTRATE run. */
 export function TodayPanel({
@@ -36,7 +36,11 @@ export function TodayPanel({
                   <span className="block truncate text-xs text-dim">{m.job.title}</span>
                 </span>
                 <span className="shrink-0 text-right font-mono">
-                  <span className="block text-sm font-extrabold" style={{ color: scoreColor(m.score) }}>
+                  <span
+                    className="block text-sm font-extrabold"
+                    data-score={scoreBand(m.score)}
+                    style={{ color: scoreColor(m.score) }}
+                  >
                     {m.score}
                   </span>
                   <span

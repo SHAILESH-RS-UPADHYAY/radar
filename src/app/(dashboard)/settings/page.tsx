@@ -16,6 +16,7 @@ import { useEscapeTo } from '@/lib/use-escape';
 import { GmailLink } from '@/components/settings/GmailLink';
 import { TargetImport } from '@/components/settings/TargetImport';
 import { PortfolioSection } from '@/components/settings/PortfolioSection';
+import { LookPicker } from '@/components/looks/LookPicker';
 import { ResumeAuditView } from '@/components/settings/ResumeAuditView';
 import { ApplicationKitSection } from '@/components/settings/ApplicationKitSection';
 import { ScanConsole, type ScanDone } from '@/components/dashboard/ScanConsole';
@@ -746,6 +747,8 @@ export default function SettingsPage() {
                 kit={profile.application_kit}
                 onSave={(next) => update({ application_kit: next }, { application_kit: next }, 'Application Kit')}
               />
+
+              <LookPicker />
 
               <Section
                 id="experience"

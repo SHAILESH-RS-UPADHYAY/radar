@@ -3,7 +3,7 @@
 import { motion } from 'framer-motion';
 import { Brackets } from '@/components/hud/Hud';
 import { JobTitle, openOnClick, ScoreMeter, JobFacts } from './SkillChips';
-import { scoreColor, type MatchedJob, type TailoredSummary } from './types';
+import { scoreBand, scoreColor, type MatchedJob, type TailoredSummary } from './types';
 
 const button = 'border px-3 py-2 font-mono text-[10px] font-bold tracking-[0.2em] transition-colors';
 
@@ -76,7 +76,11 @@ export function OverclockCard({
             <div className="font-mono">
               <div className="flex items-baseline justify-between gap-3">
                 <span className="text-[10px] tracking-[0.3em] text-dim">TAILORED</span>
-                <span className="text-2xl font-extrabold leading-none" style={{ color: scoreColor(projected) }}>
+                <span
+                  className="text-2xl font-extrabold leading-none"
+                  data-score={scoreBand(projected)}
+                  style={{ color: scoreColor(projected) }}
+                >
                   {projected}
                   <span className="text-sm">%</span>
                   {delta !== null && delta !== 0 && (

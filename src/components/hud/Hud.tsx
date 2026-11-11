@@ -21,7 +21,8 @@ const DOT: Record<Tone, string> = {
 };
 
 export function Brackets({ className = 'border-phosphor' }: { className?: string }) {
-  const b = 'pointer-events-none absolute h-3 w-3 ' + className;
+  // hud-bracket / hud-panel carry no styles here: they are the hooks a look restyles (src/app/looks.css).
+  const b = 'hud-bracket pointer-events-none absolute h-3 w-3 ' + className;
   return (
     <>
       <span className={b + ' -left-px -top-px border-l-2 border-t-2'} />
@@ -68,7 +69,10 @@ export function HudPanel({
   children: ReactNode;
 }) {
   return (
-    <div id={id} className={'relative border border-phosphor/25 bg-black/65 backdrop-blur-[2px] ' + className}>
+    <div
+      id={id}
+      className={'hud-panel relative border border-phosphor/25 bg-black/65 backdrop-blur-[2px] ' + className}
+    >
       <Brackets />
       {(label || status) && (
         <div className="flex items-center justify-between gap-4 border-b border-phosphor/20 px-4 py-2.5 font-mono text-[10px] tracking-[0.25em]">

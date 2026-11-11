@@ -1,0 +1,837 @@
+/* ============================
+   RADAR — Looks
+   ============================
+   RADAR itself has no rules here: it is the absence of data-look, drawn by globals.css exactly as before.
+   A look is (1) the palette, as the same variables RADAR's utilities already read, (2) a handful of --look-* values
+   the shared rules below turn into type, corners and card surfaces, (3) its own backdrop and motion.
+   Loaded only by the signed-in app (LookRoot). */
+
+/* ---------- RADAR · DAYLIGHT: the same console on white ---------- */
+[data-mode='light']:not([data-look]) {
+  --color-void: #f3f8f3;
+  --color-black: #ffffff;
+  --color-white: #04140a;
+  --color-phosphor: #007a33;
+  --color-phosphor-hi: #00953f;
+  --color-phosphor-low: #00652a;
+  --color-phosphor-soft: #0b5a2b;
+  --color-phosphor-mid: #2c6b43;
+  --color-phosphor-deep: #b7d6c1;
+  --color-phosphor-dark: #e0eee4;
+  --color-phosphor-dull: #54846a;
+  --color-phosphor-mute: #c3d6c8;
+  --color-ink: #10301b;
+  --color-dim: #56705f;
+  --color-hud-cyan: #0e7490;
+  --color-hud-amber: #9a5b00;
+  --color-hud-red: #b91c1c;
+  --color-hud-violet: #6d28d9;
+  --color-hud-pink: #be185d;
+  --color-hud-rose: #be123c;
+  --glow: 0 122 51;
+  color-scheme: light;
+}
+:root[data-mode='light']:not([data-look]) body {
+  color: var(--color-ink);
+}
+
+/* ---------- Palettes ---------- */
+[data-look='paper'] {
+  --color-void: #efe7d6;
+  --color-black: #f9f3e5;
+  --color-white: #14110d;
+  --color-phosphor: #1d1a15;
+  --color-phosphor-hi: #3b332a;
+  --color-phosphor-low: #000000;
+  --color-phosphor-soft: #3b332a;
+  --color-phosphor-mid: #5b5145;
+  --color-phosphor-deep: #cdc0a6;
+  --color-phosphor-dark: #e3d9c3;
+  --color-phosphor-dull: #7a6f60;
+  --color-phosphor-mute: #bdb199;
+  --color-ink: #26221c;
+  --color-dim: #6c6254;
+  --color-hud-cyan: #1f4e79;
+  --color-hud-amber: #8a5a00;
+  --color-hud-red: #b3261e;
+  --color-hud-violet: #5b3a7a;
+  --color-hud-pink: #9c2f52;
+  --color-hud-rose: #b3261e;
+  --glow: 29 26 21;
+  --look-body: var(--font-newsreader), Georgia, serif;
+  --look-mono: var(--font-newsreader), Georgia, serif;
+  --look-display: var(--font-playfair), Georgia, serif;
+  --look-radius: 0px;
+  --look-card-bg: #f9f3e5;
+  --look-card-border: #1d1a15;
+  --look-card-shadow: 4px 4px 0 rgb(29 26 21 / 0.14);
+  color-scheme: light;
+}
+[data-look='bloom'] {
+  --color-void: #fff4f7;
+  --color-black: #ffffff;
+  --color-white: #3d1f33;
+  --color-phosphor: #c2336d;
+  --color-phosphor-hi: #d94a84;
+  --color-phosphor-low: #a8265b;
+  --color-phosphor-soft: #8a2c55;
+  --color-phosphor-mid: #96647f;
+  --color-phosphor-deep: #f6cfe0;
+  --color-phosphor-dark: #fde6ef;
+  --color-phosphor-dull: #b68aa2;
+  --color-phosphor-mute: #ecd3df;
+  --color-ink: #4a2a3f;
+  --color-dim: #8f6f85;
+  --color-hud-cyan: #4f63c9;
+  --color-hud-amber: #b86a12;
+  --color-hud-red: #d23b52;
+  --color-hud-violet: #8250df;
+  --color-hud-pink: #c2336d;
+  --color-hud-rose: #d23b52;
+  --glow: 214 69 127;
+  --look-body: var(--font-quicksand), system-ui, sans-serif;
+  --look-mono: var(--font-quicksand), system-ui, sans-serif;
+  --look-display: var(--font-quicksand), system-ui, sans-serif;
+  --look-radius: 18px;
+  --look-card-bg: rgb(255 255 255 / 0.82);
+  --look-card-border: #f6cfe0;
+  --look-card-shadow: 0 14px 34px -16px rgb(194 51 109 / 0.35), 0 2px 6px rgb(194 51 109 / 0.06);
+  --look-solid: linear-gradient(135deg, #f0629d, #c2336d);
+  color-scheme: light;
+}
+[data-look='aurora'] {
+  --color-void: #060a18;
+  --color-black: #0b1126;
+  --color-white: #f4f7ff;
+  --color-phosphor: #5eead4;
+  --color-phosphor-hi: #99f6e4;
+  --color-phosphor-low: #2dd4bf;
+  --color-phosphor-soft: #c4b5fd;
+  --color-phosphor-mid: #8fa3cc;
+  --color-phosphor-deep: #24315a;
+  --color-phosphor-dark: #121a37;
+  --color-phosphor-dull: #6d7da6;
+  --color-phosphor-mute: #2b3760;
+  --color-ink: #dbe4ff;
+  --color-dim: #8591b3;
+  --color-hud-cyan: #7dd3fc;
+  --color-hud-amber: #fcd34d;
+  --color-hud-red: #fb7185;
+  --color-hud-violet: #c4b5fd;
+  --color-hud-pink: #f9a8d4;
+  --color-hud-rose: #fb7185;
+  --glow: 94 234 212;
+  --look-body: var(--font-sora), system-ui, sans-serif;
+  --look-mono: var(--font-sora), system-ui, sans-serif;
+  --look-display: var(--font-sora), system-ui, sans-serif;
+  --look-radius: 16px;
+  --look-card-bg: linear-gradient(140deg, rgb(255 255 255 / 0.08), rgb(255 255 255 / 0.02));
+  --look-card-border: rgb(255 255 255 / 0.13);
+  --look-card-shadow: 0 24px 60px -24px rgb(0 0 0 / 0.7), inset 0 1px 0 rgb(255 255 255 / 0.12);
+  --look-card-blur: blur(18px) saturate(150%);
+  --look-solid: linear-gradient(120deg, #5eead4, #7dd3fc 45%, #c4b5fd);
+}
+[data-look='atelier'] {
+  --color-void: #0d0c0a;
+  --color-black: #151310;
+  --color-white: #f7f1e3;
+  --color-phosphor: #d4af6a;
+  --color-phosphor-hi: #e8cd95;
+  --color-phosphor-low: #b8934c;
+  --color-phosphor-soft: #f0e2bf;
+  --color-phosphor-mid: #a8946a;
+  --color-phosphor-deep: #3a3122;
+  --color-phosphor-dark: #1d1a15;
+  --color-phosphor-dull: #7d6f52;
+  --color-phosphor-mute: #40382a;
+  --color-ink: #ece4d2;
+  --color-dim: #8f8672;
+  --color-hud-cyan: #9fbdb6;
+  --color-hud-amber: #e0a84e;
+  --color-hud-red: #cf7a66;
+  --color-hud-violet: #bda6cc;
+  --color-hud-pink: #d9a5a0;
+  --color-hud-rose: #cf7a66;
+  --glow: 212 175 106;
+  --look-body: var(--font-jost), system-ui, sans-serif;
+  --look-mono: var(--font-jost), system-ui, sans-serif;
+  --look-display: var(--font-cormorant), 'Times New Roman', serif;
+  --look-radius: 0px;
+  --look-card-bg: #131110;
+  --look-card-border: rgb(212 175 106 / 0.38);
+  --look-card-shadow: 0 0 0 1px rgb(212 175 106 / 0.08), 0 30px 60px -30px rgb(0 0 0 / 0.9);
+}
+[data-look='blueprint'] {
+  --color-void: #0a2a5c;
+  --color-black: #0c3068;
+  --color-white: #ffffff;
+  --color-phosphor: #d5e9ff;
+  --color-phosphor-hi: #ffffff;
+  --color-phosphor-low: #b4d4f7;
+  --color-phosphor-soft: #ffffff;
+  --color-phosphor-mid: #9cc3ee;
+  --color-phosphor-deep: #2c5699;
+  --color-phosphor-dark: #113a7d;
+  --color-phosphor-dull: #7ea6d6;
+  --color-phosphor-mute: #2a4f8c;
+  --color-ink: #dcecff;
+  --color-dim: #8fb3df;
+  --color-hud-cyan: #7fe3ff;
+  --color-hud-amber: #ffd166;
+  --color-hud-red: #ff9b9b;
+  --color-hud-violet: #cfc0ff;
+  --color-hud-pink: #ffb8d2;
+  --color-hud-rose: #ff9b9b;
+  --glow: 213 233 255;
+  --look-body: var(--font-inter), system-ui, sans-serif;
+  --look-mono: var(--font-jetbrains), monospace;
+  --look-display: var(--font-architect), cursive;
+  --look-radius: 0px;
+  --look-card-bg: rgb(12 48 104 / 0.72);
+  --look-card-border: rgb(213 233 255 / 0.55);
+  --look-card-shadow: none;
+  --look-card-style: dashed;
+}
+[data-look='arcade'] {
+  --color-void: #120824;
+  --color-black: #1c0f33;
+  --color-white: #ffffff;
+  --color-phosphor: #ffe14d;
+  --color-phosphor-hi: #fff08a;
+  --color-phosphor-low: #f5c800;
+  --color-phosphor-soft: #fff3b0;
+  --color-phosphor-mid: #b9a2e0;
+  --color-phosphor-deep: #3c2568;
+  --color-phosphor-dark: #261545;
+  --color-phosphor-dull: #8c75b8;
+  --color-phosphor-mute: #44306f;
+  --color-ink: #f3e9ff;
+  --color-dim: #a08cc6;
+  --color-hud-cyan: #3cf0ff;
+  --color-hud-amber: #ff9f1c;
+  --color-hud-red: #ff4d6d;
+  --color-hud-violet: #b47cff;
+  --color-hud-pink: #ff5fc8;
+  --color-hud-rose: #ff4d6d;
+  --glow: 255 225 77;
+  --look-body: var(--font-pixelify), monospace;
+  --look-mono: var(--font-pixelify), monospace;
+  --look-display: var(--font-pixelify), monospace;
+  --look-radius: 0px;
+  --look-card-bg: #1c0f33;
+  --look-card-border: #ffe14d;
+  --look-card-shadow: 5px 5px 0 #000000;
+  --look-card-width: 2px;
+}
+[data-look='clay'] {
+  --color-void: #e9edf7;
+  --color-black: #f4f6fc;
+  --color-white: #20243f;
+  --color-phosphor: #5350d6;
+  --color-phosphor-hi: #6a67e6;
+  --color-phosphor-low: #4340bd;
+  --color-phosphor-soft: #3a38a3;
+  --color-phosphor-mid: #7378a2;
+  --color-phosphor-deep: #d4d9ea;
+  --color-phosphor-dark: #dfe3f1;
+  --color-phosphor-dull: #9398bb;
+  --color-phosphor-mute: #cfd4e6;
+  --color-ink: #2b2f4a;
+  --color-dim: #7e83a4;
+  --color-hud-cyan: #1f8fb0;
+  --color-hud-amber: #c9731a;
+  --color-hud-red: #d93f45;
+  --color-hud-violet: #8442c2;
+  --color-hud-pink: #cf3f86;
+  --color-hud-rose: #d93f45;
+  --glow: 83 80 214;
+  --look-body: var(--font-baloo), system-ui, sans-serif;
+  --look-mono: var(--font-baloo), system-ui, sans-serif;
+  --look-display: var(--font-baloo), system-ui, sans-serif;
+  --look-radius: 22px;
+  --look-card-bg: #f1f3fa;
+  --look-card-border: transparent;
+  --look-card-shadow:
+    9px 9px 22px rgb(163 170 200 / 0.6), -9px -9px 22px rgb(255 255 255 / 0.95), inset 0 1px 0 rgb(255 255 255 / 0.9);
+  --look-solid: linear-gradient(180deg, #6f6cf0, #5350d6);
+  color-scheme: light;
+}
+
+/* The briefing terminal (and RADAR's own preview card) keep RADAR's palette inside any look. */
+.radar-native {
+  --color-void: #000401;
+  --color-black: #000;
+  --color-white: #fff;
+  --color-phosphor: #00ff41;
+  --color-phosphor-hi: #33ff66;
+  --color-phosphor-low: #00cc33;
+  --color-phosphor-soft: #b6ffc6;
+  --color-phosphor-mid: #00aa00;
+  --color-phosphor-deep: #004400;
+  --color-phosphor-dark: #002200;
+  --color-phosphor-dull: #007700;
+  --color-phosphor-mute: #2f4a35;
+  --color-ink: #dcffe3;
+  --color-dim: #7b9481;
+  --color-hud-cyan: #22d3ee;
+  --color-hud-amber: #facc15;
+  --color-hud-red: #f87171;
+  --color-hud-violet: #c792ea;
+  --color-hud-pink: #ff8fb1;
+  --color-hud-rose: #ff2a6d;
+  --glow: 0 255 65;
+  --look-mono: var(--font-jetbrains), monospace;
+  --look-body: var(--font-inter), sans-serif;
+  --look-display: var(--font-inter), sans-serif;
+  --look-radius: 0px;
+  --look-card-bg: initial;
+  --look-card-border: initial;
+  --look-card-shadow: initial;
+  --look-card-blur: initial;
+  --look-card-style: initial;
+  --look-card-width: initial;
+  --look-solid: initial;
+  color-scheme: dark;
+}
+
+/* ---------- What every look shares: type, corners, cards, and RADAR's HUD ornaments stepping aside ---------- */
+:root[data-look] body,
+[data-look] {
+  color: var(--color-ink);
+  font-family: var(--look-body);
+}
+[data-look] .font-mono,
+[data-look].font-mono {
+  font-family: var(--look-mono);
+}
+[data-look] :is(h1, h2, h3) {
+  font-family: var(--look-display);
+}
+[data-look]
+  :is(
+    button,
+    a,
+    input,
+    select,
+    textarea,
+    article,
+    label,
+    .hud-panel,
+    [class*='border-phosphor'],
+    [class*='bg-phosphor']
+  ):not(header, [class*='rounded-full'], [class*='border-b'], [class*='border-t'], [class*='border-l-'], .hud-bracket) {
+  border-radius: var(--look-radius);
+}
+[data-look] :is(article, .hud-panel) {
+  background: var(--look-card-bg);
+  border-color: var(--look-card-border);
+  border-style: var(--look-card-style, solid);
+  border-width: var(--look-card-width, 1px);
+  box-shadow: var(--look-card-shadow);
+  -webkit-backdrop-filter: var(--look-card-blur, none);
+  backdrop-filter: var(--look-card-blur, none);
+}
+/* Solid accent fills (primary buttons, meters) take the look's gradient where it has one. */
+[data-look] [class~='bg-phosphor'] {
+  background-image: var(--look-solid, none);
+}
+/* Match scores: RADAR inks them inline in its own green/amber; a look uses its accent instead. */
+:is([data-look], [data-mode='light']) [data-score='hi'] {
+  color: var(--color-phosphor) !important;
+  text-shadow: none !important;
+}
+:is([data-look], [data-mode='light']) [data-score='mid'] {
+  color: var(--color-hud-amber) !important;
+  text-shadow: none !important;
+}
+:is([data-look], [data-mode='light']) [data-score='low'] {
+  color: var(--color-dim) !important;
+  text-shadow: none !important;
+}
+:is([data-look], [data-mode='light']) [data-score-bar] {
+  background: var(--color-phosphor) !important;
+  box-shadow: none !important;
+}
+:is([data-look], [data-mode='light']) [data-score-bar='mid'] {
+  background: var(--color-hud-amber) !important;
+}
+:is([data-look], [data-mode='light']) [data-score-bar='low'] {
+  background: var(--color-dim) !important;
+}
+[data-look] .hud-bracket {
+  display: none;
+}
+[data-look] .glitch::before,
+[data-look] .glitch::after {
+  display: none;
+}
+[data-look] .hud-grid {
+  background: none;
+}
+[data-look] ::selection {
+  background: rgb(var(--glow) / 0.25);
+  color: var(--color-white);
+}
+
+/* ============================ PAPER ============================ */
+[data-look='paper'] .hud-grid {
+  /* Newsprint: fibre grain, and faint column rules like a broadsheet's gutters. */
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .11 0 0 0 0 .1 0 0 0 0 .08 0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='220' height='220' filter='url(%23n)' opacity='.16'/%3E%3C/svg%3E"),
+    repeating-linear-gradient(90deg, transparent 0 239px, rgb(29 26 21 / 0.05) 239px 240px);
+}
+[data-look='paper'] :is(h1, h2) {
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: -0.02em;
+}
+[data-look='paper'] .hud-panel {
+  border-top: 4px double #1d1a15;
+}
+[data-look='paper'] :is(article, .hud-panel) {
+  transition:
+    transform 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+[data-look='paper'] article:hover {
+  /* A sheet lifted off the stack. */
+  transform: translate(-3px, -3px) rotate(-0.15deg);
+  box-shadow: 8px 8px 0 rgb(29 26 21 / 0.18);
+}
+[data-look='paper'] button:active {
+  /* A rubber stamp coming down. */
+  transform: scale(0.96) rotate(-1deg);
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-look='paper'] .hud-grid {
+    animation: paper-boil 0.9s steps(3) infinite;
+  }
+  [data-look='paper'] article {
+    animation: paper-press 0.55s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+}
+@keyframes paper-boil {
+  to {
+    background-position:
+      73px 41px,
+      0 0;
+  }
+}
+@keyframes paper-press {
+  /* Ink soaking in: soft and pale, then crisp. */
+  from {
+    filter: blur(3px);
+    opacity: 0;
+  }
+}
+
+/* ============================ BLOOM ============================ */
+[data-look='bloom'] .hud-grid {
+  background:
+    radial-gradient(38rem 30rem at 12% 8%, rgb(255 205 178 / 0.55), transparent 62%),
+    radial-gradient(34rem 28rem at 88% 18%, rgb(221 204 255 / 0.6), transparent 62%),
+    radial-gradient(40rem 30rem at 60% 100%, rgb(190 236 214 / 0.5), transparent 62%);
+  background-size: 140% 140%;
+}
+[data-look='bloom'] .hud-grid::before,
+[data-look='bloom'] .hud-grid::after {
+  /* Petals: each a tilted ellipse, tiled on a tall sheet that drifts down. */
+  content: '';
+  position: absolute;
+  inset: -100% 0 0;
+  background-image:
+    radial-gradient(ellipse 9px 5px at 9% 12%, rgb(244 114 182 / 0.55) 98%, transparent),
+    radial-gradient(ellipse 7px 4px at 27% 46%, rgb(251 146 190 / 0.5) 98%, transparent),
+    radial-gradient(ellipse 10px 5px at 48% 22%, rgb(249 168 212 / 0.55) 98%, transparent),
+    radial-gradient(ellipse 6px 4px at 66% 71%, rgb(244 114 182 / 0.45) 98%, transparent),
+    radial-gradient(ellipse 9px 5px at 83% 34%, rgb(253 164 175 / 0.55) 98%, transparent),
+    radial-gradient(ellipse 7px 4px at 94% 88%, rgb(249 168 212 / 0.5) 98%, transparent);
+  background-size: 100% 50%;
+}
+[data-look='bloom'] .hud-grid::after {
+  background-size: 70% 37%;
+  opacity: 0.6;
+  transform: rotate(8deg);
+}
+[data-look='bloom'] :is(button, a, article, .hud-panel) {
+  transition:
+    transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.35s ease,
+    background-color 0.2s ease,
+    border-color 0.2s ease;
+}
+[data-look='bloom'] :is(button, a[class*='border']):hover {
+  transform: translateY(-2px) scale(1.03);
+}
+[data-look='bloom'] button:active {
+  transform: scale(0.95);
+}
+[data-look='bloom'] article:hover {
+  transform: translateY(-4px);
+  box-shadow:
+    0 22px 44px -18px rgb(194 51 109 / 0.45),
+    0 2px 6px rgb(194 51 109 / 0.08);
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-look='bloom'] .hud-grid {
+    animation: bloom-drift 26s ease-in-out infinite alternate;
+  }
+  [data-look='bloom'] .hud-grid::before {
+    animation: bloom-fall 22s linear infinite;
+  }
+  [data-look='bloom'] .hud-grid::after {
+    animation: bloom-fall 31s linear infinite;
+  }
+}
+@keyframes bloom-drift {
+  to {
+    background-position: 100% 60%;
+  }
+}
+@keyframes bloom-fall {
+  to {
+    translate: 3% 50%;
+  }
+}
+
+/* ============================ AURORA ============================ */
+[data-look='aurora'] .hud-grid {
+  background: radial-gradient(120% 80% at 50% 0%, #101a3d, #060a18 70%);
+  overflow: hidden;
+}
+[data-look='aurora'] .hud-grid::before {
+  /* The lights: three ribbons, blurred into each other, swaying. */
+  content: '';
+  position: absolute;
+  inset: -20% -10% 40%;
+  background:
+    radial-gradient(60% 55% at 22% 40%, rgb(94 234 212 / 0.5), transparent 70%),
+    radial-gradient(50% 60% at 58% 30%, rgb(125 211 252 / 0.42), transparent 70%),
+    radial-gradient(55% 55% at 84% 50%, rgb(196 181 253 / 0.5), transparent 70%);
+  filter: blur(46px);
+  transform-origin: 50% 0;
+}
+[data-look='aurora'] .hud-grid::after {
+  /* Stars. */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    radial-gradient(1px 1px at 13% 22%, #fff 50%, transparent),
+    radial-gradient(1px 1px at 41% 9%, #fff 50%, transparent),
+    radial-gradient(1.5px 1.5px at 67% 31%, #fff 50%, transparent),
+    radial-gradient(1px 1px at 88% 14%, #fff 50%, transparent),
+    radial-gradient(1px 1px at 29% 63%, #fff 50%, transparent),
+    radial-gradient(1.5px 1.5px at 76% 78%, #fff 50%, transparent),
+    radial-gradient(1px 1px at 52% 52%, #fff 50%, transparent),
+    radial-gradient(1px 1px at 6% 86%, #fff 50%, transparent);
+  background-size: 620px 520px;
+  opacity: 0.55;
+}
+[data-look='aurora'] [class~='bg-phosphor'] {
+  background-size: 220% 100%;
+  transition: background-position 0.6s ease;
+}
+[data-look='aurora'] [class~='bg-phosphor']:hover {
+  background-position: 100% 0;
+}
+[data-look='aurora'] :is(article, .hud-panel) {
+  transition:
+    border-color 0.4s ease,
+    box-shadow 0.4s ease,
+    transform 0.4s ease;
+}
+[data-look='aurora'] article:hover {
+  border-color: rgb(94 234 212 / 0.55);
+  transform: translateY(-2px);
+  box-shadow:
+    0 24px 70px -24px rgb(94 234 212 / 0.35),
+    inset 0 1px 0 rgb(255 255 255 / 0.18);
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-look='aurora'] .hud-grid::before {
+    animation: aurora-sway 17s ease-in-out infinite alternate;
+  }
+  [data-look='aurora'] .hud-grid::after {
+    animation: aurora-twinkle 5s ease-in-out infinite alternate;
+  }
+}
+@keyframes aurora-sway {
+  0% {
+    transform: translateX(-6%) skewX(-8deg) scaleY(0.9);
+    filter: blur(46px) hue-rotate(0deg);
+  }
+  100% {
+    transform: translateX(6%) skewX(9deg) scaleY(1.15);
+    filter: blur(52px) hue-rotate(35deg);
+  }
+}
+@keyframes aurora-twinkle {
+  to {
+    opacity: 0.2;
+  }
+}
+
+/* ============================ ATELIER ============================ */
+[data-look='atelier'] .hud-grid {
+  /* Pinstripe cloth, and a band of light crossing it. */
+  background:
+    linear-gradient(115deg, transparent 42%, rgb(212 175 106 / 0.07) 50%, transparent 58%) 0 0 / 300% 100%,
+    repeating-linear-gradient(90deg, transparent 0 79px, rgb(212 175 106 / 0.045) 79px 80px);
+}
+[data-look='atelier'] :is(h1, h2, h3) {
+  font-style: italic;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+[data-look='atelier'] h1 {
+  font-size: clamp(2rem, 6vw, 3.1rem);
+  line-height: 1;
+}
+[data-look='atelier'] :is(article, .hud-panel) {
+  /* A second, inner hairline: the frame of a garment label. */
+  outline: 1px solid rgb(212 175 106 / 0.12);
+  outline-offset: -7px;
+  transition:
+    outline-color 0.5s ease,
+    border-color 0.5s ease;
+}
+[data-look='atelier'] article:hover {
+  outline-color: rgb(212 175 106 / 0.5);
+  border-color: #d4af6a;
+}
+[data-look='atelier'] button {
+  transition:
+    letter-spacing 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease;
+}
+[data-look='atelier'] button:hover {
+  letter-spacing: 0.34em;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-look='atelier'] .hud-grid {
+    animation: atelier-sheen 13s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  }
+}
+@keyframes atelier-sheen {
+  from {
+    background-position:
+      120% 0,
+      0 0;
+  }
+  to {
+    background-position:
+      -60% 0,
+      0 0;
+  }
+}
+
+/* ============================ BLUEPRINT ============================ */
+[data-look='blueprint'] .hud-grid {
+  background:
+    linear-gradient(rgb(213 233 255 / 0.16) 1px, transparent 1px) 0 0 / 80px 80px,
+    linear-gradient(90deg, rgb(213 233 255 / 0.16) 1px, transparent 1px) 0 0 / 80px 80px,
+    linear-gradient(rgb(213 233 255 / 0.06) 1px, transparent 1px) 0 0 / 16px 16px,
+    linear-gradient(90deg, rgb(213 233 255 / 0.06) 1px, transparent 1px) 0 0 / 16px 16px;
+  overflow: hidden;
+}
+[data-look='blueprint'] .hud-grid::before {
+  /* A compass arc and its centre lines, turning as if being drawn. */
+  content: '';
+  position: absolute;
+  right: -180px;
+  top: -180px;
+  width: 640px;
+  height: 640px;
+  border-radius: 50%;
+  border: 1px dashed rgb(213 233 255 / 0.35);
+  background:
+    linear-gradient(rgb(213 233 255 / 0.25), rgb(213 233 255 / 0.25)) 50% 50% / 100% 1px no-repeat,
+    linear-gradient(rgb(213 233 255 / 0.25), rgb(213 233 255 / 0.25)) 50% 50% / 1px 100% no-repeat,
+    radial-gradient(circle, transparent 0 198px, rgb(213 233 255 / 0.3) 198px 199px, transparent 199px);
+}
+[data-look='blueprint'] .hud-bracket {
+  /* RADAR's corner brackets read as dimension ticks here: they stay. */
+  display: block;
+  border-color: #ffffff;
+}
+[data-look='blueprint'] :is(h1, h2, h3) {
+  letter-spacing: 0.02em;
+}
+[data-look='blueprint'] :is(button, a[class*='border']) {
+  outline: 1px dashed transparent;
+  outline-offset: 0;
+  transition:
+    outline-offset 0.25s ease,
+    outline-color 0.25s ease,
+    background-color 0.2s ease;
+}
+[data-look='blueprint'] :is(button, a[class*='border']):hover {
+  outline-color: rgb(213 233 255 / 0.8);
+  outline-offset: 4px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-look='blueprint'] .hud-grid::before {
+    animation: blueprint-turn 80s linear infinite;
+  }
+  [data-look='blueprint'] article {
+    animation: blueprint-draw 0.7s ease-out both;
+  }
+}
+@keyframes blueprint-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+@keyframes blueprint-draw {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* ============================ ARCADE ============================ */
+[data-look='arcade'] .hud-grid {
+  /* Two star layers and a scanline. */
+  background:
+    repeating-linear-gradient(0deg, rgb(0 0 0 / 0.16) 0 2px, transparent 2px 4px),
+    radial-gradient(2px 2px at 20px 30px, #fff 50%, transparent) 0 0 / 180px 180px,
+    radial-gradient(2px 2px at 90px 120px, #3cf0ff 50%, transparent) 0 0 / 260px 260px,
+    radial-gradient(3px 3px at 150px 60px, #ff5fc8 50%, transparent) 0 0 / 340px 340px;
+  image-rendering: pixelated;
+}
+[data-look='arcade'] :is(h1, h2) {
+  text-shadow: 3px 3px 0 #ff5fc8;
+  letter-spacing: 0.02em;
+}
+[data-look='arcade']
+  :is(button[class*='border'], button[class*='bg-phosphor'], a[class*='border'], input, select, textarea) {
+  border-width: 2px;
+  box-shadow: 3px 3px 0 #000;
+  transition: none;
+}
+[data-look='arcade'] :is(button, a[class*='border']):hover {
+  translate: -1px -1px;
+  box-shadow: 4px 4px 0 #000;
+}
+[data-look='arcade'] :is(button, a[class*='border']):active {
+  /* Pushed all the way in. */
+  translate: 3px 3px;
+  box-shadow: 0 0 0 #000;
+}
+[data-look='arcade'] article:hover {
+  translate: -2px -2px;
+  box-shadow: 7px 7px 0 #000;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-look='arcade'] .hud-grid {
+    animation: arcade-stars 12s steps(48) infinite;
+  }
+  [data-look='arcade'] article {
+    animation: arcade-pop 0.3s steps(4) both;
+  }
+}
+@keyframes arcade-stars {
+  to {
+    background-position:
+      0 0,
+      0 180px,
+      0 520px,
+      0 1020px;
+  }
+}
+@keyframes arcade-pop {
+  from {
+    scale: 0.9;
+    opacity: 0;
+  }
+}
+
+/* ============================ CLAY ============================ */
+[data-look='clay'] .hud-grid {
+  background: linear-gradient(160deg, #eef1fa, #e3e7f4);
+  overflow: hidden;
+}
+[data-look='clay'] .hud-grid::before,
+[data-look='clay'] .hud-grid::after {
+  /* Two soft balls of clay, lit from the top left. */
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 28%, #ffffff, #c9cdf5 45%, #a9aee6);
+  box-shadow:
+    30px 40px 70px rgb(140 147 190 / 0.45),
+    inset -18px -22px 40px rgb(110 115 190 / 0.25);
+  width: 300px;
+  height: 300px;
+  right: 6%;
+  top: 9%;
+  opacity: 0.75;
+}
+[data-look='clay'] .hud-grid::after {
+  width: 180px;
+  height: 180px;
+  left: 4%;
+  right: auto;
+  top: auto;
+  bottom: 8%;
+  background: radial-gradient(circle at 32% 28%, #ffffff, #ffd3c4 45%, #f5b29c);
+  box-shadow:
+    20px 28px 50px rgb(190 150 140 / 0.4),
+    inset -12px -16px 28px rgb(200 120 100 / 0.22);
+}
+[data-look='clay'] :is(button, a[class*='border'], input, select, textarea) {
+  border-color: transparent;
+  box-shadow:
+    5px 5px 12px rgb(163 170 200 / 0.55),
+    -5px -5px 12px rgb(255 255 255 / 0.95);
+  transition:
+    transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.2s ease;
+}
+[data-look='clay'] :is(input, select, textarea) {
+  /* Pressed into the surface. */
+  box-shadow:
+    inset 4px 4px 9px rgb(163 170 200 / 0.6),
+    inset -4px -4px 9px rgb(255 255 255 / 0.95);
+}
+[data-look='clay'] [class~='bg-phosphor'] {
+  box-shadow:
+    6px 8px 16px rgb(83 80 214 / 0.35),
+    inset 0 -4px 0 rgb(0 0 0 / 0.18),
+    inset 0 3px 0 rgb(255 255 255 / 0.3);
+}
+[data-look='clay'] :is(button, a[class*='border']):hover {
+  transform: translateY(-2px);
+}
+[data-look='clay'] :is(button, a[class*='border']):active {
+  /* Squished. */
+  transform: scale(0.94, 0.9);
+  box-shadow:
+    inset 4px 4px 9px rgb(163 170 200 / 0.6),
+    inset -4px -4px 9px rgb(255 255 255 / 0.95);
+}
+[data-look='clay'] article {
+  transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+[data-look='clay'] article:hover {
+  transform: translateY(-5px) scale(1.005);
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-look='clay'] .hud-grid::before {
+    animation: clay-bob 9s ease-in-out infinite alternate;
+  }
+  [data-look='clay'] .hud-grid::after {
+    animation: clay-bob 7s ease-in-out infinite alternate-reverse;
+  }
+}
+@keyframes clay-bob {
+  to {
+    translate: 0 26px;
+    scale: 1.04 0.97;
+  }
+}

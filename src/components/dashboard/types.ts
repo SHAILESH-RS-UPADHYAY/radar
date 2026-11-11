@@ -169,6 +169,9 @@ export function scoreColor(score: number): string {
   return score >= 70 ? '#00FF41' : score >= 40 ? '#FACC15' : '#7B9481';
 }
 
+/** The same bands by name: a hook for looks, which ink a score in their own colours (src/app/looks.css). */
+export const scoreBand = (score: number) => (score >= 70 ? 'hi' : score >= 40 ? 'mid' : 'low');
+
 // ---- C2 · OPS ----
 
 export const STAGE_META: Record<Stage, { label: string; tone: Tone }> = {

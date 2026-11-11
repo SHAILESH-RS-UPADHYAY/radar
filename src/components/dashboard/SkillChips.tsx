@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react';
-import { ageDays, formatSalary, scoreColor, sourceLabel, timeAgo, type MatchedJob } from './types';
+import { ageDays, formatSalary, scoreBand, scoreColor, sourceLabel, timeAgo, type MatchedJob } from './types';
 
 /** A click anywhere on a card opens the JD terminal, unless it landed on a control inside the card. */
 export const openOnClick = (open: (() => void) | undefined) =>
@@ -122,13 +122,21 @@ export function ScoreMeter({ score }: { score: number }) {
     <div className="font-mono">
       <div className="flex items-baseline justify-between gap-3">
         <span className="text-[10px] tracking-[0.3em] text-dim">MATCH</span>
-        <span className="text-3xl font-extrabold leading-none" style={{ color, textShadow: `0 0 16px ${color}55` }}>
+        <span
+          data-score={scoreBand(score)}
+          className="text-3xl font-extrabold leading-none"
+          style={{ color, textShadow: `0 0 16px ${color}55` }}
+        >
           {score}
           <span className="text-base">%</span>
         </span>
       </div>
       <div className="mt-2 h-1 bg-phosphor/10">
-        <div className="h-full" style={{ width: score + '%', background: color, boxShadow: `0 0 8px ${color}` }} />
+        <div
+          data-score-bar={scoreBand(score)}
+          className="h-full"
+          style={{ width: score + '%', background: color, boxShadow: `0 0 8px ${color}` }}
+        />
       </div>
     </div>
   );

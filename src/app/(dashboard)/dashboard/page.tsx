@@ -1473,7 +1473,7 @@ export default function DashboardPage() {
                                     animate={{ rotateX: 0, opacity: 1 }}
                                     transition={{ duration: 0.35 }}
                                     className="font-mono text-2xl font-extrabold"
-                                    style={{ color: on ? c : '#fff' }}
+                                    style={{ color: on ? c : 'var(--color-white)' }}
                                   >
                                     {items.length}
                                   </motion.span>

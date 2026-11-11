@@ -160,7 +160,7 @@ export function RadarLogo({
       <RadarMark className={s.mark + ' shrink-0 drop-shadow-[0_0_10px_rgb(var(--glow)/0.45)]'} animated={animated} />
       <span className="flex flex-col font-mono leading-none">
         <span className={s.text + ' font-extrabold tracking-[0.3em]'}>
-          <span className="bg-[linear-gradient(90deg,#ffffff,#b6ffc6_55%,var(--color-phosphor))] bg-clip-text text-transparent">
+          <span className="bg-[linear-gradient(90deg,var(--color-white),var(--color-phosphor-soft)_55%,var(--color-phosphor))] bg-clip-text text-transparent">
             {word}
           </span>
           <span className="caret-blink text-phosphor">_</span>

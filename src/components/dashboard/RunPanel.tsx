@@ -5,7 +5,7 @@ import { useApi } from '@/lib/use-api';
 import type { TailoredView } from '@/lib/overclock';
 import type { Portfolio } from '@/types';
 import { CopyButton } from '@/components/hud/CopyButton';
-import { scoreColor, type MatchedJob, type TailoredSummary } from './types';
+import { scoreBand, scoreColor, type MatchedJob, type TailoredSummary } from './types';
 import { FormIntercept, useFormIntercept } from './FormIntercept';
 import { launchInExtension, onExtension, useExtension } from '@/lib/extension';
 import { oneClickApply } from '@/lib/apply/client';
@@ -152,7 +152,11 @@ export function RunPanel({
           <h2 className="mt-1 text-xl font-bold leading-snug text-white">{job.title}</h2>
           <p className="mt-1 font-mono text-[11px] text-dim">{job.location}</p>
         </div>
-        <p className="font-mono text-3xl font-extrabold" style={{ color: scoreColor(projected ?? match.score) }}>
+        <p
+          className="font-mono text-3xl font-extrabold"
+          data-score={scoreBand(projected ?? match.score)}
+          style={{ color: scoreColor(projected ?? match.score) }}
+        >
           {projected ?? match.score}
           <span className="text-base">%</span>
         </p>
