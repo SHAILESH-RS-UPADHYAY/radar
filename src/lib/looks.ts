@@ -143,6 +143,34 @@ export const LOOKS: Look[] = [
     swatch: ['#faf8f3', '#fffefb', '#0f6b4f', '#1a2d48'],
     font: '--font-newsreader',
   },
+  {
+    id: 'mochi',
+    name: 'MOCHI',
+    line: 'Strawberry milk, blushing cards, floating hearts.',
+    swatch: ['#fff1f4', '#fffafb', '#ef5d8a', '#5a3441'],
+    font: '--font-mochiy',
+  },
+  {
+    id: 'sticker',
+    name: 'STICKERBOOK',
+    line: 'Die-cut stickers that peel when you point.',
+    swatch: ['#eee9ff', '#ffffff', '#6b4eff', '#2e2950'],
+    font: '--font-patrick',
+  },
+  {
+    id: 'matcha',
+    name: 'MATCHA',
+    line: 'A slow cafe afternoon, steam rising.',
+    swatch: ['#eef0e2', '#fbfbf3', '#5b7f3a', '#33402a'],
+    font: '--font-mplus',
+  },
+  {
+    id: 'soda',
+    name: 'SODA',
+    line: 'A cold can, just opened. Fizz.',
+    swatch: ['#c9f1ff', '#ffffff', '#ff4f9a', '#163b58'],
+    font: '--font-fredoka',
+  },
 ];
 
 const LOOK_KEY = 'radar:look';

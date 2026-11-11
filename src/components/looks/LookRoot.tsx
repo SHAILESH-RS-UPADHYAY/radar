@@ -10,11 +10,15 @@ import {
   Comic_Neue,
   Cormorant_Garamond,
   DM_Sans,
+  Fredoka,
   Gaegu,
   Jost,
   Lora,
+  M_PLUS_Rounded_1c,
+  Mochiy_Pop_One,
   Newsreader,
   Nunito,
+  Patrick_Hand,
   Pixelify_Sans,
   Playfair_Display,
   Quicksand,
@@ -103,6 +107,28 @@ const gaegu = Gaegu({
   weight: ['400', '700'],
   variable: '--font-gaegu',
 });
+const fredoka = Fredoka({ subsets: ['latin'], preload: false, display: 'swap', variable: '--font-fredoka' });
+const mochiy = Mochiy_Pop_One({
+  subsets: ['latin'],
+  preload: false,
+  display: 'swap',
+  weight: '400',
+  variable: '--font-mochiy',
+});
+const patrick = Patrick_Hand({
+  subsets: ['latin'],
+  preload: false,
+  display: 'swap',
+  weight: '400',
+  variable: '--font-patrick',
+});
+const mplus = M_PLUS_Rounded_1c({
+  subsets: ['latin'],
+  preload: false,
+  display: 'swap',
+  weight: ['400', '500', '700', '800'],
+  variable: '--font-mplus',
+});
 const FONT_VARS = [
   newsreader,
   playfair,
@@ -121,6 +147,10 @@ const FONT_VARS = [
   bangers,
   zenmaru,
   gaegu,
+  fredoka,
+  mochiy,
+  patrick,
+  mplus,
 ].map((f) => f.variable);
 
 /**

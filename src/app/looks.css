@@ -541,6 +541,134 @@
   color-scheme: light;
 }
 
+[data-look='mochi'] {
+  --color-void: #fff1f4;
+  --color-black: #fffafb;
+  --color-white: #4a2b35;
+  --color-phosphor: #ef5d8a;
+  --color-phosphor-hi: #f77ea2;
+  --color-phosphor-low: #d9406f;
+  --color-phosphor-soft: #b83361;
+  --color-phosphor-mid: #a47f8a;
+  --color-phosphor-deep: #fbd3df;
+  --color-phosphor-dark: #ffe6ed;
+  --color-phosphor-dull: #c9a2ae;
+  --color-phosphor-mute: #f6cad7;
+  --color-ink: #5a3441;
+  --color-dim: #9a7480;
+  --color-hud-cyan: #3f9fb8;
+  --color-hud-amber: #d98a1f;
+  --color-hud-red: #e0475f;
+  --color-hud-violet: #9b6fd6;
+  --color-hud-pink: #ef5d8a;
+  --color-hud-rose: #e0475f;
+  --glow: 239 93 138;
+  --look-body: var(--font-fredoka), system-ui, sans-serif;
+  --look-mono: var(--font-fredoka), system-ui, sans-serif;
+  --look-display: var(--font-mochiy), var(--font-fredoka), sans-serif;
+  --look-radius: 26px;
+  --look-card-bg: #fffafb;
+  --look-card-border: #fbd3df;
+  --look-card-shadow: 0 3px 0 #f6c3d2, 0 16px 30px -16px rgb(239 93 138 / 0.45);
+  --look-solid: linear-gradient(180deg, #f87fa5, #ef5d8a);
+  color-scheme: light;
+}
+[data-look='sticker'] {
+  --color-void: #eee9ff;
+  --color-black: #ffffff;
+  --color-white: #24203a;
+  --color-phosphor: #6b4eff;
+  --color-phosphor-hi: #8a73ff;
+  --color-phosphor-low: #5538e6;
+  --color-phosphor-soft: #4228c4;
+  --color-phosphor-mid: #7d76a3;
+  --color-phosphor-deep: #d9d1ff;
+  --color-phosphor-dark: #f1edff;
+  --color-phosphor-dull: #a59ec9;
+  --color-phosphor-mute: #d4ccf5;
+  --color-ink: #2e2950;
+  --color-dim: #6e6896;
+  --color-hud-cyan: #0f8fb5;
+  --color-hud-amber: #e08a00;
+  --color-hud-red: #ec3d5c;
+  --color-hud-violet: #6b4eff;
+  --color-hud-pink: #e0449a;
+  --color-hud-rose: #ec3d5c;
+  --glow: 107 78 255;
+  --look-body: var(--font-patrick), system-ui, sans-serif;
+  --look-mono: var(--font-patrick), system-ui, sans-serif;
+  --look-display: var(--font-patrick), system-ui, sans-serif;
+  --look-radius: 18px;
+  --look-card-bg: #ffffff;
+  --look-card-border: #ffffff;
+  --look-card-shadow: 0 0 0 5px #fff, 0 6px 0 5px rgb(36 32 58 / 0.14), 0 18px 28px -10px rgb(36 32 58 / 0.3);
+  --look-card-width: 0px;
+  color-scheme: light;
+}
+[data-look='matcha'] {
+  --color-void: #eef0e2;
+  --color-black: #fbfbf3;
+  --color-white: #28331f;
+  --color-phosphor: #5b7f3a;
+  --color-phosphor-hi: #729a4b;
+  --color-phosphor-low: #4a6b2e;
+  --color-phosphor-soft: #3b5524;
+  --color-phosphor-mid: #7e8268;
+  --color-phosphor-deep: #d6dcbf;
+  --color-phosphor-dark: #e8ecd6;
+  --color-phosphor-dull: #a1a689;
+  --color-phosphor-mute: #ccd2b3;
+  --color-ink: #33402a;
+  --color-dim: #71765c;
+  --color-hud-cyan: #3c7a7a;
+  --color-hud-amber: #b0761f;
+  --color-hud-red: #b9533f;
+  --color-hud-violet: #7c6496;
+  --color-hud-pink: #b45f7f;
+  --color-hud-rose: #b9533f;
+  --glow: 91 127 58;
+  --look-body: var(--font-mplus), system-ui, sans-serif;
+  --look-mono: var(--font-mplus), system-ui, sans-serif;
+  --look-display: var(--font-mplus), system-ui, sans-serif;
+  --look-radius: 16px;
+  --look-card-bg: #fbfbf3;
+  --look-card-border: #d6dcbf;
+  --look-card-shadow: 0 10px 26px -16px rgb(60 70 30 / 0.4);
+  color-scheme: light;
+}
+[data-look='soda'] {
+  --color-void: #dff7ff;
+  --color-black: #ffffff;
+  --color-white: #0d2f4a;
+  --color-phosphor: #ff4f9a;
+  --color-phosphor-hi: #ff78b4;
+  --color-phosphor-low: #e8347f;
+  --color-phosphor-soft: #c4206a;
+  --color-phosphor-mid: #5d8aa6;
+  --color-phosphor-deep: #bfeaf8;
+  --color-phosphor-dark: #e6f9ff;
+  --color-phosphor-dull: #86b4cc;
+  --color-phosphor-mute: #bce4f2;
+  --color-ink: #163b58;
+  --color-dim: #5a85a0;
+  --color-hud-cyan: #00a8d6;
+  --color-hud-amber: #e89a00;
+  --color-hud-red: #ff4f6e;
+  --color-hud-violet: #7b5cff;
+  --color-hud-pink: #ff4f9a;
+  --color-hud-rose: #ff4f6e;
+  --glow: 255 79 154;
+  --look-body: var(--font-fredoka), system-ui, sans-serif;
+  --look-mono: var(--font-fredoka), system-ui, sans-serif;
+  --look-display: var(--font-fredoka), system-ui, sans-serif;
+  --look-radius: 22px;
+  --look-card-bg: linear-gradient(170deg, #ffffff 0%, #f1fbff 100%);
+  --look-card-border: #bfeaf8;
+  --look-card-shadow: inset 0 2px 0 #fff, 0 14px 28px -16px rgb(0 120 170 / 0.45);
+  --look-solid: linear-gradient(180deg, #ff86bf 0%, #ff4f9a 55%, #ec2f83 100%);
+  color-scheme: light;
+}
+
 /* The briefing terminal (and RADAR's own preview card) keep RADAR's palette inside any look. */
 .radar-native {
   --color-void: #000401;
@@ -1647,6 +1775,294 @@
 }
 [data-look='ivory'] :is(button, a[class*='border']):hover {
   letter-spacing: 0.06em;
+}
+
+/* ============================ MOCHI ============================ */
+/* Strawberry milk: puffy cards that blush, buttons like jelly, hearts floating up. */
+[data-look='mochi'] .hud-grid {
+  background:
+    radial-gradient(circle at 20% 30%, rgb(255 255 255 / 0.9) 0 2px, transparent 3px) 0 0 / 46px 46px,
+    radial-gradient(60rem 30rem at 85% -10%, #ffd6e2, transparent 70%),
+    radial-gradient(40rem 26rem at 0% 100%, #ffe9d6, transparent 70%);
+  overflow: hidden;
+}
+[data-look='mochi'] .hud-grid::before {
+  /* Little hearts drifting upward. */
+  content: '♡   ♥     ♡       ♥   ♡     ♥       ♡';
+  position: absolute;
+  inset: auto 0 -40px;
+  white-space: pre;
+  font-size: 22px;
+  letter-spacing: 3.4vw;
+  color: rgb(239 93 138 / 0.35);
+}
+[data-look='mochi'] :is(article, main .hud-panel)::after {
+  /* Two blush cheeks in the corner. */
+  content: '';
+  position: absolute;
+  right: 18px;
+  bottom: 14px;
+  width: 44px;
+  height: 14px;
+  background:
+    radial-gradient(circle at 7px 7px, rgb(255 140 170 / 0.6) 0 6px, transparent 7px),
+    radial-gradient(circle at 37px 7px, rgb(255 140 170 / 0.6) 0 6px, transparent 7px);
+  filter: blur(1.5px);
+  pointer-events: none;
+}
+[data-look='mochi'] :is(article, button, a[class*='border'], main .hud-panel) {
+  transition:
+    scale 0.45s cubic-bezier(0.34, 1.8, 0.5, 1),
+    translate 0.45s cubic-bezier(0.34, 1.8, 0.5, 1),
+    box-shadow 0.3s ease;
+}
+[data-look='mochi'] :is(article, main .hud-panel):hover {
+  translate: 0 -6px;
+  scale: 1.012;
+}
+[data-look='mochi'] :is(button, a[class*='border']):hover {
+  scale: 1.06;
+}
+[data-look='mochi'] button:active {
+  scale: 0.9 1.08;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-look='mochi'] .hud-grid::before {
+    animation: mochi-hearts 16s linear infinite;
+  }
+  [data-look='mochi'] article {
+    animation: mochi-plop 0.6s cubic-bezier(0.34, 1.8, 0.5, 1) both;
+  }
+}
+@keyframes mochi-hearts {
+  to {
+    translate: 0 -110vh;
+  }
+}
+@keyframes mochi-plop {
+  from {
+    opacity: 0;
+    scale: 0.85 0.7;
+  }
+  60% {
+    scale: 1.03 0.97;
+  }
+}
+
+/* ============================ STICKERBOOK ============================ */
+/* Every card is a die-cut sticker on a lilac page; pointing at one peels its corner. */
+[data-look='sticker'] .hud-grid {
+  background:
+    radial-gradient(circle, rgb(107 78 255 / 0.12) 3px, transparent 3.5px) 0 0 / 34px 34px,
+    radial-gradient(circle, rgb(224 68 154 / 0.1) 3px, transparent 3.5px) 17px 17px / 34px 34px;
+}
+[data-look='sticker'] :is(article, main .hud-panel) {
+  rotate: -0.8deg;
+  transition:
+    rotate 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    translate 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    box-shadow 0.3s ease;
+}
+[data-look='sticker'] :is(article:nth-of-type(even), main :nth-child(even) > .hud-panel) {
+  rotate: 0.9deg;
+}
+[data-look='sticker'] :is(article, main .hud-panel)::after {
+  /* The peel: a folded corner that grows on hover. */
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  background: linear-gradient(315deg, #eee9ff 50%, #ffffff 50%, #e3ddff 100%);
+  border-top-left-radius: 10px;
+  box-shadow: -3px -3px 6px rgb(36 32 58 / 0.12);
+  transition:
+    width 0.3s ease,
+    height 0.3s ease;
+  pointer-events: none;
+}
+[data-look='sticker'] :is(article, main .hud-panel):hover {
+  rotate: 0deg;
+  translate: 0 -4px;
+}
+[data-look='sticker'] :is(article, main .hud-panel):hover::after {
+  width: 34px;
+  height: 34px;
+}
+[data-look='sticker'] :is(button, a[class*='border']) {
+  box-shadow:
+    0 0 0 3px #fff,
+    0 4px 0 3px rgb(36 32 58 / 0.15);
+  transition:
+    translate 0.2s ease,
+    box-shadow 0.2s ease;
+}
+[data-look='sticker'] :is(button, a[class*='border']):hover {
+  translate: 0 -2px;
+  box-shadow:
+    0 0 0 3px #fff,
+    0 6px 0 3px rgb(36 32 58 / 0.18);
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-look='sticker'] article {
+    animation: sticker-slap 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+}
+@keyframes sticker-slap {
+  from {
+    opacity: 0;
+    scale: 1.25;
+    rotate: 8deg;
+  }
+}
+
+/* ============================ MATCHA ============================ */
+/* A slow café afternoon: whisked green, oat paper, steam curling up from the corner. */
+[data-look='matcha'] .hud-grid {
+  background:
+    radial-gradient(50rem 30rem at 100% 0%, rgb(140 170 90 / 0.22), transparent 70%),
+    radial-gradient(36rem 26rem at 0% 100%, rgb(214 190 140 / 0.25), transparent 70%);
+  overflow: hidden;
+}
+[data-look='matcha'] .hud-grid::before,
+[data-look='matcha'] .hud-grid::after {
+  /* Steam: two soft ribbons rising and fading. */
+  content: '';
+  position: absolute;
+  right: 9%;
+  bottom: -120px;
+  width: 70px;
+  height: 260px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 60%, rgb(255 255 255 / 0.7), transparent 65%);
+  filter: blur(10px);
+  opacity: 0;
+}
+[data-look='matcha'] .hud-grid::after {
+  right: 13%;
+  width: 50px;
+}
+[data-look='matcha'] :is(h1, h2) {
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
+[data-look='matcha'] :is(article, main .hud-panel) {
+  transition:
+    translate 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.5s ease,
+    border-color 0.4s ease;
+}
+[data-look='matcha'] :is(article, main .hud-panel):hover {
+  translate: 0 -4px;
+  border-color: #9bb87a;
+  box-shadow: 0 22px 40px -20px rgb(60 90 30 / 0.45);
+}
+[data-look='matcha'] :is(button, a[class*='border']) {
+  transition:
+    background-color 0.3s ease,
+    letter-spacing 0.3s ease;
+}
+[data-look='matcha'] :is(button, a[class*='border']):hover {
+  letter-spacing: 0.08em;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-look='matcha'] .hud-grid::before {
+    animation: matcha-steam 7s ease-in-out infinite;
+  }
+  [data-look='matcha'] .hud-grid::after {
+    animation: matcha-steam 7s ease-in-out 3.5s infinite;
+  }
+  [data-look='matcha'] article {
+    animation: matcha-settle 0.8s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+}
+@keyframes matcha-steam {
+  0% {
+    opacity: 0;
+    translate: 0 0;
+    scale: 0.6 0.6;
+  }
+  30% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0;
+    translate: -30px -70vh;
+    scale: 1.6 1.4;
+  }
+}
+@keyframes matcha-settle {
+  from {
+    opacity: 0;
+    filter: blur(4px);
+  }
+}
+
+/* ============================ SODA ============================ */
+/* A cold can just opened: sky-blue fizz, bubbles racing up, glossy buttons that squish. */
+[data-look='soda'] .hud-grid {
+  background: linear-gradient(180deg, #c9f1ff 0%, #e8fbff 55%, #fff0f7 100%);
+  overflow: hidden;
+}
+[data-look='soda'] .hud-grid::before,
+[data-look='soda'] .hud-grid::after {
+  /* Bubbles, two layers at different speeds on a strip taller than the screen. */
+  content: '';
+  position: absolute;
+  inset: 0 0 -100vh;
+  background:
+    radial-gradient(circle at 12% 20%, transparent 5px, rgb(255 255 255 / 0.95) 6px, transparent 8px),
+    radial-gradient(circle at 37% 60%, transparent 9px, rgb(255 255 255 / 0.9) 10px, transparent 12px),
+    radial-gradient(circle at 63% 35%, transparent 4px, rgb(255 255 255 / 0.95) 5px, transparent 7px),
+    radial-gradient(circle at 86% 75%, transparent 7px, rgb(255 255 255 / 0.9) 8px, transparent 10px),
+    radial-gradient(circle at 52% 90%, transparent 3px, rgb(255 255 255 / 0.95) 4px, transparent 6px);
+  background-size: 420px 340px;
+}
+[data-look='soda'] .hud-grid::after {
+  background-size: 300px 260px;
+  opacity: 0.7;
+}
+[data-look='soda'] :is(h1, h2) {
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+[data-look='soda'] [class~='bg-phosphor'] {
+  box-shadow:
+    inset 0 2px 0 rgb(255 255 255 / 0.55),
+    inset 0 -3px 0 rgb(0 0 0 / 0.12),
+    0 8px 18px -8px rgb(236 47 131 / 0.6);
+}
+[data-look='soda'] :is(button, a[class*='border'], article, main .hud-panel) {
+  transition:
+    scale 0.35s cubic-bezier(0.34, 1.8, 0.5, 1),
+    translate 0.35s cubic-bezier(0.34, 1.8, 0.5, 1),
+    box-shadow 0.3s ease;
+}
+[data-look='soda'] :is(button, a[class*='border']):hover {
+  scale: 1.05;
+}
+[data-look='soda'] :is(button, a[class*='border']):active {
+  scale: 1.12 0.86;
+}
+[data-look='soda'] :is(article, main .hud-panel):hover {
+  translate: 0 -5px;
+  box-shadow:
+    inset 0 2px 0 #fff,
+    0 22px 36px -16px rgb(0 140 200 / 0.45);
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-look='soda'] .hud-grid::before {
+    animation: soda-fizz 9s linear infinite;
+  }
+  [data-look='soda'] .hud-grid::after {
+    animation: soda-fizz 14s linear infinite;
+  }
+}
+@keyframes soda-fizz {
+  to {
+    translate: 0 -100vh;
+  }
 }
 
 /* ============================ Every page ============================ */
