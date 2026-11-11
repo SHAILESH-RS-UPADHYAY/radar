@@ -13,6 +13,7 @@ import { CATALOG } from '@/lib/scraper/catalog';
 import { DiscoveryCard } from '@/components/dashboard/DiscoveryCard';
 import { JobTerminal, type JobDetail } from '@/components/dashboard/JobTerminal';
 import { LookWall } from '@/components/looks/LookWall';
+import { EngineFlow } from '@/components/site/EngineFlow';
 import { LOOKS } from '@/lib/looks';
 import type { MatchedJob } from '@/components/dashboard/types';
 
@@ -476,7 +477,7 @@ export default function LandingPage() {
       <SignalTicker />
 
       {/* Everything below the hero shares its grid, so the page reads as one console. */}
-      <div className="relative overflow-hidden">
+      <div className="relative overflow-x-clip">
         <div className="hud-grid look-backdrop pointer-events-none absolute inset-0" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_at_top,rgb(var(--glow)/0.07),transparent_65%)]" />
 
@@ -636,6 +637,16 @@ export default function LandingPage() {
               </motion.div>
             ))}
           </div>
+        </section>
+
+        {/* ENGINE: the whole backend, stage by stage, as you scroll */}
+        <section id="engine" className="relative mx-auto max-w-[1280px] scroll-mt-24 px-4 pb-24 sm:px-6 sm:pb-32">
+          <motion.div {...reveal}>
+            <SectionHeader kicker="INSIDE_THE_ENGINE" title="What happens between a careers page and your Vault.">
+              Seven stages run on their own, around the clock. Scroll through one full cycle.
+            </SectionHeader>
+          </motion.div>
+          <EngineFlow />
         </section>
 
         {/* DIFF */}
