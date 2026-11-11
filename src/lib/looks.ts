@@ -1,9 +1,9 @@
 // ============================
-// RADAR — Looks: the skins of the signed-in app
+// RADAR — Looks: the skins of the whole product
 // ============================
 // RADAR (phosphor on black) is the product's own look and the default; it is never restyled. Every other look is a set
 // of CSS variables and a few rules in src/app/looks.css, switched by `data-look` on <html> (and `data-mode="light"` for
-// RADAR · DAYLIGHT). The choice is kept in this browser. The public site and the sign-in pages always stay RADAR.
+// RADAR · DAYLIGHT). The choice is kept in this browser. Every page wears it.
 
 export interface Look {
   id: string;
@@ -13,6 +13,8 @@ export interface Look {
   line: string;
   /** The picker's thumbnail: page, card, accent, ink. */
   swatch: [string, string, string, string];
+  /** The font variable its name is set in on the home page's look wall. */
+  font?: string;
 }
 
 export const LOOKS: Look[] = [
@@ -34,42 +36,91 @@ export const LOOKS: Look[] = [
     name: 'PAPER',
     line: 'A morning broadsheet: ink, serif, newsprint.',
     swatch: ['#efe7d6', '#f9f3e5', '#1d1a15', '#26221c'],
+    font: '--font-playfair',
   },
   {
     id: 'bloom',
     name: 'BLOOM',
     line: 'A garden in spring: blush, petals, soft corners.',
     swatch: ['#fff4f7', '#ffffff', '#c2336d', '#4a2a3f'],
-  },
-  {
-    id: 'aurora',
-    name: 'AURORA',
-    line: 'Night glass under the northern lights.',
-    swatch: ['#060a18', '#131b3a', '#5eead4', '#dbe4ff'],
+    font: '--font-quicksand',
   },
   {
     id: 'atelier',
     name: 'ATELIER',
     line: 'A fashion house after hours: black and gold.',
     swatch: ['#0d0c0a', '#151310', '#d4af6a', '#ece4d2'],
+    font: '--font-cormorant',
   },
   {
     id: 'blueprint',
     name: 'BLUEPRINT',
     line: "An architect's drawing table.",
     swatch: ['#0a2a5c', '#0c3068', '#d5e9ff', '#dcecff'],
+    font: '--font-architect',
   },
   {
     id: 'arcade',
     name: 'ARCADE',
     line: 'Insert coin. Eight bits, hard shadows.',
     swatch: ['#120824', '#1c0f33', '#ffe14d', '#f3e9ff'],
+    font: '--font-pixelify',
   },
   {
     id: 'clay',
     name: 'CLAY',
     line: 'Soft, round and pressable.',
     swatch: ['#e9edf7', '#f4f6fc', '#5350d6', '#2b2f4a'],
+    font: '--font-baloo',
+  },
+  {
+    id: 'moodboard',
+    name: 'MOODBOARD',
+    line: 'A pinboard: taped photos, a little crooked.',
+    swatch: ['#faf6f2', '#ffffff', '#d6002a', '#2b2420'],
+    font: '--font-dmsans',
+  },
+  {
+    id: 'cottage',
+    name: 'COTTAGE',
+    line: 'Gingham, stitching and handwriting.',
+    swatch: ['#f4eedd', '#fbf7ea', '#4f6f43', '#34402c'],
+    font: '--font-caveat',
+  },
+  {
+    id: 'meadow',
+    name: 'MEADOW',
+    line: 'A painted summer sky, clouds drifting by.',
+    swatch: ['#bfe6ff', '#ffffff', '#1f8a4c', '#1d3f58'],
+    font: '--font-nunito',
+  },
+  {
+    id: 'neoncity',
+    name: 'NEON CITY',
+    line: 'Rain on a neon street at 2 a.m.',
+    swatch: ['#0a0420', '#1d1146', '#ff3fd0', '#ece4ff'],
+    font: '--font-chakra',
+  },
+  {
+    id: 'manga',
+    name: 'MANGA',
+    line: 'Ink, screentone and speed lines.',
+    swatch: ['#ffffff', '#ffffff', '#111111', '#1a1a1a'],
+    font: '--font-bangers',
+  },
+  {
+    id: 'comet',
+    name: 'COMET',
+    line: 'The hour after sunset, a comet crossing.',
+    swatch: ['#1a1c5a', '#2a2c6e', '#ffb38a', '#e9e6ff'],
+    font: '--font-zenmaru',
+  },
+  {
+    id: 'lofi',
+    name: 'LOFI',
+    line: 'A warm lamp, rain on the window.',
+    swatch: ['#251c33', '#2f2440', '#ffcf8a', '#efe3f7'],
+    font: '--font-gaegu',
   },
 ];
 
@@ -110,6 +161,27 @@ export function saveLook(choice: LookChoice) {
   }
   applyLook(choice);
   window.dispatchEvent(new Event(CHANGED));
+}
+
+/**
+ * saveLook, with the new look opening as a circle from where you clicked (browsers without view transitions, and
+ * people who asked for less motion, get the plain switch).
+ */
+export function switchLook(choice: LookChoice, x: number, y: number) {
+  if (!document.startViewTransition || matchMedia('(prefers-reduced-motion: reduce)').matches) return saveLook(choice);
+  const root = document.documentElement;
+  const r = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+  root.classList.add('look-switching');
+  const vt = document.startViewTransition(() => saveLook(choice));
+  vt.ready
+    .then(() =>
+      root.animate(
+        { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${r}px at ${x}px ${y}px)`] },
+        { duration: 650, easing: 'cubic-bezier(0.65, 0, 0.35, 1)', pseudoElement: '::view-transition-new(root)' },
+      ),
+    )
+    .catch(() => {});
+  vt.finished.finally(() => root.classList.remove('look-switching'));
 }
 
 /** Runs before the first paint of an app page, so a chosen look never flashes RADAR first. Mirrors readLook + applyLook. */

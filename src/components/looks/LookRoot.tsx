@@ -4,13 +4,21 @@ import { useLayoutEffect, type ReactNode } from 'react';
 import {
   Architects_Daughter,
   Baloo_2,
+  Bangers,
+  Caveat,
+  Chakra_Petch,
+  Comic_Neue,
   Cormorant_Garamond,
+  DM_Sans,
+  Gaegu,
   Jost,
+  Lora,
   Newsreader,
+  Nunito,
   Pixelify_Sans,
   Playfair_Display,
   Quicksand,
-  Sora,
+  Zen_Maru_Gothic,
 } from 'next/font/google';
 import { applyLook, LOOK_BOOT, onLookChange, readLook } from '@/lib/looks';
 import '@/app/looks.css';
@@ -32,7 +40,6 @@ const playfair = Playfair_Display({
   variable: '--font-playfair',
 });
 const quicksand = Quicksand({ subsets: ['latin'], preload: false, display: 'swap', variable: '--font-quicksand' });
-const sora = Sora({ subsets: ['latin'], preload: false, display: 'swap', variable: '--font-sora' });
 const cormorant = Cormorant_Garamond({
   subsets: ['latin'],
   preload: false,
@@ -51,13 +58,74 @@ const architect = Architects_Daughter({
 });
 const pixelify = Pixelify_Sans({ subsets: ['latin'], preload: false, display: 'swap', variable: '--font-pixelify' });
 const baloo = Baloo_2({ subsets: ['latin'], preload: false, display: 'swap', variable: '--font-baloo' });
-const FONT_VARS = [newsreader, playfair, quicksand, sora, cormorant, jost, architect, pixelify, baloo].map(
-  (f) => f.variable,
-);
+const dmsans = DM_Sans({ subsets: ['latin'], preload: false, display: 'swap', variable: '--font-dmsans' });
+const lora = Lora({
+  subsets: ['latin'],
+  preload: false,
+  display: 'swap',
+  style: ['normal', 'italic'],
+  variable: '--font-lora',
+});
+const caveat = Caveat({ subsets: ['latin'], preload: false, display: 'swap', variable: '--font-caveat' });
+const nunito = Nunito({ subsets: ['latin'], preload: false, display: 'swap', variable: '--font-nunito' });
+const chakra = Chakra_Petch({
+  subsets: ['latin'],
+  preload: false,
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-chakra',
+});
+const comic = Comic_Neue({
+  subsets: ['latin'],
+  preload: false,
+  display: 'swap',
+  weight: ['400', '700'],
+  variable: '--font-comic',
+});
+const bangers = Bangers({
+  subsets: ['latin'],
+  preload: false,
+  display: 'swap',
+  weight: '400',
+  variable: '--font-bangers',
+});
+const zenmaru = Zen_Maru_Gothic({
+  subsets: ['latin'],
+  preload: false,
+  display: 'swap',
+  weight: ['400', '500', '700', '900'],
+  variable: '--font-zenmaru',
+});
+const gaegu = Gaegu({
+  subsets: ['latin'],
+  preload: false,
+  display: 'swap',
+  weight: ['400', '700'],
+  variable: '--font-gaegu',
+});
+const FONT_VARS = [
+  newsreader,
+  playfair,
+  quicksand,
+  cormorant,
+  jost,
+  architect,
+  pixelify,
+  baloo,
+  dmsans,
+  lora,
+  caveat,
+  nunito,
+  chakra,
+  comic,
+  bangers,
+  zenmaru,
+  gaegu,
+].map((f) => f.variable);
 
 /**
- * Wraps the signed-in app: puts your look on <html> while you are in it and takes it off when you leave, so the
- * public site stays RADAR. The font variables go on <html> too, because modals render outside this tree.
+ * Wraps every page (root layout): puts your look on <html> and keeps it in step with the picker and other tabs.
+ * The font variables go on <html> too, because modals render outside this tree.
  */
 export function LookRoot({ children }: { children: ReactNode }) {
   useLayoutEffect(() => {
@@ -66,11 +134,7 @@ export function LookRoot({ children }: { children: ReactNode }) {
     const sync = () => applyLook(readLook());
     sync();
     const off = onLookChange(sync);
-    return () => {
-      off();
-      applyLook({ id: 'radar', light: false });
-      root.classList.remove(...FONT_VARS);
-    };
+    return off;
   }, []);
   return (
     <>

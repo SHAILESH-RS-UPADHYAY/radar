@@ -567,10 +567,10 @@ export default function HackerRadarHero({ children }: { children?: ReactNode }) 
   };
 
   return (
-    <div className="relative w-full overflow-hidden" style={{ background: '#000401' }}>
-      <canvas ref={rainRef} className="absolute inset-0 w-full h-full opacity-[0.18]" aria-hidden="true" />
+    <div className="hero-stage relative w-full overflow-hidden" style={{ background: '#000401' }}>
+      <canvas ref={rainRef} className="hero-fx absolute inset-0 w-full h-full opacity-[0.18]" aria-hidden="true" />
       <div
-        className="pointer-events-none absolute inset-0"
+        className="hero-fx pointer-events-none absolute inset-0"
         style={{
           backgroundImage:
             'linear-gradient(rgba(0,255,65,0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(0,255,65,0.04) 1px, transparent 1px)',
@@ -578,11 +578,11 @@ export default function HackerRadarHero({ children }: { children?: ReactNode }) 
         }}
       />
       <div
-        className="pointer-events-none absolute inset-0 opacity-25"
+        className="hero-fx pointer-events-none absolute inset-0 opacity-25"
         style={{ backgroundImage: 'repeating-linear-gradient(0deg, rgba(0,0,0,0.6) 0 1px, transparent 1px 3px)' }}
       />
       <div
-        className="pointer-events-none absolute inset-0"
+        className="hero-fx pointer-events-none absolute inset-0"
         style={{ background: 'radial-gradient(ellipse at 30% 50%, transparent 30%, rgba(0,0,0,0.9) 100%)' }}
       />
 
@@ -591,7 +591,7 @@ export default function HackerRadarHero({ children }: { children?: ReactNode }) 
         <div className="min-w-0">{children}</div>
 
         {/* Right: scope console */}
-        <div className="relative w-full max-w-[560px] mx-auto font-mono">
+        <div className="radar-native relative w-full max-w-[560px] mx-auto font-mono">
           <div className="relative border border-phosphor/40 bg-black/70 backdrop-blur-sm shadow-[0_0_60px_rgb(var(--glow)/0.12)]">
             <Corner pos="-top-px -left-px border-t-2 border-l-2" />
             <Corner pos="-top-px -right-px border-t-2 border-r-2" />

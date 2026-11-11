@@ -12,6 +12,8 @@ import { SiteFooter } from '@/components/site/SiteFooter';
 import { CATALOG } from '@/lib/scraper/catalog';
 import { DiscoveryCard } from '@/components/dashboard/DiscoveryCard';
 import { JobTerminal, type JobDetail } from '@/components/dashboard/JobTerminal';
+import { LookWall } from '@/components/looks/LookWall';
+import { LOOKS } from '@/lib/looks';
 import type { MatchedJob } from '@/components/dashboard/types';
 
 const HackerRadarHero = dynamic(() => import('@/components/hero/HackerRadarHero'), { ssr: false });
@@ -475,7 +477,7 @@ export default function LandingPage() {
 
       {/* Everything below the hero shares its grid, so the page reads as one console. */}
       <div className="relative overflow-hidden">
-        <div className="hud-grid pointer-events-none absolute inset-0" />
+        <div className="hud-grid look-backdrop pointer-events-none absolute inset-0" />
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[600px] bg-[radial-gradient(ellipse_at_top,rgb(var(--glow)/0.07),transparent_65%)]" />
 
         {/* HOW IT WORKS: the user's side of the loop */}
@@ -498,7 +500,7 @@ export default function LandingPage() {
                 )}
                 <HudPanel className="h-full" bodyClassName="p-6 sm:p-7">
                   <div className="flex items-start justify-between gap-4">
-                    <span className="font-mono text-5xl font-extrabold text-transparent [-webkit-text-stroke:1px_rgba(0,255,65,0.7)]">
+                    <span className="font-mono text-5xl font-extrabold text-transparent [-webkit-text-stroke:1px_rgb(var(--glow)/0.7)]">
                       {j.n}
                     </span>
                     <span className="border border-hud-amber/40 px-2 py-1 font-mono text-[10px] tracking-[0.25em] text-hud-amber">
@@ -511,6 +513,17 @@ export default function LandingPage() {
               </motion.div>
             ))}
           </div>
+        </section>
+
+        {/* LOOKS: pick a skin, the whole site follows */}
+        <section id="looks" className="relative mx-auto max-w-[1280px] scroll-mt-24 px-4 pb-24 sm:px-6 sm:pb-32">
+          <motion.div {...reveal}>
+            <SectionHeader kicker="LOOKS" title={`One engine. ${LOOKS.length} worlds.`}>
+              RADAR is the original. Tap a card and the whole product changes its room: this page, your dashboard,
+              everything. You can switch again any time from Preferences.
+            </SectionHeader>
+          </motion.div>
+          <LookWall />
         </section>
 
         {/* CORE MODULES */}
@@ -532,7 +545,7 @@ export default function LandingPage() {
                     className="flex h-full flex-col transition-colors duration-300 group-hover:border-phosphor/60 group-hover:bg-phosphor/[0.03]"
                     bodyClassName="flex flex-1 flex-col p-6"
                   >
-                    <span className="font-mono text-5xl font-extrabold text-transparent [-webkit-text-stroke:1px_rgba(0,255,65,0.7)]">
+                    <span className="font-mono text-5xl font-extrabold text-transparent [-webkit-text-stroke:1px_rgb(var(--glow)/0.7)]">
                       {m.code}
                     </span>
                     <h3 className="mt-4 text-xl font-bold text-white">{m.title}</h3>
@@ -678,7 +691,7 @@ export default function LandingPage() {
                 transition={{ ...reveal.transition, delay: i * 0.08 }}
                 className="flex flex-col justify-center border-phosphor/15 p-6 sm:p-8 [&:nth-child(-n+2)]:border-b [&:nth-child(odd)]:border-r"
               >
-                <div className="font-mono text-4xl font-extrabold text-phosphor [text-shadow:0_0_18px_rgba(0,255,65,0.35)] sm:text-5xl">
+                <div className="font-mono text-4xl font-extrabold text-phosphor [text-shadow:0_0_18px_rgb(var(--glow)/0.35)] sm:text-5xl">
                   <Counter target={s.value} suffix={s.suffix} />
                 </div>
                 <div className="mt-2 font-mono text-[10px] tracking-[0.3em] text-dim">{s.label}</div>
@@ -741,7 +754,7 @@ export default function LandingPage() {
                 <h2 className="mt-6 font-mono text-4xl font-extrabold leading-tight tracking-tight text-white sm:text-6xl lg:text-7xl">
                   INITIATE SYSTEM
                   <br />
-                  <span className="text-phosphor [text-shadow:0_0_24px_rgba(0,255,65,0.45)]">OVERRIDE.</span>
+                  <span className="text-phosphor [text-shadow:0_0_24px_rgb(var(--glow)/0.45)]">OVERRIDE.</span>
                 </h2>
                 <p className="mx-auto mt-6 max-w-xl text-sm leading-relaxed text-dim sm:text-base">
                   Point RADAR at the companies you want. It keeps watch, so you can spend your time applying.

@@ -2,11 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import { HudPanel } from '@/components/hud/Hud';
-import { LOOKS, onLookChange, readLook, saveLook, type LookChoice } from '@/lib/looks';
+import { LOOKS, onLookChange, readLook, switchLook, type LookChoice } from '@/lib/looks';
 
 /**
  * CONFIG://LOOK — how RADAR looks on this device. RADAR (the original) is the default; the others re-skin the whole
- * signed-in app at once. Each tile is drawn in its own colours, so it shows what you get before you pick it.
+ * product at once. Each tile is drawn in its own colours, so it shows what you get before you pick it.
  */
 export function LookPicker() {
   const [now, setNow] = useState<LookChoice>({ id: 'radar', light: false });
@@ -38,7 +38,7 @@ export function LookPicker() {
               type="button"
               role="radio"
               aria-checked={on}
-              onClick={() => saveLook({ id: l.id, light: l.mode === 'light' })}
+              onClick={(e) => switchLook({ id: l.id, light: l.mode === 'light' }, e.clientX, e.clientY)}
               className={
                 'group border p-2 text-left transition-colors ' +
                 (on ? 'border-phosphor bg-phosphor/10' : 'border-phosphor/20 hover:border-phosphor/60')

@@ -3,6 +3,7 @@ import { ClerkProvider } from '@clerk/nextjs';
 import { Inter, JetBrains_Mono, Outfit } from 'next/font/google';
 import './globals.css';
 import SignalCursor from '@/components/ui/SignalCursor';
+import { LookRoot } from '@/components/looks/LookRoot';
 import { SITE_URL } from '@/lib/site';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -70,7 +71,7 @@ export default function RootLayout({
     >
       <html lang="en" suppressHydrationWarning>
         <body className={[inter.variable, outfit.variable, mono.variable, 'antialiased'].join(' ')}>
-          {children}
+          <LookRoot>{children}</LookRoot>
           <SignalCursor />
         </body>
       </html>
