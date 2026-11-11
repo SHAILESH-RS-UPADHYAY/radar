@@ -1051,7 +1051,7 @@ export default function OnboardingPage() {
                         you check them and press Submit.
                       </p>
                       <p className="mt-4 font-mono text-[11px] font-bold tracking-[0.2em] text-phosphor">
-                        {extension ? `● CONNECTED · v${extension}` : '○ NOT ADDED YET · RADAR WORKS WITHOUT IT'}
+                        {extension ? `● CONNECTED · v${extension}` : '○ NOT ADDED YET · GET IT ON /INSTALL'}
                       </p>
                     </div>
                   </div>

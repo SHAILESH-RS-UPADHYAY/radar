@@ -7,6 +7,7 @@ const ACCESS = [
   { href: '/dashboard', label: 'DASHBOARD' },
   { href: '/settings', label: 'PREFERENCES' },
   { href: '/sign-in', label: 'SIGN IN' },
+  { href: '/install', label: 'INSTALL APP' },
 ];
 
 const LEGAL = [

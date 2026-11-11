@@ -44,3 +44,6 @@ next-env.d.ts
 # clerk configuration (can include secrets)
 /.clerk/
 TRACKER.md
+
+# built from extension/ by scripts/zip-extension.mjs
+/public/radar-extension.zip

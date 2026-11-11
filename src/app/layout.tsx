@@ -4,6 +4,7 @@ import { Inter, JetBrains_Mono, Outfit } from 'next/font/google';
 import './globals.css';
 import SignalCursor from '@/components/ui/SignalCursor';
 import { LookRoot } from '@/components/looks/LookRoot';
+import { ServiceWorker } from '@/components/site/InstallButton';
 import { SITE_URL } from '@/lib/site';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
@@ -24,6 +25,8 @@ export const metadata: Metadata = {
     title: 'RADAR · AI Job Intelligence Engine',
     description: DESCRIPTION,
   },
+  appleWebApp: { capable: true, title: 'RADAR', statusBarStyle: 'black-translucent' },
+  icons: { apple: '/apple-icon.png' },
   twitter: { card: 'summary', title: 'RADAR · AI Job Intelligence Engine', description: DESCRIPTION },
 };
 
@@ -73,6 +76,7 @@ export default function RootLayout({
         <body className={[inter.variable, outfit.variable, mono.variable, 'antialiased'].join(' ')}>
           <LookRoot>{children}</LookRoot>
           <SignalCursor />
+          <ServiceWorker />
         </body>
       </html>
     </ClerkProvider>

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>RADAR · offline</title>
+    <style>
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #000401;
+        color: #dcffe3;
+        font:
+          14px/1.6 ui-monospace,
+          monospace;
+        text-align: center;
+        padding: 16px;
+      }
+      h1 {
+        color: #00ff41;
+        letter-spacing: 0.2em;
+        font-size: 18px;
+      }
+      button {
+        margin-top: 16px;
+        background: #00ff41;
+        color: #000;
+        border: 0;
+        padding: 10px 20px;
+        font:
+          bold 12px ui-monospace,
+          monospace;
+        letter-spacing: 0.2em;
+        cursor: pointer;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <img src="/icon-192.png" width="72" height="72" alt="" />
+      <h1>SIGNAL LOST</h1>
+      <p>You are offline. RADAR needs the network to show live jobs.</p>
+      <button onclick="location.reload()">RETRY</button>
+    </main>
+  </body>
+</html>
