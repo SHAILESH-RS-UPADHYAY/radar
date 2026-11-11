@@ -122,6 +122,27 @@ export const LOOKS: Look[] = [
     swatch: ['#251c33', '#2f2440', '#ffcf8a', '#efe3f7'],
     font: '--font-gaegu',
   },
+  {
+    id: 'studio',
+    name: 'STUDIO',
+    line: 'White, black and hairlines. Nothing extra.',
+    swatch: ['#ffffff', '#ffffff', '#0a0a0a', '#171717'],
+    font: '--font-inter',
+  },
+  {
+    id: 'cloud',
+    name: 'CLOUD',
+    line: 'A cool, calm product console in blue.',
+    swatch: ['#f6f8fc', '#ffffff', '#1a5fe0', '#1c2b44'],
+    font: '--font-dmsans',
+  },
+  {
+    id: 'ivory',
+    name: 'IVORY',
+    line: 'Ivory paper, navy ink, serif headings.',
+    swatch: ['#faf8f3', '#fffefb', '#0f6b4f', '#1a2d48'],
+    font: '--font-newsreader',
+  },
 ];
 
 const LOOK_KEY = 'radar:look';

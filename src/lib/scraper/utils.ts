@@ -283,6 +283,47 @@ export const SKILL_ALIASES: Record<string, string[]> = {
   ios: ['ios'],
   'react native': ['react native'],
   flutter: ['flutter'],
+  // Beyond engineering: named tools and methods only (plain words like "sales" or "design" match every JD).
+  excel: ['excel', 'ms excel', 'microsoft excel'],
+  'google sheets': ['google sheets'],
+  powerpoint: ['powerpoint'],
+  'power bi': ['power bi', 'powerbi'],
+  tableau: ['tableau'],
+  'google analytics': ['google analytics', 'ga4'],
+  seo: ['seo', 'search engine optimization'],
+  sem: ['sem', 'google ads', 'ppc'],
+  'meta ads': ['meta ads', 'facebook ads'],
+  'email marketing': ['email marketing', 'mailchimp'],
+  'content writing': ['content writing', 'copywriting'],
+  'social media': ['social media marketing', 'social media management'],
+  canva: ['canva'],
+  photoshop: ['photoshop'],
+  illustrator: ['adobe illustrator'],
+  'after effects': ['after effects'],
+  'premiere pro': ['premiere pro'],
+  'ux research': ['ux research', 'user research', 'usability testing'],
+  wireframing: ['wireframing', 'wireframes'],
+  prototyping: ['prototyping'],
+  salesforce: ['salesforce'],
+  hubspot: ['hubspot'],
+  crm: ['crm'],
+  'lead generation': ['lead generation', 'cold calling', 'cold outreach'],
+  zendesk: ['zendesk', 'freshdesk'],
+  tally: ['tally', 'tally erp'],
+  quickbooks: ['quickbooks'],
+  sap: ['sap'],
+  gst: ['gst'],
+  'financial modelling': ['financial modelling', 'financial modeling'],
+  accounting: ['accounting', 'bookkeeping'],
+  payroll: ['payroll'],
+  recruitment: ['talent acquisition', 'sourcing candidates'],
+  jira: ['jira'],
+  agile: ['agile', 'scrum'],
+  'product roadmap': ['product roadmap', 'roadmapping'],
+  'a/b testing': ['a/b testing', 'ab testing'],
+  'supply chain': ['supply chain', 'logistics'],
+  autocad: ['autocad'],
+  solidworks: ['solidworks'],
 };
 
 const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -443,9 +484,14 @@ const DEFAULT_TITLE_EXCLUDE = [
 const hasWord = (lower: string, words: string[]) =>
   words.some((k) => new RegExp('[^a-z]' + escapeRe(k) + '[^a-z]').test(lower));
 
+// RADAR_TITLE_FILTER=all opens the feed to every profession (design, marketing, sales, finance, HR, ops) and only
+// keeps leadership titles out. Off by default: it multiplies the stored jobs, so the database needs room first.
+const LEADERSHIP_TITLES = ['director', 'vice president', 'vp', 'head of', 'chief', 'president', 'partner'];
+
 export function isRelevantTitle(title: string): boolean {
   if (process.env.RADAR_TITLE_FILTER === 'off') return true;
   const lower = ' ' + title.toLowerCase() + ' ';
+  if (process.env.RADAR_TITLE_FILTER === 'all') return !hasWord(lower, LEADERSHIP_TITLES);
   const exclude = process.env.RADAR_TITLE_EXCLUDE?.trim()
     ? splitEnvList(process.env.RADAR_TITLE_EXCLUDE.toLowerCase())
     : DEFAULT_TITLE_EXCLUDE;

@@ -69,7 +69,7 @@ export default function RootLayout({
       signInFallbackRedirectUrl="/dashboard"
       signUpFallbackRedirectUrl="/onboarding"
     >
-      <html lang="en" suppressHydrationWarning>
+      <html lang="en" className={inter.variable} suppressHydrationWarning>
         <body className={[inter.variable, outfit.variable, mono.variable, 'antialiased'].join(' ')}>
           <LookRoot>{children}</LookRoot>
           <SignalCursor />

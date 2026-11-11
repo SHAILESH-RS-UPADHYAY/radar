@@ -446,6 +446,101 @@
   --look-card-shadow: 0 18px 40px -22px rgb(0 0 0 / 0.7);
 }
 
+[data-look='studio'] {
+  --color-void: #ffffff;
+  --color-black: #ffffff;
+  --color-white: #0a0a0a;
+  --color-phosphor: #0a0a0a;
+  --color-phosphor-hi: #333333;
+  --color-phosphor-low: #000000;
+  --color-phosphor-soft: #1f1f1f;
+  --color-phosphor-mid: #6b6b6b;
+  --color-phosphor-deep: #e5e5e5;
+  --color-phosphor-dark: #f5f5f5;
+  --color-phosphor-dull: #8f8f8f;
+  --color-phosphor-mute: #dcdcdc;
+  --color-ink: #171717;
+  --color-dim: #6b6b6b;
+  --color-hud-cyan: #0057b8;
+  --color-hud-amber: #9a5b00;
+  --color-hud-red: #c8102e;
+  --color-hud-violet: #5b3cc4;
+  --color-hud-pink: #b4236b;
+  --color-hud-rose: #c8102e;
+  --glow: 10 10 10;
+  --look-body: var(--font-inter), system-ui, sans-serif;
+  --look-mono: var(--font-inter), system-ui, sans-serif;
+  --look-display: var(--font-inter), system-ui, sans-serif;
+  --look-radius: 2px;
+  --look-card-bg: #ffffff;
+  --look-card-border: #e5e5e5;
+  --look-card-shadow: none;
+  color-scheme: light;
+}
+[data-look='cloud'] {
+  --color-void: #f6f8fc;
+  --color-black: #ffffff;
+  --color-white: #0b1f3a;
+  --color-phosphor: #1a5fe0;
+  --color-phosphor-hi: #3b7bf0;
+  --color-phosphor-low: #134bb8;
+  --color-phosphor-soft: #0f3c94;
+  --color-phosphor-mid: #5b6b82;
+  --color-phosphor-deep: #dbe3f0;
+  --color-phosphor-dark: #edf2fa;
+  --color-phosphor-dull: #8492a8;
+  --color-phosphor-mute: #d5deec;
+  --color-ink: #1c2b44;
+  --color-dim: #5b6b82;
+  --color-hud-cyan: #0b7fa8;
+  --color-hud-amber: #a86200;
+  --color-hud-red: #d43a3a;
+  --color-hud-violet: #6a4fd8;
+  --color-hud-pink: #c2327a;
+  --color-hud-rose: #d43a3a;
+  --glow: 26 95 224;
+  --look-body: var(--font-dmsans), system-ui, sans-serif;
+  --look-mono: var(--font-dmsans), system-ui, sans-serif;
+  --look-display: var(--font-dmsans), system-ui, sans-serif;
+  --look-radius: 12px;
+  --look-card-bg: #ffffff;
+  --look-card-border: #e3e9f3;
+  --look-card-shadow: 0 1px 2px rgb(16 40 80 / 0.06), 0 8px 24px -12px rgb(16 40 80 / 0.18);
+  --look-solid: linear-gradient(180deg, #2a6df0, #1a5fe0);
+  color-scheme: light;
+}
+[data-look='ivory'] {
+  --color-void: #faf8f3;
+  --color-black: #fffefb;
+  --color-white: #10233f;
+  --color-phosphor: #0f6b4f;
+  --color-phosphor-hi: #16876a;
+  --color-phosphor-low: #0b5640;
+  --color-phosphor-soft: #0a4433;
+  --color-phosphor-mid: #6f6a5e;
+  --color-phosphor-deep: #e4dfd2;
+  --color-phosphor-dark: #f1eee5;
+  --color-phosphor-dull: #958f80;
+  --color-phosphor-mute: #dcd6c7;
+  --color-ink: #1a2d48;
+  --color-dim: #6f6a5e;
+  --color-hud-cyan: #1d5f8a;
+  --color-hud-amber: #93601a;
+  --color-hud-red: #a8402f;
+  --color-hud-violet: #5c4a8f;
+  --color-hud-pink: #9b3d63;
+  --color-hud-rose: #a8402f;
+  --glow: 15 107 79;
+  --look-body: var(--font-inter), system-ui, sans-serif;
+  --look-mono: var(--font-inter), system-ui, sans-serif;
+  --look-display: var(--font-newsreader), Georgia, serif;
+  --look-radius: 6px;
+  --look-card-bg: #fffefb;
+  --look-card-border: #e4dfd2;
+  --look-card-shadow: 0 1px 0 rgb(16 35 63 / 0.04);
+  color-scheme: light;
+}
+
 /* The briefing terminal (and RADAR's own preview card) keep RADAR's palette inside any look. */
 .radar-native {
   --color-void: #000401;
@@ -1466,6 +1561,92 @@
   to {
     translate: 0 240px;
   }
+}
+
+/* ============================ STUDIO ============================ */
+/* Swiss: white, black, hairlines. Nothing moves except a line under what you point at. */
+[data-look='studio'] :is(h1, h2) {
+  letter-spacing: -0.03em;
+}
+[data-look='studio'] article {
+  transition: border-color 0.2s ease;
+}
+[data-look='studio'] article:hover {
+  border-color: #0a0a0a;
+}
+[data-look='studio'] :is(button, a[class*='border']) {
+  background-image: linear-gradient(#0a0a0a, #0a0a0a);
+  background-repeat: no-repeat;
+  background-position: 0 100%;
+  background-size: 0 2px;
+  transition:
+    background-size 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+    background-color 0.2s ease;
+}
+[data-look='studio'] :is(button, a[class*='border']):hover {
+  background-size: 100% 2px;
+}
+
+/* ============================ CLOUD ============================ */
+/* A product console: cool white, one blue, soft depth. */
+[data-look='cloud'] .hud-grid {
+  background: radial-gradient(70rem 30rem at 50% -10rem, rgb(26 95 224 / 0.1), transparent 70%);
+}
+[data-look='cloud'] :is(h1, h2) {
+  letter-spacing: -0.02em;
+}
+[data-look='cloud'] :is(article, button, a[class*='border']) {
+  transition:
+    translate 0.25s cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 0.25s ease,
+    border-color 0.2s ease,
+    background-color 0.2s ease;
+}
+[data-look='cloud'] article:hover {
+  translate: 0 -2px;
+  border-color: rgb(26 95 224 / 0.35);
+  box-shadow:
+    0 1px 2px rgb(16 40 80 / 0.06),
+    0 18px 36px -16px rgb(26 95 224 / 0.28);
+}
+[data-look='cloud'] button:active {
+  translate: 0 1px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  [data-look='cloud'] article {
+    animation: cloud-in 0.4s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  }
+}
+@keyframes cloud-in {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+
+/* ============================ IVORY ============================ */
+/* A private bank's letterhead: ivory paper, navy ink, serif headings, one green. */
+[data-look='ivory'] .hud-grid {
+  background: linear-gradient(180deg, #f4f0e6 0, transparent 22rem);
+}
+[data-look='ivory'] :is(h1, h2) {
+  font-weight: 500;
+  letter-spacing: -0.01em;
+}
+[data-look='ivory'] :is(article, .hud-panel) {
+  border-top: 2px solid #10233f;
+  transition: border-color 0.3s ease;
+}
+[data-look='ivory'] article:hover {
+  border-top-color: #0f6b4f;
+}
+[data-look='ivory'] :is(button, a[class*='border']) {
+  transition:
+    letter-spacing 0.3s ease,
+    background-color 0.2s ease;
+}
+[data-look='ivory'] :is(button, a[class*='border']):hover {
+  letter-spacing: 0.06em;
 }
 
 /* ============================ Every page ============================ */

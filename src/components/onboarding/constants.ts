@@ -74,6 +74,17 @@ export const ROLES = [
   'DevOps / SRE',
   'QA / Test Engineer',
   'Security Engineer',
+  'Data Analyst',
+  'Business Analyst',
+  'Product Designer',
+  'Graphic Designer',
+  'Marketing',
+  'Content Writer',
+  'Sales',
+  'Customer Success',
+  'Finance & Accounts',
+  'HR & Recruiting',
+  'Operations',
   'Other',
 ];
 

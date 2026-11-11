@@ -131,6 +131,13 @@ describe('isRelevantTitle', () => {
     expect(isRelevantTitle('Video Editor Intern')).toBe(false);
     expect(isRelevantTitle('Account Executive')).toBe(false);
   });
+  it('opens to every profession with RADAR_TITLE_FILTER=all, still without leadership', () => {
+    process.env.RADAR_TITLE_FILTER = 'all';
+    for (const title of ['Copywriting Intern', 'Account Executive', 'HR Generalist', 'Product Designer'])
+      expect(isRelevantTitle(title)).toBe(true);
+    expect(isRelevantTitle('Director, Engineering')).toBe(false);
+    expect(isRelevantTitle('VP Sales')).toBe(false);
+  });
   it('drops sales, management and leadership titles that only mention a tech word', () => {
     for (const title of [
       'Account Executive, AI Sales',
