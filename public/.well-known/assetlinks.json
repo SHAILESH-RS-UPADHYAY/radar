@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.radar.jobs",
+      "sha256_cert_fingerprints": [
+        "FD:87:6D:E9:4F:00:ED:22:5D:6B:21:59:81:88:FC:1A:CB:1D:C3:0F:5E:21:77:03:C9:46:D7:D0:9C:56:35:D4"
+      ]
+    }
+  }
+]

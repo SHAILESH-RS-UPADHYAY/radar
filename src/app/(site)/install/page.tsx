@@ -36,12 +36,25 @@ export default function InstallPage() {
               updates by itself.
             </p>
             <InstallButton />
+            <div className="mt-6 border-t border-phosphor/15 pt-5">
+              <p className="mb-3 text-sm leading-relaxed text-dim">
+                Prefer a file on Android? Download the APK, open it, and allow your browser to install apps when your
+                phone asks. It is the same RADAR, full screen.
+              </p>
+              <a
+                href="/radar.apk"
+                download
+                className="inline-block border border-phosphor/50 px-6 py-3 font-mono text-xs font-bold tracking-[0.25em] text-phosphor transition-colors hover:bg-phosphor/10"
+              >
+                ⤓ DOWNLOAD ANDROID APK (1.3 MB)
+              </a>
+            </div>
           </HudPanel>
           <div className="mt-8">
             <Points
               items={[
                 ['WINDOWS · MAC', 'Chrome or Edge → install icon in the address bar → Install.'],
-                ['ANDROID', 'Chrome → ⋮ menu → Add to Home screen → Install.'],
+                ['ANDROID', 'Chrome → ⋮ menu → Add to Home screen → Install. Or download the APK above.'],
                 ['IPHONE · IPAD', 'Safari → Share → Add to Home Screen.'],
               ]}
             />
