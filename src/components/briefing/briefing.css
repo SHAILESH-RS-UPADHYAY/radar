@@ -1,0 +1,1167 @@
+/* ============================
+   RADAR — Briefing (/briefing/*)
+   ============================
+   Only theme tokens here (var(--color-*), rgb(var(--glow) / x), --look-*), so every look restyles these pages for free.
+   Every animation is written as "from": with motion reduced, each scene simply rests in its finished state. */
+
+.bf {
+  overflow-x: clip;
+  --bf-ease: cubic-bezier(0.22, 1, 0.36, 1);
+  --bf-label: var(--look-mono, var(--font-jetbrains), monospace);
+  /* Text colours. RADAR uses its tokens as they are; in a look they lean toward the ink, because several looks'
+     soft and accent colours are too pale for small text (below 4.5:1 on their page colour). */
+  --bf-soft: var(--color-dim);
+  --bf-accent: var(--color-phosphor);
+  --bf-accent-big: var(--color-phosphor);
+  --bf-warn: var(--color-hud-amber);
+}
+[data-look] .bf {
+  --bf-soft: color-mix(in srgb, var(--color-dim) 45%, var(--color-ink));
+  --bf-accent: color-mix(in srgb, var(--color-phosphor) 55%, var(--color-ink));
+  --bf-accent-big: color-mix(in srgb, var(--color-phosphor) 82%, var(--color-ink));
+  --bf-warn: color-mix(in srgb, var(--color-hud-amber) 42%, var(--color-ink));
+}
+.bf-soft {
+  color: var(--bf-soft);
+}
+
+/* ---------- controls ---------- */
+.bf-btn {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  justify-content: center;
+  padding: 0 1.25rem;
+  font-size: 0.95rem;
+  white-space: nowrap;
+  transition:
+    background-color 0.2s ease,
+    scale 0.15s ease;
+}
+.bf-btn:active {
+  scale: 0.97;
+}
+.bf-btn--big {
+  min-height: 3.5rem;
+  padding: 0 2rem;
+  font-size: 1.1rem;
+}
+.bf-quiet {
+  display: inline-flex;
+  min-height: 2.75rem;
+  align-items: center;
+  padding: 0 0.5rem;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  color: var(--bf-soft);
+  transition: color 0.2s ease;
+}
+.bf-quiet:hover {
+  color: var(--bf-accent);
+}
+@media (max-width: 430px) {
+  .bf-hide-s {
+    display: none;
+  }
+}
+.bf-foot {
+  border-top: 1px solid rgb(var(--glow) / 0.15);
+  background: color-mix(in srgb, var(--color-void) 90%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+/* How else to turn the page: keys where there is a keyboard, a swipe where there is a finger. */
+.bf-turn-touch {
+  display: none;
+}
+@media (max-width: 639px) {
+  .bf-turn-keys {
+    display: none;
+  }
+}
+@media (pointer: coarse) {
+  .bf-turn-keys {
+    display: none;
+  }
+  .bf-turn-touch {
+    display: inline;
+  }
+}
+
+/* ---------- progress rail: five stops, and the line runs on to the account at the far end ---------- */
+.bf-rail {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  font-family: var(--bf-label);
+}
+.bf-rail::before,
+.bf-rail::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 5px;
+  height: 2px;
+  background: rgb(var(--glow) / 0.18);
+  pointer-events: none;
+}
+.bf-rail::after {
+  background: var(--color-phosphor);
+  transform-origin: left;
+  transform: scaleX(var(--p, 0));
+  transition: transform 0.5s var(--bf-ease);
+}
+.bf-rail a {
+  position: relative;
+  display: flex;
+  min-height: 2.75rem;
+  flex-wrap: wrap;
+  align-content: flex-start;
+  gap: 0 0.4rem;
+  padding-top: 1.25rem;
+  font-size: 0.8rem;
+  color: var(--bf-soft);
+  transition: color 0.2s ease;
+}
+.bf-rail a:hover,
+.bf-rail a[data-done] {
+  color: var(--color-ink);
+}
+.bf-rail a[aria-current] {
+  color: var(--bf-accent);
+  font-weight: 700;
+}
+.bf-rail-dot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: 1;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid rgb(var(--glow) / 0.4);
+  background: var(--color-void);
+  transition:
+    background-color 0.3s ease,
+    scale 0.3s var(--bf-ease);
+}
+.bf-rail a:hover .bf-rail-dot {
+  border-color: var(--color-phosphor);
+}
+.bf-rail a[data-done] .bf-rail-dot,
+.bf-rail a[aria-current] .bf-rail-dot {
+  border-color: var(--color-phosphor);
+  background: var(--color-phosphor);
+}
+.bf-rail a[aria-current] .bf-rail-dot {
+  scale: 1.35;
+}
+.bf-rail-n {
+  opacity: 0.7;
+}
+
+/* ---------- page frame ---------- */
+.bf-page {
+  display: grid;
+  width: 100%;
+  max-width: 1360px;
+  margin: 0 auto;
+  gap: 2.25rem;
+  padding: 1.75rem 1rem 2.5rem;
+  align-items: center;
+}
+.bf-copy,
+.bf-scene {
+  min-width: 0;
+}
+.bf-note {
+  font-family: var(--bf-label);
+  font-size: 0.8rem;
+  color: var(--bf-soft);
+}
+.bf-h1 {
+  /* Sized from the screen's height as well as its width, so a page still fits a short laptop screen. */
+  font-size: clamp(2.35rem, min(5.6vw, 10.5vh), 5.25rem);
+  font-weight: 800;
+  line-height: 0.96;
+  letter-spacing: -0.035em;
+  color: var(--color-white);
+  text-wrap: balance;
+  overflow-wrap: break-word;
+}
+.bf-lede {
+  margin-top: 1.5rem;
+  max-width: 34rem;
+  font-size: clamp(1.02rem, 1.25vw, 1.2rem);
+  line-height: 1.55;
+  color: var(--color-ink);
+}
+@media (min-width: 1024px) {
+  .bf-page {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 6fr);
+    gap: 4rem;
+    padding: 1.5rem 2.5rem 2.5rem;
+  }
+  /* No two pages share a composition: the heavy side and the proportions change with the idea. */
+  .bf-page--find {
+    grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+    gap: 1rem;
+  }
+  .bf-page--match {
+    grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  }
+  .bf-page--match .bf-copy {
+    order: 2;
+  }
+  .bf-page--apply {
+    grid-template-columns: minmax(0, 6fr) minmax(0, 5fr);
+  }
+  .bf-page--start {
+    grid-template-columns: minmax(0, 6fr) minmax(0, 7fr);
+  }
+}
+@media (min-width: 1024px) and (max-height: 800px) {
+  .bf-page {
+    padding-top: 0.75rem;
+    padding-bottom: 1.25rem;
+  }
+  .bf-lede {
+    margin-top: 1rem;
+  }
+}
+
+/* ---------- 1 · WHAT: the chore list ---------- */
+.bf-chores {
+  position: relative;
+  padding-left: 1.25rem;
+  border-left: 2px solid rgb(var(--glow) / 0.35);
+}
+/* The caption is "by hand" until the sweep has crossed the whole list out. */
+.bf-flip {
+  display: grid;
+}
+.bf-flip > span {
+  grid-area: 1 / 1;
+}
+.bf-flip > span:first-child {
+  opacity: 0;
+  animation: bf-fade-out 0.4s ease 5s both;
+}
+.bf-flip > span:last-child {
+  color: var(--bf-accent);
+  animation: bf-fade-in 0.4s ease 5.2s both;
+}
+.bf-chores ol {
+  margin-top: 1rem;
+}
+.bf-chores li {
+  padding: 0.85rem 0;
+  border-bottom: 1px solid rgb(var(--glow) / 0.14);
+  /* When the sweep line reaches this row. */
+  --at: calc(0.9s + var(--i) * 0.87s);
+}
+.bf-chore {
+  position: relative;
+  display: inline;
+  font-size: clamp(1.15rem, 2.05vw, 1.8rem);
+  font-weight: 600;
+  line-height: 1.2;
+  color: var(--bf-soft);
+  /* The strike is a background so it follows the text over two lines. */
+  background: linear-gradient(var(--color-phosphor), var(--color-phosphor)) no-repeat 0 58% / 100% 2px;
+  animation: bf-strike 0.5s var(--bf-ease) var(--at) both;
+}
+.bf-does {
+  display: block;
+  margin-top: 0.3rem;
+  font-size: clamp(0.95rem, 1.2vw, 1.1rem);
+  color: var(--bf-accent);
+  animation: bf-rise 0.45s var(--bf-ease) calc(var(--at) + 0.3s) both;
+}
+.bf-does b {
+  font-weight: 800;
+}
+.bf-scanline {
+  position: absolute;
+  inset: 0 0 0 -2px;
+  opacity: 0;
+  pointer-events: none;
+  animation: bf-scan 4.7s linear 0.3s both;
+}
+.bf-scanline::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 2px;
+  background: var(--color-phosphor);
+  box-shadow: 0 0 18px 1px rgb(var(--glow) / 0.65);
+}
+@media (min-width: 1024px) and (max-height: 800px) {
+  .bf-chores li {
+    padding: 0.5rem 0;
+  }
+}
+@keyframes bf-strike {
+  from {
+    background-size: 0 2px;
+    color: var(--color-white);
+  }
+}
+@keyframes bf-rise {
+  from {
+    opacity: 0;
+    translate: 0 8px;
+  }
+}
+@keyframes bf-fade-out {
+  from {
+    opacity: 1;
+  }
+}
+@keyframes bf-fade-in {
+  from {
+    opacity: 0;
+  }
+}
+@keyframes bf-scan {
+  from {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  92% {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: translateY(100%);
+  }
+}
+
+/* ---------- 2 · FIND: the scope ---------- */
+.bf-fact {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1.75rem;
+  max-width: 31rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  color: var(--bf-soft);
+}
+.bf-fact strong {
+  font-family: var(--look-display, var(--font-outfit), sans-serif);
+  font-size: clamp(3.5rem, 6vw, 5.5rem);
+  font-weight: 800;
+  line-height: 0.85;
+  letter-spacing: -0.04em;
+  color: var(--bf-accent-big);
+}
+.bf-scope {
+  max-width: 38rem;
+  margin-inline: auto;
+}
+.bf-scope svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+@media (min-width: 1024px) {
+  /* As big as the screen's height allows, pushed toward the right edge. */
+  .bf-scope {
+    width: min(118%, 58vh * 1.32);
+    max-width: none;
+    margin-inline: auto 0;
+  }
+}
+.bf-ring {
+  fill: none;
+  stroke: rgb(var(--glow) / 0.45);
+  stroke-width: 1.5;
+}
+.bf-ring--clean {
+  stroke: var(--color-hud-amber);
+  stroke-dasharray: 3 9;
+  stroke-width: 2;
+}
+.bf-ring--you {
+  fill: rgb(var(--glow) / 0.1);
+  stroke: var(--color-phosphor);
+  stroke-width: 2;
+}
+/* The beam: one turn in 3.6s around the scope's centre, starting 45° past north. Each job's delay (--d, set in
+   scenes.tsx) is the moment the beam crosses it, so a job shows up exactly when it is swept. */
+.bf-sweep {
+  transform-box: view-box;
+  transform-origin: 300px 300px;
+  animation: radar-spin 3.6s linear infinite;
+}
+.bf-wedge {
+  fill: rgb(var(--glow) / 0.1);
+}
+.bf-beam {
+  stroke: var(--color-phosphor);
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.bf-src,
+.bf-you {
+  font-family: var(--bf-label);
+  font-size: 15px;
+  fill: var(--bf-soft);
+}
+.bf-you {
+  font-size: 17px;
+  font-weight: 700;
+  fill: var(--bf-accent);
+}
+.bf-blip {
+  transform-box: fill-box;
+  transform-origin: center;
+  fill: var(--color-phosphor);
+  transform: translateX(-207px);
+  animation: bf-blip-ok 7.2s linear var(--d) infinite both;
+}
+.bf-blip--copy {
+  fill: none;
+  stroke: var(--color-phosphor);
+  stroke-width: 2.5;
+  stroke-dasharray: 4 4;
+  transform: translateX(-110px);
+  animation-name: bf-blip-out;
+}
+.bf-blip--closed {
+  fill: none;
+  stroke: var(--color-hud-red);
+  stroke-width: 2.5;
+  transform: translateX(-110px);
+  animation-name: bf-blip-out;
+}
+/* Caught at the rim (a ping), carried in, docked on "your list". */
+@keyframes bf-blip-ok {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 0;
+  }
+  1% {
+    transform: translateX(0) scale(2.6);
+    opacity: 1;
+  }
+  7% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  48%,
+  90% {
+    transform: translateX(-207px) scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-207px) scale(1);
+    opacity: 0;
+  }
+}
+/* Caught at the rim, carried to the cleaning ring, dropped there. */
+@keyframes bf-blip-out {
+  0% {
+    transform: translateX(0) scale(1);
+    opacity: 0;
+  }
+  1% {
+    transform: translateX(0) scale(2.6);
+    opacity: 1;
+  }
+  7% {
+    transform: translateX(0) scale(1);
+    opacity: 1;
+  }
+  30% {
+    transform: translateX(-110px) scale(1);
+    opacity: 1;
+  }
+  38%,
+  100% {
+    transform: translateX(-110px) scale(2.6);
+    opacity: 0;
+  }
+}
+.bf-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem 1.5rem;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  color: var(--bf-soft);
+}
+.bf-legend li {
+  display: flex;
+  min-height: 1.75rem;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: default;
+  transition: color 0.2s ease;
+}
+.bf-legend li:hover {
+  color: var(--color-ink);
+}
+/* Point at a kind in the key and only that kind stays lit on the scope. */
+.bf-scope:has([data-k='ok']:hover) .bf-blip:not(.bf-blip--ok),
+.bf-scope:has([data-k='copy']:hover) .bf-blip:not(.bf-blip--copy),
+.bf-scope:has([data-k='closed']:hover) .bf-blip:not(.bf-blip--closed) {
+  opacity: 0.08 !important;
+}
+.bf-key {
+  width: 12px;
+  height: 12px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--color-phosphor);
+}
+.bf-key--copy {
+  background: none;
+  border: 2px dashed var(--color-phosphor);
+}
+.bf-key--closed {
+  background: none;
+  border: 2px solid var(--color-hud-red);
+}
+.bf-srclist {
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+  color: var(--bf-soft);
+}
+@media (max-width: 639px) {
+  /* Too small to read inside the scope on a phone: the sources are listed under it instead. */
+  .bf-src {
+    display: none;
+  }
+}
+@media (min-width: 640px) {
+  .bf-srclist {
+    display: none;
+  }
+}
+
+/* ---------- 3 · MATCH: the height chart ---------- */
+.bf-match {
+  display: grid;
+  grid-template-columns: minmax(9.5rem, 13rem) minmax(0, 1fr);
+  gap: 1.5rem;
+  align-items: stretch;
+}
+.bf-ruler {
+  position: relative;
+  min-height: clamp(20rem, 52vh, 30rem);
+  margin: 1.75rem 0 0.75rem;
+  border-left: 2px solid var(--color-phosphor);
+  background: repeating-linear-gradient(to top, rgb(var(--glow) / 0.55) 0 1px, transparent 1px 5%) left / 12px 100%
+    no-repeat;
+  font-family: var(--bf-label);
+}
+.bf-tick {
+  position: absolute;
+  left: 1.05rem;
+  translate: 0 -1px;
+  font-size: 0.72rem;
+  color: var(--bf-soft);
+}
+/* One block per reason, stacked: the score is literally built from them. */
+.bf-seg {
+  position: absolute;
+  left: 2.9rem;
+  width: 1.15rem;
+  background: var(--color-phosphor);
+  box-shadow: inset 0 2px 0 var(--color-void);
+  opacity: 0.9;
+  transform: scaleY(0);
+  transform-origin: bottom;
+  transition:
+    transform 0.6s var(--bf-ease),
+    opacity 0.25s ease;
+}
+.bf-seg:nth-of-type(even) {
+  opacity: 0.6;
+}
+.bf-seg[data-on] {
+  transform: scaleY(1);
+}
+.bf-ruler[data-hot] .bf-seg {
+  opacity: 0.2;
+}
+.bf-ruler[data-hot] .bf-seg[data-hot] {
+  opacity: 1;
+}
+.bf-bar {
+  position: absolute;
+  left: 0;
+  right: -0.5rem;
+  bottom: 80%;
+  padding: 0.2rem 0 0;
+  translate: 0 100%;
+  text-align: right;
+  border-top: 2px dashed var(--color-hud-amber);
+  font-size: 0.75rem;
+  color: var(--bf-warn);
+}
+.bf-zone {
+  position: absolute;
+  right: 0;
+  font-size: 0.8rem;
+  color: var(--bf-soft);
+  opacity: 0.5;
+  transition:
+    opacity 0.4s ease,
+    color 0.4s ease;
+}
+.bf-zone[data-on] {
+  opacity: 1;
+  color: var(--bf-accent);
+  font-weight: 700;
+}
+.bf-zone--vault {
+  bottom: calc(100% + 0.25rem);
+}
+.bf-zone--disc {
+  bottom: 55%;
+}
+.bf-climb {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transition: transform 0.75s cubic-bezier(0.34, 1.35, 0.5, 1);
+}
+.bf-job {
+  position: absolute;
+  left: 4.6rem;
+  top: 0;
+  translate: 0 -50%;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+  white-space: nowrap;
+  color: var(--color-black);
+  background: var(--color-phosphor);
+  border-radius: var(--look-radius, 0);
+}
+.bf-job::before {
+  content: '';
+  position: absolute;
+  right: 100%;
+  top: 50%;
+  width: 4.6rem;
+  height: 2px;
+  background: var(--color-phosphor);
+}
+.bf-score {
+  font-family: var(--look-display, var(--font-outfit), sans-serif);
+  font-size: clamp(5rem, 15vw, 13rem);
+  font-weight: 800;
+  line-height: 0.82;
+  letter-spacing: -0.05em;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-white);
+}
+.bf-tally ol {
+  margin: 1.25rem 0 1rem;
+}
+.bf-tally li {
+  display: grid;
+  grid-template-columns: 2.6rem minmax(0, 1fr);
+  gap: 0.5rem;
+  padding: 0.4rem 0;
+  font-size: 0.92rem;
+  line-height: 1.35;
+  color: var(--bf-soft);
+  opacity: 0.3;
+  cursor: default;
+  transition:
+    opacity 0.4s ease,
+    color 0.2s ease;
+}
+.bf-tally li[data-on] {
+  opacity: 1;
+}
+.bf-tally li:hover {
+  color: var(--color-ink);
+}
+.bf-tally li b {
+  font-variant-numeric: tabular-nums;
+  color: var(--bf-accent);
+}
+.bf-tally li strong {
+  color: var(--color-ink);
+}
+@media (max-width: 639px) {
+  /* Phone: the ruler and the big number share a row; the reasons get the full width under them. */
+  .bf-match {
+    grid-template-columns: 9.5rem minmax(0, 1fr);
+  }
+  .bf-tally {
+    display: contents;
+  }
+  .bf-score {
+    align-self: center;
+  }
+  .bf-ruler {
+    min-height: 16.5rem;
+  }
+  .bf-tally ol,
+  .bf-tally .bf-note {
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+}
+
+/* ---------- 4 · APPLY: the form that types itself ---------- */
+.bf-ways {
+  margin-top: 1.5rem;
+  max-width: 36rem;
+}
+.bf-ways > div {
+  display: grid;
+  gap: 0.15rem 1.25rem;
+  padding: 0.9rem 0;
+  border-top: 1px solid rgb(var(--glow) / 0.18);
+}
+.bf-ways dt {
+  font-family: var(--bf-label);
+  font-weight: 700;
+  color: var(--bf-accent);
+}
+.bf-ways dd {
+  font-size: 0.98rem;
+  line-height: 1.5;
+  color: var(--color-ink);
+}
+@media (min-width: 640px) {
+  .bf-ways > div {
+    grid-template-columns: 7.5rem minmax(0, 1fr);
+  }
+}
+@media (min-width: 1024px) and (max-height: 800px) {
+  .bf-ways {
+    margin-top: 1rem;
+  }
+  .bf-ways > div {
+    padding: 0.6rem 0;
+  }
+}
+.bf-form {
+  position: relative;
+  max-width: 31rem;
+  padding: 1.25rem 1.25rem 1.5rem;
+  border: 1px solid rgb(var(--glow) / 0.3);
+  background: color-mix(in srgb, var(--color-black) 70%, transparent);
+}
+.bf-field {
+  display: grid;
+  grid-template-columns: 6.25rem minmax(0, 1fr);
+  gap: 0.75rem;
+  padding: 0.65rem 0;
+  border-bottom: 1px solid rgb(var(--glow) / 0.15);
+  font-size: 0.95rem;
+}
+.bf-field > span {
+  font-size: 0.8rem;
+  line-height: 1.6rem;
+  color: var(--bf-soft);
+}
+.bf-field p {
+  min-height: 1.6rem;
+  line-height: 1.6rem;
+  color: var(--color-white);
+}
+.bf-field[data-long] p {
+  min-height: 6.4rem;
+}
+.bf-caret {
+  display: inline-block;
+  width: 2px;
+  height: 1.1em;
+  margin-left: 1px;
+  vertical-align: text-bottom;
+  background: var(--color-phosphor);
+}
+.bf-file {
+  opacity: 0;
+  translate: 0 6px;
+  transition:
+    opacity 0.4s ease,
+    translate 0.4s var(--bf-ease);
+}
+.bf-file[data-on] {
+  opacity: 1;
+  translate: 0;
+}
+.bf-file em {
+  display: block;
+  font-size: 0.8rem;
+  font-style: normal;
+  line-height: 1.35;
+  color: var(--bf-accent);
+}
+.bf-submit {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.75rem;
+  margin-top: 1.25rem;
+  opacity: 0.3;
+  transition: opacity 0.5s ease 0.3s;
+}
+.bf-submit[data-on] {
+  opacity: 1;
+}
+.bf-submit-btn {
+  padding: 0.7rem 1.1rem;
+  font-weight: 700;
+}
+/* Filled in and waiting: the one thing left pulses until you press it. */
+.bf-submit[data-on] .bf-submit-btn {
+  animation: bf-wait 1.8s ease-out 0.8s infinite;
+}
+@keyframes bf-wait {
+  from {
+    box-shadow: 0 0 0 0 rgb(var(--glow) / 0.55);
+  }
+  to {
+    box-shadow: 0 0 0 16px rgb(var(--glow) / 0);
+  }
+}
+.bf-submit svg {
+  width: 4.5rem;
+  flex: none;
+  fill: none;
+  stroke: var(--bf-warn);
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.bf-hand {
+  flex: 1 1 9rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--bf-warn);
+}
+
+/* ---------- 5 · START: your file ---------- */
+.bf-file-wrap {
+  display: grid;
+  gap: 1rem;
+}
+.bf-sheet {
+  position: relative;
+  padding: 1.1rem 1.25rem;
+}
+.bf-sheet h2 {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--color-white);
+}
+.bf-sheet ul {
+  margin-top: 0.6rem;
+}
+.bf-sheet li {
+  padding: 0.45rem 0;
+  border-top: 1px solid rgb(var(--glow) / 0.16);
+  font-size: 0.98rem;
+  line-height: 1.4;
+  color: var(--color-ink);
+}
+.bf-sheet--kept {
+  border: 1px solid rgb(var(--glow) / 0.4);
+  background: color-mix(in srgb, var(--color-black) 70%, transparent);
+}
+.bf-sheet--never {
+  border: 2px dashed rgb(var(--glow) / 0.4);
+  border-radius: var(--look-radius, 0);
+}
+.bf-sheet--never h2,
+.bf-sheet--never li {
+  color: var(--bf-soft);
+}
+.bf-sheet--never li {
+  border-top-style: dashed;
+}
+/* The reply's subject line arrives here… */
+.bf-sheet .bf-from-mail {
+  color: var(--bf-accent);
+  font-weight: 700;
+  animation: bf-rise 0.5s var(--bf-ease) 2.3s both;
+}
+/* …and the rest of it is named here. */
+.bf-mail-body {
+  animation: bf-flash 1.4s ease 2.5s;
+}
+@keyframes bf-flash {
+  30% {
+    color: var(--bf-accent);
+  }
+}
+.bf-letter {
+  display: grid;
+  gap: 0.45rem;
+  padding: 0.8rem 1rem 1rem;
+  border: 1px solid rgb(var(--glow) / 0.4);
+  border-radius: var(--look-radius, 0);
+  animation: bf-rise 0.5s var(--bf-ease) 0.4s both;
+}
+.bf-letter-cap {
+  font-family: var(--bf-label);
+  font-size: 0.8rem;
+  color: var(--bf-soft);
+}
+.bf-letter-strip {
+  justify-self: start;
+  padding: 0.2rem 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--color-black);
+  background: var(--color-phosphor);
+  border-radius: var(--look-radius, 0);
+  opacity: 0;
+  translate: var(--bf-to, 0 -1.25rem);
+  animation: bf-file-it 0.8s var(--bf-ease) 1.6s both;
+}
+.bf-letter i {
+  height: 0;
+  border-top: 2px dashed rgb(var(--glow) / 0.3);
+  translate: 0 4px;
+  animation: bf-fade-body 0.6s ease 1.8s both;
+}
+.bf-letter i:nth-of-type(2) {
+  width: 82%;
+}
+.bf-letter i:nth-of-type(3) {
+  width: 56%;
+}
+@keyframes bf-file-it {
+  from {
+    opacity: 1;
+    translate: 0;
+  }
+}
+@keyframes bf-fade-body {
+  from {
+    border-top: 2px solid var(--color-ink);
+    translate: 0;
+  }
+}
+.bf-gmail {
+  line-height: 1.5;
+}
+@media (min-width: 720px) {
+  .bf-file-wrap {
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    align-items: start;
+  }
+  .bf-sheet--kept {
+    grid-row: 1 / span 3;
+  }
+  .bf-letter {
+    --bf-to: -3.5rem 0;
+  }
+}
+
+/* ---------- Look first: the bezel ---------- */
+.bf-look {
+  /* How much of the dial shows above the bottom edge. */
+  --peek: 11.5rem;
+}
+.bf-look-body {
+  display: grid;
+  gap: 2rem;
+  padding-top: clamp(0.5rem, 3.5vh, 2.75rem);
+}
+.bf-look .bf-look-h1 {
+  font-size: clamp(1.35rem, 2.2vw, 1.9rem);
+  font-weight: 800;
+  line-height: 1.1;
+  color: var(--color-white);
+}
+.bf-look-name {
+  margin-top: 0.15rem;
+  font-size: clamp(2.9rem, 7vw, 6.75rem);
+  font-weight: 800;
+  line-height: 0.95;
+  letter-spacing: -0.02em;
+  color: var(--bf-accent-big);
+  overflow-wrap: break-word;
+  animation: bf-name-in 0.5s var(--bf-ease) both;
+}
+@keyframes bf-name-in {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+    filter: blur(6px);
+  }
+}
+.bf-look-line {
+  margin-top: 0.9rem;
+  max-width: 26ch;
+  font-size: clamp(1.05rem, 1.5vw, 1.3rem);
+  line-height: 1.35;
+  color: var(--color-ink);
+}
+.bf-look-aside {
+  max-width: 31ch;
+  line-height: 1.4;
+}
+/* The sample card needs a wide, tall screen; on a phone the page itself is the preview. */
+.bf-look-sample {
+  display: none;
+}
+@media (min-width: 1024px) and (min-height: 680px) {
+  .bf-look-body {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 34rem);
+    align-items: start;
+  }
+  .bf-look-sample {
+    display: block;
+  }
+}
+@media (min-width: 1024px) and (max-height: 820px) {
+  .bf-look-sample {
+    scale: 0.86;
+    transform-origin: top right;
+  }
+}
+@media (max-height: 640px) {
+  .bf-look-aside {
+    display: none;
+  }
+}
+.bf-dial {
+  --D: max(62rem, 135vw);
+  position: absolute;
+  left: 50%;
+  top: calc(100% - var(--peek));
+  z-index: 5;
+  width: var(--D);
+  height: var(--D);
+  margin-left: calc(var(--D) / -2);
+  border-radius: 50%;
+  cursor: grab;
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
+}
+.bf-dial:active {
+  cursor: grabbing;
+}
+.bf-dial-turn {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgb(var(--glow) / 0.55);
+  background: radial-gradient(circle at 50% 0, rgb(var(--glow) / 0.12), transparent 24rem), var(--color-void);
+  box-shadow: 0 -30px 80px -40px rgb(var(--glow) / 0.5);
+  transition: transform 0.7s cubic-bezier(0.3, 1.25, 0.4, 1);
+  /* It rolls into place once, on arrival (the `rotate` property adds to the turn set by `transform`). */
+  animation: bf-dial-in 1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes bf-dial-in {
+  from {
+    rotate: 40deg;
+    opacity: 0;
+  }
+}
+/* 220 ticks: ten to a bead, like the 60 on the logo's bezel. */
+.bf-dial-ticks {
+  position: absolute;
+  inset: 0.5rem;
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgb(var(--glow) / 0.75) 0 0.14deg, transparent 0.14deg 1.63636deg);
+  -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 13px), #000 calc(100% - 12px));
+  mask: radial-gradient(closest-side, transparent calc(100% - 13px), #000 calc(100% - 12px));
+}
+.bf-dial-notch {
+  position: absolute;
+  left: 50%;
+  top: -16px;
+  z-index: 2;
+  translate: -50% 0;
+  border: 10px solid transparent;
+  border-top-color: var(--color-phosphor);
+}
+.bf-dial-cap {
+  position: absolute;
+  left: 50%;
+  top: calc(var(--peek) - 2.4rem);
+  z-index: 2;
+  translate: -50% 0;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  color: var(--color-dim);
+  pointer-events: none;
+}
+@media (pointer: coarse) {
+  .bf-keys-only {
+    display: none;
+  }
+}
+.bf-bead {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+}
+/* Beads are swatches of other looks, not buttons of the one being worn: its button styling stays off them
+   (the long selector outranks every look's own button rules). */
+.bf-look .bf-dial .bf-bead button,
+.bf-look .bf-dial .bf-bead button:hover,
+.bf-look .bf-dial .bf-bead button:active {
+  position: absolute;
+  left: -2.25rem;
+  top: calc(var(--D) / -2 + 2.1rem);
+  width: 4.5rem;
+  height: 4.5rem;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: 0 3px 12px rgb(0 0 0 / 0.55);
+  letter-spacing: 0;
+  transform: none;
+  translate: none;
+  transition: scale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.bf-look .bf-dial .bf-bead button:hover {
+  scale: 1.1;
+}
+.bf-look .bf-dial .bf-bead button[aria-checked='true'] {
+  scale: 1.28;
+}
+.bf-look .bf-dial .bf-bead button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 5px;
+}
+.bf-bead button > span {
+  position: absolute;
+  inset: 24%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 3px;
+  padding: 0 5px;
+  border: 2px solid;
+  border-radius: 50%;
+}
+.bf-bead i {
+  height: 3px;
+  border-radius: 2px;
+}
+.bf-bead i:last-child {
+  width: 60%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bf *,
+  .bf *::before,
+  .bf *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

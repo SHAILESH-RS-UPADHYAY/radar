@@ -2226,3 +2226,40 @@
     scale: 1;
   }
 }
+
+/* ---------- Briefing (/briefing/*) in a look ---------- */
+/* Display faces run wider than RADAR's: a calmer headline size keeps whole words on a line (and lifts ATELIER's
+   h1 cap). */
+[data-look] .bf-h1 {
+  font-size: clamp(2.1rem, min(4.3vw, 9vh), 4.25rem);
+  line-height: 1;
+}
+[data-look='arcade'] .bf-h1,
+[data-look='mochi'] .bf-h1 {
+  font-size: clamp(1.8rem, min(3.6vw, 7.5vh), 3.5rem);
+  letter-spacing: -0.01em;
+}
+/* The stage's sheets are steady: they hold a scene, so they do not lift or tilt like cards. */
+[data-look] .bf :is(.bf-form, .bf-sheet):hover {
+  translate: none;
+}
+/* Serif and script numerals hang lower than RADAR's: room so the score never sits on its first reason. */
+[data-look] .bf-score {
+  line-height: 1;
+}
+[data-look='paper'] .bf-chores {
+  border-left: 3px double var(--color-phosphor);
+}
+[data-look='blueprint'] .bf-ring {
+  stroke-dasharray: 10 6;
+}
+[data-look='manga'] .bf-score {
+  -webkit-text-stroke: 2px #111;
+  text-shadow: 6px 6px 0 #d90429;
+}
+[data-look='arcade'] .bf-score {
+  text-shadow: 6px 6px 0 #ff5fc8;
+}
+[data-look='neoncity'] .bf-score {
+  text-shadow: 0 0 18px rgb(255 63 208 / 0.8);
+}

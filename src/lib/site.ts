@@ -10,4 +10,17 @@ export const SITE_URL =
 export const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || null;
 
 /** Pages anyone can visit, in sitemap order. */
-export const PUBLIC_PATHS = ['/', '/system', '/protocol', '/architecture', '/install', '/privacy', '/terms'];
+export const PUBLIC_PATHS = [
+  '/',
+  '/briefing',
+  '/briefing/find',
+  '/briefing/match',
+  '/briefing/apply',
+  '/briefing/start',
+  '/system',
+  '/protocol',
+  '/architecture',
+  '/install',
+  '/privacy',
+  '/terms',
+];

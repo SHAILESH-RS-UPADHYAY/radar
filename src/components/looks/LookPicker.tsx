@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { HudPanel } from '@/components/hud/Hud';
 import { LOOKS, onLookChange, readLook, switchLook, type LookChoice } from '@/lib/looks';
 
@@ -77,6 +78,12 @@ export function LookPicker() {
       >
         NEW HERE? REPLAY THE DASHBOARD TOUR →
       </a>
+      <Link
+        href="/briefing"
+        className="ml-6 mt-5 inline-block font-mono text-[11px] tracking-[0.2em] text-phosphor/70 transition-colors hover:text-phosphor"
+      >
+        HOW RADAR WORKS: THE 5-PAGE BRIEFING →
+      </Link>
     </HudPanel>
   );
 }

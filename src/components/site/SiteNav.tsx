@@ -45,7 +45,7 @@ export function SiteNav({ overlay = false }: { overlay?: boolean }) {
             <RadarLogo />
           </Link>
 
-          <div className="hidden items-center gap-10 md:flex">
+          <div className="hidden items-center gap-10 lg:flex">
             {SITE_LINKS.map((l) => {
               const active = pathname === l.href;
               return (
@@ -99,7 +99,7 @@ export function SiteNav({ overlay = false }: { overlay?: boolean }) {
               onClick={() => setOpen((o) => !o)}
               aria-expanded={open}
               aria-label="Menu"
-              className="ml-1 flex h-9 w-9 items-center justify-center border border-phosphor/30 text-phosphor md:hidden"
+              className="ml-1 flex h-9 w-9 items-center justify-center border border-phosphor/30 text-phosphor lg:hidden"
             >
               <span className="font-mono text-sm">{open ? '×' : '≡'}</span>
             </button>
@@ -107,7 +107,7 @@ export function SiteNav({ overlay = false }: { overlay?: boolean }) {
         </div>
 
         {open && (
-          <div className="mx-4 mt-3 border border-phosphor/20 bg-black/95 font-mono md:hidden">
+          <div className="mx-4 mt-3 border border-phosphor/20 bg-black/95 font-mono lg:hidden">
             {[
               ...SITE_LINKS,
               isSignedIn ? { href: '/dashboard', label: 'DASHBOARD' } : { href: '/sign-in', label: 'LOG IN' },
