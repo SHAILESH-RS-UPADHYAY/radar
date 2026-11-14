@@ -966,15 +966,16 @@
   }
 }
 
-/* ---------- Look first: the bezel ---------- */
-.bf-look {
-  /* How much of the dial shows above the bottom edge. */
-  --peek: 11.5rem;
-}
+/* ---------- Look first: the crown ---------- */
 .bf-look-body {
   display: grid;
-  gap: 2rem;
-  padding-top: clamp(0.5rem, 3.5vh, 2.75rem);
+  gap: 2.5rem;
+  align-content: start;
+  justify-items: center;
+  padding-top: clamp(1rem, 5vh, 3.5rem);
+}
+.bf-look-text {
+  justify-self: stretch;
 }
 .bf-look .bf-look-h1 {
   font-size: clamp(1.35rem, 2.2vw, 1.9rem);
@@ -983,20 +984,20 @@
   color: var(--color-white);
 }
 .bf-look-name {
-  margin-top: 0.15rem;
-  font-size: clamp(2.9rem, 7vw, 6.75rem);
+  margin-top: 0.6rem;
+  font-size: clamp(2.6rem, 5.4vw, 5rem);
   font-weight: 800;
   line-height: 0.95;
   letter-spacing: -0.02em;
   color: var(--bf-accent-big);
-  overflow-wrap: break-word;
-  animation: bf-name-in 0.5s var(--bf-ease) both;
+  overflow-wrap: anywhere;
+  animation: bf-name-in 0.35s var(--bf-ease) both;
 }
 @keyframes bf-name-in {
   from {
     opacity: 0;
-    translate: 0 14px;
-    filter: blur(6px);
+    translate: 0 10px;
+    filter: blur(5px);
   }
 }
 .bf-look-line {
@@ -1010,151 +1011,231 @@
   max-width: 31ch;
   line-height: 1.4;
 }
-/* The sample card needs a wide, tall screen; on a phone the page itself is the preview. */
 .bf-look-sample {
   display: none;
 }
-@media (min-width: 1024px) and (min-height: 680px) {
+@media (min-width: 900px) {
   .bf-look-body {
-    grid-template-columns: minmax(0, 1fr) minmax(0, 34rem);
-    align-items: start;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    padding-top: clamp(1rem, 4vh, 3rem);
+  }
+  .bf-crown {
+    --S: clamp(12rem, 22vw, 15rem);
+  }
+}
+@media (min-width: 1280px) {
+  .bf-look-body {
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 27rem);
+    gap: 3.5rem;
   }
   .bf-look-sample {
     display: block;
+    justify-self: stretch;
   }
 }
-@media (min-width: 1024px) and (max-height: 820px) {
-  .bf-look-sample {
-    scale: 0.86;
-    transform-origin: top right;
-  }
+
+/* The dial: a watch crown, about the size of a palm. */
+.bf-crown-wrap {
+  display: grid;
+  justify-items: center;
+  gap: 0.5rem;
 }
-@media (max-height: 640px) {
-  .bf-look-aside {
-    display: none;
-  }
+.bf-crown {
+  --S: clamp(15rem, 70vw, 20rem);
+  position: relative;
+  width: var(--S);
+  height: var(--S);
+  border-radius: 50%;
+  cursor: grab;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
 }
-.bf-dial {
-  --D: max(62rem, 135vw);
+.bf-crown:active {
+  cursor: grabbing;
+}
+.bf-crown:focus-visible {
+  outline: 2px solid var(--color-phosphor);
+  outline-offset: 8px;
+}
+.bf-crown-notch {
   position: absolute;
   left: 50%;
-  top: calc(100% - var(--peek));
-  z-index: 5;
+  top: -14px;
+  z-index: 3;
+  translate: -50% 0;
+  border: 10px solid transparent;
+  border-top-color: #00ff41;
+  filter: drop-shadow(0 0 6px rgb(0 255 65 / 0.8));
+}
+.bf-crown-rotor {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #0e2416, #020a05 70%);
+  border: 1px solid rgb(0 255 65 / 0.5);
+  box-shadow:
+    0 0 0 6px #04120a,
+    0 0 0 7px rgb(0 255 65 / 0.35),
+    0 24px 60px -20px rgb(0 0 0 / 0.8),
+    0 0 50px -10px rgb(0 255 65 / 0.35);
+  will-change: transform;
+}
+/* The grip around the edge, like a crown's knurling: you can see it turn. */
+.bf-crown-knurl {
+  position: absolute;
+  inset: -1px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgb(0 255 65 / 0.55) 0 1.2deg, transparent 1.2deg 4deg);
+  -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 9px), #000 calc(100% - 8px));
+  mask: radial-gradient(closest-side, transparent calc(100% - 9px), #000 calc(100% - 8px));
+}
+.bf-crown-ticks {
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgb(0 255 65 / 0.5) 0 0.6deg, transparent 0.6deg 16.3636deg);
+  -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
+  mask: radial-gradient(closest-side, transparent calc(100% - 8px), #000 calc(100% - 7px));
+}
+.bf-crown-bead {
+  position: absolute;
+  inset: 0;
+}
+.bf-crown-bead i {
+  position: absolute;
+  left: 50%;
+  top: 7%;
+  width: 9.5%;
+  height: 9.5%;
+  translate: -50% 0;
+  border-radius: 50%;
+  border: 2px solid;
+  cursor: pointer;
+  transition: scale 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.bf-crown-bead i[data-on] {
+  scale: 1.3;
+  box-shadow: 0 0 0 2px #00ff41 !important;
+}
+/* The centre stays still: it reads the number, like a watch's date window. */
+.bf-crown-cap {
+  position: absolute;
+  inset: 34%;
+  z-index: 2;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 30%, #12301c, #010603);
+  border: 1px solid rgb(0 255 65 / 0.45);
+  box-shadow: inset 0 2px 6px rgb(0 0 0 / 0.8);
+  font-family: var(--font-jetbrains), monospace;
+  color: #dcffe3;
+  pointer-events: none;
+}
+.bf-crown-cap b {
+  font-size: 1.8rem;
+  line-height: 1;
+  color: #00ff41;
+}
+.bf-crown-cap small {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+.bf-crown-sound {
+  font-size: 0.8rem;
+}
+
+/* The big bezel: the crown, grown until only its top arc rises from the bottom of the screen. */
+.bf-look {
+  --peek: 9rem;
+}
+.bf-arc {
+  --D: max(62rem, 135vw);
+  position: fixed;
+  left: 50%;
+  top: calc(100dvh - var(--peek));
+  z-index: 1;
   width: var(--D);
   height: var(--D);
   margin-left: calc(var(--D) / -2);
   border-radius: 50%;
   cursor: grab;
-  touch-action: pan-y;
+  touch-action: none;
   -webkit-user-select: none;
   user-select: none;
 }
-.bf-dial:active {
+.bf-arc:active {
   cursor: grabbing;
 }
-.bf-dial-turn {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  border: 1px solid rgb(var(--glow) / 0.55);
-  background: radial-gradient(circle at 50% 0, rgb(var(--glow) / 0.12), transparent 24rem), var(--color-void);
-  box-shadow: 0 -30px 80px -40px rgb(var(--glow) / 0.5);
-  transition: transform 0.7s cubic-bezier(0.3, 1.25, 0.4, 1);
-  /* It rolls into place once, on arrival (the `rotate` property adds to the turn set by `transform`). */
-  animation: bf-dial-in 1s cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
-@keyframes bf-dial-in {
-  from {
-    rotate: 40deg;
-    opacity: 0;
-  }
-}
-/* 220 ticks: ten to a bead, like the 60 on the logo's bezel. */
-.bf-dial-ticks {
-  position: absolute;
-  inset: 0.5rem;
-  border-radius: 50%;
-  background: repeating-conic-gradient(rgb(var(--glow) / 0.75) 0 0.14deg, transparent 0.14deg 1.63636deg);
-  -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 13px), #000 calc(100% - 12px));
-  mask: radial-gradient(closest-side, transparent calc(100% - 13px), #000 calc(100% - 12px));
-}
-.bf-dial-notch {
+.bf-arc-notch {
   position: absolute;
   left: 50%;
   top: -16px;
   z-index: 2;
   translate: -50% 0;
   border: 10px solid transparent;
-  border-top-color: var(--color-phosphor);
+  border-top-color: #00ff41;
+  filter: drop-shadow(0 0 6px rgb(0 255 65 / 0.8));
 }
-.bf-dial-cap {
+.bf-arc-rotor {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 1px solid rgb(0 255 65 / 0.55);
+  background: radial-gradient(circle at 50% 0, rgb(0 255 65 / 0.14), transparent 24rem), #000401;
+  box-shadow: 0 -30px 80px -40px rgb(0 255 65 / 0.5);
+  will-change: transform;
+}
+.bf-arc-ticks {
+  position: absolute;
+  inset: 0.5rem;
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgb(0 255 65 / 0.75) 0 0.14deg, transparent 0.14deg 1.63636deg);
+  -webkit-mask: radial-gradient(closest-side, transparent calc(100% - 13px), #000 calc(100% - 12px));
+  mask: radial-gradient(closest-side, transparent calc(100% - 13px), #000 calc(100% - 12px));
+}
+.bf-arc-bead {
+  position: absolute;
+  inset: 0;
+}
+.bf-arc-bead i {
   position: absolute;
   left: 50%;
-  top: calc(var(--peek) - 2.4rem);
-  z-index: 2;
+  top: 2rem;
+  width: 4.25rem;
+  height: 4.25rem;
   translate: -50% 0;
-  white-space: nowrap;
-  font-size: 0.85rem;
-  color: var(--color-dim);
+  border-radius: 50%;
+  border: 2px solid;
+  cursor: pointer;
+  transition: scale 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.bf-arc-bead i[data-on] {
+  scale: 1.25;
+  box-shadow: 0 0 0 3px #00ff41 !important;
+}
+/* The page's own layer lets pointer and wheel through its empty space to the bezel underneath. */
+.bf-look-body {
   pointer-events: none;
 }
-@media (pointer: coarse) {
-  .bf-keys-only {
+.bf-look-body > * {
+  pointer-events: auto;
+}
+.bf-look .bf-look-body {
+  padding-bottom: calc(var(--peek) + 1rem);
+}
+@media (max-width: 899px), (max-height: 640px) {
+  /* Phones and short screens: the crown alone. */
+  .bf-arc {
     display: none;
   }
-}
-.bf-bead {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 0;
-  height: 0;
-}
-/* Beads are swatches of other looks, not buttons of the one being worn: its button styling stays off them
-   (the long selector outranks every look's own button rules). */
-.bf-look .bf-dial .bf-bead button,
-.bf-look .bf-dial .bf-bead button:hover,
-.bf-look .bf-dial .bf-bead button:active {
-  position: absolute;
-  left: -2.25rem;
-  top: calc(var(--D) / -2 + 2.1rem);
-  width: 4.5rem;
-  height: 4.5rem;
-  border: 0;
-  border-radius: 50%;
-  box-shadow: 0 3px 12px rgb(0 0 0 / 0.55);
-  letter-spacing: 0;
-  transform: none;
-  translate: none;
-  transition: scale 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.bf-look .bf-dial .bf-bead button:hover {
-  scale: 1.1;
-}
-.bf-look .bf-dial .bf-bead button[aria-checked='true'] {
-  scale: 1.28;
-}
-.bf-look .bf-dial .bf-bead button:focus-visible {
-  outline: 2px solid #fff;
-  outline-offset: 5px;
-}
-.bf-bead button > span {
-  position: absolute;
-  inset: 24%;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 3px;
-  padding: 0 5px;
-  border: 2px solid;
-  border-radius: 50%;
-}
-.bf-bead i {
-  height: 3px;
-  border-radius: 2px;
-}
-.bf-bead i:last-child {
-  width: 60%;
+  .bf-look .bf-look-body {
+    padding-bottom: 2.5rem;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {

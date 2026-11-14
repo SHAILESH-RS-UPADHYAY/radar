@@ -1,109 +1,78 @@
 'use client';
 
-// RADAR brand. The mark is a watch-dial bezel around a radar scope with an "R" monogram:
-// the sweep turns, a light orbits the bezel, a scanline rolls through the scope, the R draws
-// itself in on load, and the target blip pings exactly when the beam crosses it.
-// The wordmark decrypts from noise on load and on hover. All motion is CSS (globals.css, "RADAR logo")
-// and stops under prefers-reduced-motion.
+// RADAR brand. The mark is a precision instrument: a steel bezel around a phosphor radar dial with a gold hub.
+// The beam turns; a gold job blip pings exactly as the beam crosses it. The wordmark decrypts from noise on load and
+// on hover. All motion is CSS (globals.css, "RADAR logo") and stops under prefers-reduced-motion.
 
 import { useEffect, useId, useState } from 'react';
 
-const TICKS = Array.from({ length: 60 }, (_, i) => {
-  const a = (i * 6 * Math.PI) / 180;
-  const major = i % 5 === 0;
-  const r0 = major ? 19.6 : 21.2;
-  const r1 = 22.6;
-  const p = (r: number) => [24 + r * Math.sin(a), 24 - r * Math.cos(a)].map((v) => v.toFixed(2));
-  const [x1, y1] = p(r0);
-  const [x2, y2] = p(r1);
-  return { x1, y1, x2, y2, major };
-});
+const DIAL = { G: '#00FF41', MINT: '#B6FFC6', GOLD: '#FACC15' };
+// The blip sits 38.4° past north; the beam starts at north and turns once in 3.6s, so it crosses at 0.384s.
+const CROSS = { animationDelay: '0.384s' };
 
 function RadarMark({ className = 'h-9 w-9', animated = true }: { className?: string; animated?: boolean }) {
   // useId can contain characters that break url(#id) references, so keep only safe ones.
-  const clip = 'radar-clip-' + useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  const id = 'rl' + useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const a = (cls: string) => (animated ? cls : undefined);
   return (
-    <svg viewBox="0 0 48 48" fill="none" className={'logo-mark ' + className} aria-hidden="true">
+    <svg viewBox="0 0 24 24" fill="none" strokeLinecap="round" className={'logo-mark ' + className} aria-hidden="true">
       <defs>
-        <clipPath id={clip}>
-          <circle cx="24" cy="24" r="17.5" />
-        </clipPath>
+        <linearGradient id={id + 's'} x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stopColor="#1b211e" />
+          <stop offset="0.16" stopColor="#7c8883" />
+          <stop offset="0.34" stopColor="#161b19" />
+          <stop offset="0.52" stopColor="#3b4541" />
+          <stop offset="0.7" stopColor="#c4ccc8" />
+          <stop offset="0.84" stopColor="#1c2320" />
+          <stop offset="1" stopColor="#4d5853" />
+        </linearGradient>
+        <radialGradient id={id + 'f'} cx="0.45" cy="0.4">
+          <stop offset="0" stopColor="#07301a" />
+          <stop offset="0.65" stopColor="#03160b" />
+          <stop offset="1" stopColor="#010703" />
+        </radialGradient>
+        <radialGradient id={id + 'g'} cx="0.36" cy="0.3" r="0.8">
+          <stop offset="0" stopColor="#fff8d6" />
+          <stop offset="0.4" stopColor="#f5c542" />
+          <stop offset="1" stopColor="#7a5300" />
+        </radialGradient>
+        <linearGradient id={id + 'b'} x1="1" y1="0" x2="0" y2="0">
+          <stop offset="0" stopColor={DIAL.G} stopOpacity="0.8" />
+          <stop offset="1" stopColor={DIAL.G} stopOpacity="0" />
+        </linearGradient>
       </defs>
-
-      {/* bezel */}
-      {TICKS.map((t, i) => (
-        <line
+      <circle cx="12" cy="12" r="9.5" fill={`url(#${id}f)`} />
+      <circle cx="12" cy="12" r="10.7" stroke={`url(#${id}s)`} strokeWidth="2.4" />
+      <circle cx="12" cy="12" r="11.85" stroke="#fff" strokeOpacity="0.28" strokeWidth="0.15" />
+      <circle cx="12" cy="12" r="9.5" stroke="#000" strokeOpacity="0.8" strokeWidth="0.2" />
+      <path d="M12 0.6V2.2" stroke={DIAL.GOLD} strokeWidth="0.55" transform="rotate(22.5 12 12)" />
+      {Array.from({ length: 12 }, (_, i) => (
+        <path
           key={i}
-          x1={t.x1}
-          y1={t.y1}
-          x2={t.x2}
-          y2={t.y2}
-          stroke="var(--color-phosphor)"
-          strokeOpacity={t.major ? 0.95 : 0.4}
-          strokeWidth={t.major ? 1.1 : 0.6}
+          d="M12 3.2V4.6"
+          stroke={DIAL.MINT}
+          strokeOpacity={i % 3 ? 0.55 : 1}
+          strokeWidth={i % 3 ? 0.35 : 0.6}
+          strokeLinecap="butt"
+          transform={`rotate(${i * 30} 12 12)`}
         />
       ))}
-      <circle
-        cx="24"
-        cy="24"
-        r="23.2"
-        stroke="var(--color-phosphor-soft)"
-        strokeWidth="0.9"
-        strokeLinecap="round"
-        strokeDasharray="10 136"
-        className={a('logo-orbit')}
-      />
-
-      {/* scope */}
-      <circle
-        cx="24"
-        cy="24"
-        r="17.5"
-        fill="var(--color-void)"
-        fillOpacity=".6"
-        stroke="var(--color-phosphor)"
-        strokeOpacity=".6"
-      />
-      <circle cx="24" cy="24" r="12" stroke="var(--color-phosphor)" strokeOpacity=".3" strokeDasharray="1.2 2.2" />
-      <g clipPath={`url(#${clip})`}>
-        <g className={a('radar-sweep')}>
-          <path d="M24 24V6.5a17.5 17.5 0 0 1 15.155 8.75Z" fill="var(--color-phosphor)" fillOpacity=".1" />
-          <path d="M24 24l8.75-15.155a17.5 17.5 0 0 1 6.405 6.405Z" fill="var(--color-phosphor)" fillOpacity=".14" />
-          <path d="M24 24l13.005-11.71a17.5 17.5 0 0 1 2.15 2.96Z" fill="var(--color-phosphor)" fillOpacity=".24" />
-          <path d="M24 24l15.155-8.75" stroke="var(--color-phosphor-soft)" strokeWidth="1.3" strokeLinecap="round" />
-        </g>
-        <rect
-          x="6.5"
-          y="6.5"
-          width="35"
-          height="0.7"
-          fill="var(--color-phosphor-soft)"
-          fillOpacity=".45"
-          className={a('logo-scan')}
-        />
+      <circle cx="12" cy="12" r="5.2" stroke={DIAL.G} strokeOpacity="0.6" strokeWidth="0.35" />
+      <g className={a('radar-sweep')}>
+        <path d="M12 12L12 2.5A9.5 9.5 0 0 0 4.22 6.55Q7.6 9.6 12 12Z" fill={`url(#${id}b)`} />
+        <path d="M12 12V2.7" stroke={DIAL.MINT} strokeWidth="0.7" />
       </g>
-
-      {/* target blip: pings as the beam crosses it */}
-      <circle cx="35.2" cy="13.4" r="1.3" stroke="var(--color-hud-amber)" strokeWidth=".6" className={a('logo-ping')} />
-      <circle cx="35.2" cy="13.4" r="1.3" fill="var(--color-hud-amber)" className={a('logo-blip')} />
-
-      {/* R monogram, with a dark halo so it reads over the sweep */}
-      <path
-        d="M19.5 33V15H26a4.75 4.75 0 0 1 0 9.5h-6.5m5 0 6 8.5"
-        stroke="var(--color-void)"
-        strokeWidth="4.4"
-        strokeLinejoin="miter"
+      <circle
+        className={a('logo-ping')}
+        style={CROSS}
+        cx="15.8"
+        cy="7.2"
+        r="1.1"
+        stroke={DIAL.GOLD}
+        strokeWidth="0.5"
       />
-      <path
-        d="M19.5 33V15H26a4.75 4.75 0 0 1 0 9.5h-6.5m5 0 6 8.5"
-        stroke="var(--color-phosphor)"
-        strokeWidth="2.2"
-        strokeLinecap="square"
-        strokeLinejoin="miter"
-        pathLength={1}
-        className={a('logo-draw')}
-      />
+      <circle className={a('logo-blip')} style={CROSS} cx="15.8" cy="7.2" r="1.1" fill={DIAL.GOLD} />
+      <circle cx="12" cy="12" r="1.5" fill={`url(#${id}g)`} stroke="#000" strokeOpacity="0.7" strokeWidth="0.2" />
     </svg>
   );
 }

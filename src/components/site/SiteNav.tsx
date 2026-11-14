@@ -1,11 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAuth, UserButton } from '@clerk/nextjs';
 import { RadarLogo } from '@/components/brand/RadarLogo';
 import { SITE_LINKS } from './links';
+
+const LookDialSheet = dynamic(() => import('@/components/looks/LookDialSheet').then((m) => m.LookDialSheet));
 
 /** Top bar for the public site. `overlay` keeps it transparent over the landing hero until you scroll. */
 export function SiteNav({ overlay = false }: { overlay?: boolean }) {
@@ -13,6 +16,7 @@ export function SiteNav({ overlay = false }: { overlay?: boolean }) {
   const { isSignedIn } = useAuth();
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const [dial, setDial] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40);
@@ -26,14 +30,16 @@ export function SiteNav({ overlay = false }: { overlay?: boolean }) {
   return (
     <>
       {/* Floats in the corner so the bar itself stays exactly as it was. */}
-      <Link
-        href="/#looks"
+      <button
+        type="button"
+        onClick={() => setDial(true)}
         aria-label="Change look"
         title="Change look"
         className="look-fab fixed bottom-5 right-5 z-40 flex h-11 w-11 items-center justify-center border border-phosphor/40 bg-black/80 font-mono text-lg text-phosphor backdrop-blur-md transition-colors hover:border-phosphor hover:bg-phosphor/10"
       >
         ◐
-      </Link>
+      </button>
+      {dial && <LookDialSheet onClose={() => setDial(false)} />}
       <nav
         className={
           'fixed inset-x-0 top-0 z-50 transition-all duration-300 ' +
