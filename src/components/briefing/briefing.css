@@ -978,17 +978,17 @@
   justify-self: stretch;
 }
 .bf-look .bf-look-h1 {
-  font-size: clamp(1.35rem, 2.2vw, 1.9rem);
-  font-weight: 800;
+  font-size: clamp(1.25rem, 2vw, 1.7rem);
+  font-weight: 500;
   line-height: 1.1;
   color: var(--color-white);
 }
 .bf-look-name {
   margin-top: 0.6rem;
   font-size: clamp(2.6rem, 5.4vw, 5rem);
-  font-weight: 800;
+  font-weight: 400;
   line-height: 0.95;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
   color: var(--bf-accent-big);
   overflow-wrap: anywhere;
   animation: bf-name-in 0.35s var(--bf-ease) both;

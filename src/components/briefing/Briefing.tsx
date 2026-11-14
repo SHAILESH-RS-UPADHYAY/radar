@@ -11,8 +11,11 @@ import { SCENES, type Facts } from './scenes';
 import { LOOK_SLUG, STEPS, stepHref } from './steps';
 import './briefing.css';
 
-// Its own chunk: only the look screen needs the dial and the sample card.
-const LookFirst = dynamic(() => import('./LookFirst').then((m) => m.LookFirst));
+// Its own chunk, drawn in the browser only: it starts on the look this browser has saved, which the server cannot know.
+const LookFirst = dynamic(() => import('./LookFirst').then((m) => m.LookFirst), {
+  ssr: false,
+  loading: () => <div className="min-h-dvh bg-void" />,
+});
 
 const LAST = STEPS.length - 1;
 
