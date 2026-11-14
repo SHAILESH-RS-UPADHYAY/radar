@@ -40,7 +40,8 @@ export function LookFirst({ onDone }: { onDone: () => void }) {
       if (!arc || getComputedStyle(arc).display === 'none') return;
       const top = arc.getBoundingClientRect().top - 24; // keep the notch clear too
       let bottom = 0;
-      for (const child of el.children) bottom = Math.max(bottom, child.getBoundingClientRect().bottom);
+      for (const child of el.children)
+        if (child !== arc) bottom = Math.max(bottom, child.getBoundingClientRect().bottom);
       const r = el.getBoundingClientRect();
       const scale = (top - r.top) / (bottom - r.top);
       if (scale < 1) el.style.transform = `scale(${Math.max(0.5, scale)})`;

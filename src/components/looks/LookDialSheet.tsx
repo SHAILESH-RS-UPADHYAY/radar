@@ -3,6 +3,10 @@
 import { useEffect, useRef, useState } from 'react';
 import { LOOKS, readLook, saveLook } from '@/lib/looks';
 import { LookDial } from '@/components/briefing/LookDial';
+import { DiscoveryCard } from '@/components/dashboard/DiscoveryCard';
+import { SAMPLE } from '@/components/site/sample-match';
+
+const noop = () => {};
 
 const now = () => {
   const c = readLook();
@@ -38,28 +42,36 @@ export function LookDialSheet({ onClose }: { onClose: () => void }) {
       aria-label="Choose your look"
     >
       <button type="button" aria-label="Close" className="look-sheet-scrim absolute inset-0" onClick={onClose} />
-      <div className="look-sheet-panel relative grid justify-items-center gap-4 px-6 pb-6 pt-7">
-        <p
-          key={look.name}
-          className="bf-look-name text-center"
-          style={{ fontFamily: look.font ? `var(${look.font}), sans-serif` : 'var(--font-jetbrains), monospace' }}
-        >
-          {look.name}
-        </p>
-        <p className="max-w-[28ch] text-center text-sm leading-snug">{look.line}</p>
-        <LookDial
-          start={start}
-          onTurn={setAt}
-          onLook={(i) => saveLook({ id: LOOKS[i].id, light: LOOKS[i].mode === 'light' })}
-        />
-        <button
-          ref={done}
-          type="button"
-          onClick={onClose}
-          className="bf-btn bg-phosphor font-bold text-black hover:bg-phosphor-hi"
-        >
-          Done
-        </button>
+      <div className="look-sheet-panel relative">
+        <div className="look-sheet-pick grid justify-items-center gap-3">
+          <p
+            key={look.name}
+            className="bf-look-name text-center"
+            style={{ fontFamily: look.font ? `var(${look.font}), sans-serif` : 'var(--font-jetbrains), monospace' }}
+          >
+            {look.name}
+          </p>
+          <p className="look-sheet-line text-center text-sm leading-snug">{look.line}</p>
+          <LookDial
+            start={start}
+            onTurn={setAt}
+            onLook={(i) => saveLook({ id: LOOKS[i].id, light: LOOKS[i].mode === 'light' })}
+          />
+        </div>
+        <div className="look-sheet-side">
+          <p className="bf-note mb-3">A sample match, as it looks in this room</p>
+          <div aria-hidden inert>
+            <DiscoveryCard key={look.name} match={SAMPLE} onAction={noop} onInfiltrate={noop} onHack={noop} />
+          </div>
+          <button
+            ref={done}
+            type="button"
+            onClick={onClose}
+            className="bf-btn mt-5 w-full bg-phosphor font-semibold text-black hover:bg-phosphor-hi"
+          >
+            Done, wear {look.name}
+          </button>
+        </div>
       </div>
     </div>
   );

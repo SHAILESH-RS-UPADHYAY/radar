@@ -2091,16 +2091,20 @@
 }
 /* Home page in a look: the hero's matrix stage steps aside for the look's own backdrop; the scope stays RADAR's
    instrument (radar-native). */
-[data-look] .look-backdrop {
+[data-look] .look-backdrop,
+[data-mode='light']:not([data-look]) .look-backdrop {
   position: fixed;
 }
-[data-look] .hero-stage {
+[data-look] .hero-stage,
+[data-mode='light']:not([data-look]) .hero-stage {
   background: none !important;
 }
-[data-look] .hero-fx {
+[data-look] .hero-fx,
+[data-mode='light']:not([data-look]) .hero-fx {
   display: none;
 }
 [data-look] [class*='text-[#9CA3AF]'],
+[data-mode='light']:not([data-look]) [class*='text-[#9CA3AF]'],
 [data-look] [class*='text-[#8a9a8e]'] {
   color: var(--color-dim);
 }
@@ -2111,7 +2115,8 @@
   rotate: 180deg;
 }
 /* The scope is RADAR's instrument: it keeps its own dark glass on any page colour. */
-[data-look] .hero-stage .radar-native > div {
+[data-look] .hero-stage .radar-native > div,
+[data-mode='light']:not([data-look]) .hero-stage .radar-native > div {
   background-color: #000401;
 }
 /* Sign-in / sign-up: the parts of Clerk's card that our classes do not reach. */
@@ -2151,7 +2156,8 @@
   box-shadow: 10px 10px 0 #d90429;
 }
 /* A scrolled top bar is solid in a look, so the dark scope never shows through it. */
-[data-look] nav[class*='bg-black/80'] {
+[data-look] nav[class*='bg-black/80'],
+[data-mode='light']:not([data-look]) nav[class*='bg-black/80'] {
   background-color: var(--color-black);
 }
 
@@ -2271,12 +2277,29 @@
   backdrop-filter: blur(3px);
 }
 .look-sheet-panel {
-  width: min(26rem, 100%);
+  display: grid;
+  gap: 1.75rem;
+  width: min(62rem, 100%);
+  max-height: calc(100dvh - 2rem);
+  overflow-y: auto;
+  padding: 2rem 1.5rem 1.5rem;
   border: 1px solid rgb(var(--glow) / 0.35);
   background: var(--color-void);
   color: var(--color-ink);
   box-shadow: 0 30px 80px -20px rgb(0 0 0 / 0.7);
   border-radius: var(--look-radius, 0);
+}
+.look-sheet-line {
+  max-width: 30ch;
+  margin-bottom: 1.25rem;
+}
+@media (min-width: 900px) {
+  .look-sheet-panel {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 2.5rem;
+    padding: 2.25rem 2.5rem;
+  }
 }
 .look-sheet .bf-look-name {
   font-size: clamp(2rem, 8vw, 3rem);
