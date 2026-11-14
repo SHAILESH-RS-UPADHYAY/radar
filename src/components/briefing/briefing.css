@@ -183,9 +183,10 @@
 .bf-h1 {
   /* Sized from the screen's height as well as its width, so a page still fits a short laptop screen. */
   font-size: clamp(2.35rem, min(5.6vw, 10.5vh), 5.25rem);
-  font-weight: 800;
-  line-height: 0.96;
-  letter-spacing: -0.035em;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.03em;
+  animation: bf-h1-in 0.8s var(--bf-ease) 0.05s both;
   color: var(--color-white);
   text-wrap: balance;
   overflow-wrap: break-word;
@@ -265,7 +266,7 @@
   position: relative;
   display: inline;
   font-size: clamp(1.15rem, 2.05vw, 1.8rem);
-  font-weight: 600;
+  font-weight: 400;
   line-height: 1.2;
   color: var(--bf-soft);
   /* The strike is a background so it follows the text over two lines. */
@@ -280,7 +281,7 @@
   animation: bf-rise 0.45s var(--bf-ease) calc(var(--at) + 0.3s) both;
 }
 .bf-does b {
-  font-weight: 800;
+  font-weight: 600;
 }
 .bf-scanline {
   position: absolute;
@@ -307,6 +308,21 @@
     background-size: 0 2px;
     color: var(--color-white);
   }
+}
+/* A heading arrives: rises from a soft blur, letters easing together. */
+@keyframes bf-h1-in {
+  from {
+    opacity: 0;
+    translate: 0 18px;
+    filter: blur(8px);
+    letter-spacing: 0.02em;
+  }
+}
+/* The lede follows it, a beat later. */
+.bf-lede,
+.bf-ways,
+.bf-fact {
+  animation: bf-rise 0.7s var(--bf-ease) 0.25s both;
 }
 @keyframes bf-rise {
   from {
@@ -352,7 +368,7 @@
 .bf-fact strong {
   font-family: var(--look-display, var(--font-outfit), sans-serif);
   font-size: clamp(3.5rem, 6vw, 5.5rem);
-  font-weight: 800;
+  font-weight: 300;
   line-height: 0.85;
   letter-spacing: -0.04em;
   color: var(--bf-accent-big);
@@ -657,7 +673,7 @@
 .bf-score {
   font-family: var(--look-display, var(--font-outfit), sans-serif);
   font-size: clamp(5rem, 15vw, 13rem);
-  font-weight: 800;
+  font-weight: 200;
   line-height: 0.82;
   letter-spacing: -0.05em;
   font-variant-numeric: tabular-nums;
@@ -858,7 +874,7 @@
 }
 .bf-sheet h2 {
   font-size: 1.5rem;
-  font-weight: 800;
+  font-weight: 500;
   color: var(--color-white);
 }
 .bf-sheet ul {
@@ -968,6 +984,7 @@
 
 /* ---------- Look first: the crown ---------- */
 .bf-look-body {
+  transform-origin: top center;
   display: grid;
   gap: 2.5rem;
   align-content: start;
@@ -978,6 +995,7 @@
   justify-self: stretch;
 }
 .bf-look .bf-look-h1 {
+  animation: bf-h1-in 0.8s var(--bf-ease) both;
   font-size: clamp(1.25rem, 2vw, 1.7rem);
   font-weight: 500;
   line-height: 1.1;

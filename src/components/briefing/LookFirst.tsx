@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import { RadarLogo } from '@/components/brand/RadarLogo';
 import { DiscoveryCard } from '@/components/dashboard/DiscoveryCard';
@@ -27,6 +27,33 @@ export function LookFirst({ onDone }: { onDone: () => void }) {
   const [came] = useState(current);
   const [at, setAt] = useState(came);
   const look = LOOKS[at];
+  const body = useRef<HTMLElement>(null);
+
+  // Everything above the bezel must fit above it on any screen: when it would not, the whole block shrinks until it
+  // does (where the bezel is hidden, on phones and short screens, the page simply scrolls).
+  useEffect(() => {
+    const el = body.current;
+    if (!el) return;
+    const fit = () => {
+      el.style.transform = '';
+      const arc = document.querySelector<HTMLElement>('.bf-arc');
+      if (!arc || getComputedStyle(arc).display === 'none') return;
+      const top = arc.getBoundingClientRect().top - 24; // keep the notch clear too
+      let bottom = 0;
+      for (const child of el.children) bottom = Math.max(bottom, child.getBoundingClientRect().bottom);
+      const r = el.getBoundingClientRect();
+      const scale = (top - r.top) / (bottom - r.top);
+      if (scale < 1) el.style.transform = `scale(${Math.max(0.5, scale)})`;
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    window.addEventListener('resize', fit);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', fit);
+    };
+  }, []);
 
   return (
     <div className="bf bf-look relative flex min-h-dvh flex-col overflow-x-clip bg-void text-ink">
@@ -43,16 +70,16 @@ export function LookFirst({ onDone }: { onDone: () => void }) {
         <button
           type="button"
           onClick={() => {
-            saveLook(choiceOf(LOOKS[came]));
+            saveLook(choiceOf(look));
             onDone();
           }}
           className="bf-quiet"
         >
-          Skip, keep {LOOKS[came].name}
+          Skip, keep {look.name}
         </button>
       </header>
 
-      <main className="bf-look-body relative z-10 mx-auto w-full max-w-[1360px] flex-1 px-4 pb-10 sm:px-10">
+      <main ref={body} className="bf-look-body relative z-10 mx-auto w-full max-w-[1360px] flex-1 px-4 pb-10 sm:px-10">
         <div className="bf-look-text min-w-0">
           <h1 className="bf-look-h1 font-display">First, choose your look.</h1>
           <p

@@ -208,7 +208,7 @@ export function Briefing({ facts }: { facts: Facts }) {
                   forward.current = el;
                 }}
                 href={exit.href}
-                className="bf-btn bg-phosphor font-bold text-black hover:bg-phosphor-hi"
+                className="bf-btn bg-phosphor font-semibold text-black hover:bg-phosphor-hi"
               >
                 {isSignedIn ? 'Back to dashboard' : 'Create your account'}
               </Link>
@@ -219,7 +219,7 @@ export function Briefing({ facts }: { facts: Facts }) {
                 }}
                 type="button"
                 onClick={() => go(at + 1)}
-                className="bf-btn bg-phosphor font-bold text-black hover:bg-phosphor-hi"
+                className="bf-btn bg-phosphor font-semibold text-black hover:bg-phosphor-hi"
               >
                 Next: {STEPS[at + 1].label}
               </button>
