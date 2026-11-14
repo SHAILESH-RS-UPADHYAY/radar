@@ -49,10 +49,8 @@ export function LookDialSheet({ onClose }: { onClose: () => void }) {
         <p className="max-w-[28ch] text-center text-sm leading-snug">{look.line}</p>
         <LookDial
           start={start}
-          onLook={(i) => {
-            setAt(i);
-            saveLook({ id: LOOKS[i].id, light: LOOKS[i].mode === 'light' });
-          }}
+          onTurn={setAt}
+          onLook={(i) => saveLook({ id: LOOKS[i].id, light: LOOKS[i].mode === 'light' })}
         />
         <button
           ref={done}

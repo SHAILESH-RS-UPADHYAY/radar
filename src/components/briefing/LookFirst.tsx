@@ -81,14 +81,7 @@ export function LookFirst({ onDone }: { onDone: () => void }) {
           </div>
         </div>
 
-        <LookDial
-          arc
-          start={came}
-          onLook={(i) => {
-            setAt(i);
-            saveLook(choiceOf(LOOKS[i]));
-          }}
-        />
+        <LookDial arc start={came} onTurn={setAt} onLook={(i) => saveLook(choiceOf(LOOKS[i]))} />
 
         {/* The real Discovery card with a made-up match: what the product looks like in this look. */}
         <div className="bf-look-sample" aria-hidden inert>

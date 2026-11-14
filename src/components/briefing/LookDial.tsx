@@ -31,10 +31,14 @@ const snap = (a: number) => Math.round(a / STEP) * STEP;
 export function LookDial({
   start,
   onLook,
+  onTurn,
   arc = false,
 }: {
   start: number;
+  /** A look to wear: called once the dial rests on it (at once when turning slowly). */
   onLook: (i: number) => void;
+  /** Every look that passes the notch, even mid-spin: cheap updates only (a name, a number). */
+  onTurn?: (i: number) => void;
   arc?: boolean;
 }) {
   const crown = useRef<HTMLDivElement>(null);
@@ -47,6 +51,7 @@ export function LookDial({
   const grab = useRef<{ a: number; samples: [number, number][] } | null>(null);
   const coast = useRef<AnimationPlaybackControls | null>(null);
   const wheelRest = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const wear = useRef<ReturnType<typeof setTimeout>>(undefined);
   const [at, setAt] = useState(start);
   // Client-only (opened by a click or loaded with next/dynamic): the stored choice can be read on the first render.
   const [sound, setSound] = useState(soundStored);
@@ -68,7 +73,11 @@ export function LookDial({
     if (!major) return;
     shown.current = i;
     setAt(i);
-    onLook(i);
+    onTurn?.(i);
+    // Restyling the whole page for every look that flies past makes a fast spin stutter: the look is put on only
+    // once the dial pauses on it. Turning slowly, that pause comes at every look, so the room changes as you go.
+    clearTimeout(wear.current);
+    wear.current = setTimeout(() => onLook(i), 110);
     try {
       navigator.vibrate?.(6);
     } catch {}
@@ -97,6 +106,7 @@ export function LookDial({
       for (const el of els) el.removeEventListener('wheel', h);
       coast.current?.stop();
       clearTimeout(wheelRest.current);
+      clearTimeout(wear.current);
     };
   }, []);
 
@@ -178,7 +188,7 @@ export function LookDial({
   return (
     <>
       <div className="bf-crown-wrap">
-        {/* radar-native: RADAR's own instrument with fixed swatches; no look restyles it. */}
+        {/* Drawn in the worn look's colours; the beads are fixed swatches of every look. */}
         <div
           ref={crown}
           role="slider"
@@ -188,7 +198,7 @@ export function LookDial({
           aria-valuemax={N}
           aria-valuenow={at + 1}
           aria-valuetext={LOOKS[at].name}
-          className="bf-crown radar-native"
+          className="bf-crown"
           onKeyDown={onKey}
           {...grabProps}
         >
@@ -230,7 +240,7 @@ export function LookDial({
       {arc && (
         // The same dial, grown into a bezel whose top arc rises from the bottom edge. Mouse and touch only:
         // keyboards and screen readers use the crown above, which turns with it.
-        <div ref={bezel} className="bf-arc radar-native" aria-hidden {...grabProps}>
+        <div ref={bezel} className="bf-arc" aria-hidden {...grabProps}>
           <span className="bf-arc-notch" />
           <div
             ref={(el) => {
