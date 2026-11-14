@@ -2304,3 +2304,29 @@
 .look-sheet .bf-look-name {
   font-size: clamp(2rem, 8vw, 3rem);
 }
+
+/* ---------- Onboarding: lighter type, and each step's heading rises in softly ---------- */
+.ob :is(.font-black, .font-extrabold) {
+  font-weight: 600;
+}
+.ob .font-bold {
+  font-weight: 500;
+}
+.ob h1 {
+  letter-spacing: -0.01em;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ob h1 {
+    animation: ob-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  .ob h1 + p {
+    animation: ob-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+  }
+}
+@keyframes ob-rise {
+  from {
+    opacity: 0;
+    translate: 0 14px;
+    filter: blur(6px);
+  }
+}

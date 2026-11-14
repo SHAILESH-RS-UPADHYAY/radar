@@ -6,6 +6,7 @@ import { CATALOG, SOURCE_NAMES, sourceName } from '@/lib/scraper/catalog';
 import { COMPANY_SEEDS } from '@/lib/scraper/companies';
 import { BOARD_PROVIDERS } from '@/lib/scraper/boards';
 import type { Provider } from '@/types';
+import { MAX_DREAM_COMPANIES } from '@/lib/validate';
 
 export const metadata: Metadata = {
   title: 'System',
@@ -75,8 +76,8 @@ export default function SystemPage() {
       <DocLayout toc={TOC}>
         <DocSection id="dream-tracking" index="01" kicker="MODULE://A · DREAM_TRACK" title="Dream company tracking">
           <p>
-            You pick the companies you actually want to work at, up to 20, during onboarding or any time in Preferences.
-            RADAR treats them differently from everything else:
+            You pick the companies you actually want to work at, up to {MAX_DREAM_COMPANIES}, during onboarding or any
+            time in Preferences. RADAR treats them differently from everything else:
           </p>
           <Points
             items={[

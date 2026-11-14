@@ -269,7 +269,7 @@ export default function OnboardingPage() {
   const minDream = Math.min(5, Math.max(1, displayedCompanies.length));
 
   return (
-    <div className="min-h-screen font-mono uppercase flex items-center justify-center px-4 py-24 relative overflow-hidden bg-void">
+    <div className="ob min-h-screen font-mono uppercase flex items-center justify-center px-4 py-24 relative overflow-hidden bg-void">
       <div className="hud-grid pointer-events-none absolute inset-0" aria-hidden="true" />
       <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-4 py-4 normal-case sm:px-8">
         <Link href="/" aria-label="RADAR home" className="transition-opacity hover:opacity-85">

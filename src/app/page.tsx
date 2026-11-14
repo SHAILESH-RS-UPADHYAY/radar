@@ -15,6 +15,7 @@ import { JobTerminal, type JobDetail } from '@/components/dashboard/JobTerminal'
 import { LookWall } from '@/components/looks/LookWall';
 import { EngineFlow } from '@/components/site/EngineFlow';
 import { LOOKS } from '@/lib/looks';
+import { MAX_DREAM_COMPANIES } from '@/lib/validate';
 import { SAMPLE } from '@/components/site/sample-match';
 
 const HackerRadarHero = dynamic(() => import('@/components/hero/HackerRadarHero'), { ssr: false });
@@ -42,7 +43,7 @@ const MODULES: {
     anchor: 'dream-tracking',
     name: 'DREAM_TRACK',
     title: 'Dream company tracking',
-    desc: `Pick up to 20 of ${CATALOG.companies} companies. Every open role at them is scored for you on each scan, even the ones outside the semantic top 400.`,
+    desc: `Pick up to ${MAX_DREAM_COMPANIES} of ${CATALOG.companies} companies. Every open role at them is scored for you on each scan, even the ones outside the semantic top 400.`,
     spec: [
       ['feeds', `${CATALOG.tracked} ATS + ${CATALOG.boards.length} boards`],
       ['priority', 'always scored'],
@@ -104,7 +105,7 @@ const STAGES = [
     n: '04',
     title: 'VAULT',
     body: 'Jobs above your threshold are saved for you. Dismissed ones never come back.',
-    stat: '≥ 70%',
+    stat: '≥ 80%',
   },
 ];
 
@@ -206,7 +207,7 @@ const JOURNEY = [
     n: '01',
     time: '≈ 2 MIN',
     title: 'Brief the radar',
-    body: 'Upload your resume, then pick target roles, cities and up to 20 dream companies. Everything stays editable.',
+    body: 'Upload your resume, then pick target roles, cities and your dream companies. Everything stays editable.',
   },
   {
     n: '02',
