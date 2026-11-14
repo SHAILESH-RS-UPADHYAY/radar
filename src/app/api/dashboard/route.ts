@@ -8,6 +8,7 @@ import { isSchemaMissing } from '@/lib/supabase/errors';
 import type { OpsEvent } from '@/components/dashboard/types';
 import { applicationFormUrl, atsFromUrl } from '@/lib/apply/form';
 import { ALERT_SOURCE_KEYS, capPerCompany, companyKey } from '@/lib/vault-filters';
+import { alertOwnership } from '@/lib/alert-owner';
 import { jobKey } from '@/lib/scraper/utils';
 import { PER_COMPANY, isOpenApplication } from '@/types';
 import { serverError } from '@/lib/api';
@@ -83,6 +84,7 @@ export async function GET() {
     .maybeSingle()
     .then((r) => r);
 
+  const ownsPromise = alertOwnership(supabase, userId);
   let tier = 0;
   let [tracked, discovery, alerts] = await load(supabase, userId, TIERS[tier]);
   while ((isSchemaMissing(tracked.error) || isSchemaMissing(discovery.error)) && tier < TIERS.length - 1) {
@@ -109,13 +111,16 @@ export async function GET() {
   // A role you applied to that another source lists again (the company's feed and an alert) is not a new signal.
   const appliedRoles = new Set(appliedRows.map((m) => jobKey(nameOf(m), m.jobs.title)));
   const fresh = (m: any) => m.status === 'applied' || !appliedRoles.has(jobKey(nameOf(m), m.jobs.title));
+  // Alert jobs are shown only to the account whose inbox they came from (see alert-owner.ts).
+  const owns = await ownsPromise;
+  const fromAlerts = (m: any) => ALERT_SOURCE_KEYS.includes(m.jobs.companies.ats_provider);
   const candidates = new Map<string, any>();
-  for (const m of [...((discovery.data || []) as any[]), ...((alerts.data || []) as any[])]) candidates.set(m.id, m);
+  for (const m of [...((discovery.data || []) as any[]), ...((alerts.data || []) as any[])])
+    if (!fromAlerts(m) || owns(m.jobs.external_id)) candidates.set(m.id, m);
   const { kept, hidden } = capPerCompany(
     [...candidates.values()].filter(fresh).map((m) => ({ ...m, company: nameOf(m) })),
     applications,
   );
-  const fromAlerts = (m: any) => ALERT_SOURCE_KEYS.includes(m.jobs.companies.ats_provider);
   const shown = [...kept.filter((m) => !fromAlerts(m)).slice(0, DISCOVERY_SHOWN), ...kept.filter(fromAlerts)];
 
   // RADAR's own saves leave the Vault once the company has its two open applications; your own saves stay.

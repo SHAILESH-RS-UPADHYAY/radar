@@ -84,14 +84,13 @@ export function SiteNav({ overlay = false }: { overlay?: boolean }) {
                   href="/sign-in"
                   className="hidden font-mono text-xs tracking-[0.2em] text-[#8a9a8e] transition-colors hover:text-phosphor sm:inline"
                 >
-                  SIGN IN
+                  LOG IN
                 </Link>
                 <Link
                   href="/sign-up"
                   className="whitespace-nowrap border border-phosphor/60 px-3 py-2 font-mono text-[11px] font-bold tracking-[0.25em] text-phosphor transition-colors hover:bg-phosphor/10 sm:px-4"
                 >
-                  <span className="sm:hidden">[ LOGIN ]</span>
-                  <span className="hidden sm:inline">[ LOGIN TERMINAL ]</span>
+                  [ SIGN UP ]
                 </Link>
               </>
             )}
@@ -109,7 +108,10 @@ export function SiteNav({ overlay = false }: { overlay?: boolean }) {
 
         {open && (
           <div className="mx-4 mt-3 border border-phosphor/20 bg-black/95 font-mono md:hidden">
-            {[...SITE_LINKS, ...(isSignedIn ? [{ href: '/dashboard', label: 'DASHBOARD' }] : [])].map((l) => (
+            {[
+              ...SITE_LINKS,
+              isSignedIn ? { href: '/dashboard', label: 'DASHBOARD' } : { href: '/sign-in', label: 'LOG IN' },
+            ].map((l) => (
               <Link
                 key={l.href}
                 href={l.href}

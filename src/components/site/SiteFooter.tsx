@@ -6,7 +6,8 @@ import { SITE_LINKS } from './links';
 const ACCESS = [
   { href: '/dashboard', label: 'DASHBOARD' },
   { href: '/settings', label: 'PREFERENCES' },
-  { href: '/sign-in', label: 'SIGN IN' },
+  { href: '/sign-in', label: 'LOG IN' },
+  { href: '/sign-up', label: 'SIGN UP' },
   { href: '/install', label: 'INSTALL APP' },
 ];
 

@@ -88,6 +88,32 @@ export const ROLES = [
   'Other',
 ];
 
+/** Starter skills offered when someone onboards without a resume; they can remove or add any. */
+export const ROLE_SKILLS: Record<string, string[]> = {
+  'Software Engineer': ['python', 'java', 'data structures', 'algorithms', 'sql', 'git'],
+  'Frontend Engineer': ['javascript', 'typescript', 'react', 'html', 'css', 'tailwind'],
+  'Backend Engineer': ['python', 'node.js', 'sql', 'postgresql', 'rest api', 'docker'],
+  'Fullstack Engineer': ['javascript', 'typescript', 'react', 'node.js', 'sql', 'git'],
+  'AI / ML Engineer': ['python', 'machine learning', 'pytorch', 'llm', 'rag', 'sql'],
+  'Data Scientist': ['python', 'sql', 'machine learning', 'pandas', 'statistics', 'tableau'],
+  'Product Manager': ['product roadmap', 'agile', 'jira', 'a/b testing', 'sql', 'figma'],
+  'UI / UX Designer': ['figma', 'wireframing', 'prototyping', 'ux research', 'photoshop'],
+  'DevOps / SRE': ['docker', 'kubernetes', 'aws', 'linux', 'ci/cd', 'terraform'],
+  'QA / Test Engineer': ['selenium', 'python', 'java', 'jira', 'sql', 'agile'],
+  'Security Engineer': ['linux', 'python', 'aws', 'networking', 'docker'],
+  'Data Analyst': ['sql', 'excel', 'power bi', 'tableau', 'python', 'google sheets'],
+  'Business Analyst': ['excel', 'sql', 'power bi', 'jira', 'agile', 'powerpoint'],
+  'Product Designer': ['figma', 'prototyping', 'wireframing', 'ux research', 'illustrator'],
+  'Graphic Designer': ['photoshop', 'illustrator', 'canva', 'figma', 'after effects'],
+  Marketing: ['seo', 'sem', 'google analytics', 'social media', 'email marketing', 'canva'],
+  'Content Writer': ['content writing', 'seo', 'social media', 'canva', 'google analytics'],
+  Sales: ['lead generation', 'crm', 'salesforce', 'hubspot', 'excel', 'powerpoint'],
+  'Customer Success': ['crm', 'zendesk', 'excel', 'salesforce', 'hubspot'],
+  'Finance & Accounts': ['excel', 'accounting', 'tally', 'gst', 'financial modelling', 'sap'],
+  'HR & Recruiting': ['recruitment', 'payroll', 'excel', 'google sheets', 'powerpoint'],
+  Operations: ['excel', 'supply chain', 'sql', 'google sheets', 'sap', 'powerpoint'],
+};
+
 export const ORG_CULTURES = [
   { id: 'Garage', icon: '🚀', title: 'The Garage', desc: 'Early-Stage Startups' },
   { id: 'Rocketship', icon: '☄️', title: 'The Rocketship', desc: 'Hyper-Growth (Series B/C)' },

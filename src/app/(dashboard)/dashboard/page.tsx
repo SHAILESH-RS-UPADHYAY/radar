@@ -713,7 +713,7 @@ export default function DashboardPage() {
 
   return (
     <div className="relative min-h-screen bg-void">
-      <Tour />
+      <Tour hold={loading || noProfile || scanRun > 0} />
       <div className="hud-grid pointer-events-none fixed inset-0" aria-hidden="true" />
       <div
         className="pointer-events-none fixed inset-x-0 top-0 h-[420px] bg-[radial-gradient(ellipse_at_top,rgb(var(--glow)/0.07),transparent_65%)]"

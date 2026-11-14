@@ -14,7 +14,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { TiltCard } from '@/components/onboarding/TiltCard';
 import { LookWall } from '@/components/looks/LookWall';
 import { useExtension } from '@/lib/extension';
-import { TOP_CITIES, REMOTE_REGIONS, FIELDS_OF_STUDY, ROLES, ORG_CULTURES } from '@/components/onboarding/constants';
+import {
+  TOP_CITIES,
+  REMOTE_REGIONS,
+  FIELDS_OF_STUDY,
+  ROLES,
+  ROLE_SKILLS,
+  ORG_CULTURES,
+} from '@/components/onboarding/constants';
 
 export default function OnboardingPage() {
   const { user } = useUser();
@@ -28,10 +35,21 @@ export default function OnboardingPage() {
   // 1. Career State
   const [careerStage, setCareerStage] = useState<'Fresher' | 'Experienced' | 'Intern' | null>(null);
 
-  // 2. Professional XP
+  // 2. Target roles (everyone, several allowed) and, for the experienced, years
   const [experienceYears, setExperienceYears] = useState(1);
-  const [currentRole, setCurrentRole] = useState('');
+  const [roles, setRoles] = useState<string[]>([]);
   const [customRole, setCustomRole] = useState('');
+  const MAX_ROLES = 5;
+  /** The roles to look for: the chips picked, plus the one typed under OTHER. */
+  const wantedRoles = [...roles.filter((r) => r !== 'Other'), roles.includes('Other') ? customRole.trim() : '']
+    .filter(Boolean)
+    .slice(0, MAX_ROLES);
+  const toggleRole = (role: string) =>
+    setRoles((prev) =>
+      prev.includes(role) ? prev.filter((r) => r !== role) : prev.length < MAX_ROLES ? [...prev, role] : prev,
+    );
+  /** Starter skills for the picked roles, offered when there is no resume. */
+  const roleSkills = () => [...new Set(wantedRoles.flatMap((r) => ROLE_SKILLS[r] || []))].slice(0, 12);
 
   // 3. Academics
   const [educationLevel, setEducationLevel] = useState('');
@@ -58,6 +76,8 @@ export default function OnboardingPage() {
   const [showManualEntry, setShowManualEntry] = useState(false);
   const [manualSkills, setManualSkills] = useState<string[]>([]);
   const [skillInput, setSkillInput] = useState('');
+  // Without a resume your roles stand in for it; their starter skills are offered until you edit them.
+  const [skillsEdited, setSkillsEdited] = useState(false);
   const [manualProjects, setManualProjects] = useState('');
   const [manualBio, setManualBio] = useState('');
 
@@ -121,11 +141,13 @@ export default function OnboardingPage() {
     if (skillInput.trim() && !manualSkills.includes(skillInput.trim())) {
       setManualSkills([...manualSkills, skillInput.trim()]);
       setSkillInput('');
+      setSkillsEdited(true);
     }
   };
 
   const removeManualSkill = (skill: string) => {
     setManualSkills(manualSkills.filter((s) => s !== skill));
+    setSkillsEdited(true);
   };
 
   const selectAndNext = (setter: any, val: any, skipLogic?: (val: any) => number) => {
@@ -154,8 +176,7 @@ export default function OnboardingPage() {
 
   const handleNext = () => {
     if (step === 1 && !careerStage) return setError('Please select your career stage.');
-    if (step === 2 && careerStage === 'Experienced' && (!currentRole || (currentRole === 'Other' && !customRole)))
-      return setError('Please enter your current role.');
+    if (step === 2 && wantedRoles.length === 0) return setError('Pick at least one role you want.');
     if (step === 3 && (!educationLevel || !passingYear || !fieldOfStudy || (fieldOfStudy === 'Other' && !customField)))
       return setError('Please fill all education details.');
     if (step === 4 && (!workModel || locations.length === 0))
@@ -163,25 +184,19 @@ export default function OnboardingPage() {
     if (step === 5 && orgCultures.length === 0) return setError('Please select at least one organizational culture.');
     if (step === 6 && dreamCompanies.length < minDream)
       return setError('Please select at least ' + minDream + ' dream companies.');
-    if (step === 7 && !resumeFile && !showManualEntry)
-      return setError('Please upload your resume or enter details manually.');
-    if (step === 7 && showManualEntry && manualSkills.length === 0) return setError('Please add at least one skill.');
+    if (step === 7 && !resumeFile && !showManualEntry) return setError('Upload your resume, or continue without one.');
 
     setError('');
-
-    if (step === 1 && (careerStage === 'Fresher' || careerStage === 'Intern')) setStep(3);
-    else setStep((s) => s + 1);
+    setStep((s) => s + 1);
   };
 
   const handleBack = () => {
-    if (step === 3 && (careerStage === 'Fresher' || careerStage === 'Intern')) setStep(1);
-    else setStep((s) => s - 1);
+    setStep((s) => s - 1);
     setError('');
   };
 
   const handleSubmit = async () => {
-    if (!resumeFile && !showManualEntry) return setError('Please upload your resume or enter details manually.');
-    if (showManualEntry && manualSkills.length === 0) return setError('Please add at least one skill.');
+    if (!resumeFile && !showManualEntry) return setError('Upload your resume, or continue without one.');
 
     setLoading(true);
     setError('');
@@ -190,10 +205,9 @@ export default function OnboardingPage() {
       const formData = new FormData();
       if (resumeFile) formData.append('resume', resumeFile);
       formData.append('career_stage', careerStage as string);
-      if (careerStage === 'Experienced') {
-        formData.append('experience_years', String(experienceYears));
-        formData.append('current_role', currentRole === 'Other' ? customRole : currentRole);
-      }
+      if (careerStage === 'Experienced') formData.append('experience_years', String(experienceYears));
+      if (wantedRoles.length) formData.append('current_role', wantedRoles[0]);
+      formData.append('target_roles', JSON.stringify(wantedRoles));
       formData.append('education_level', educationLevel);
       formData.append('passing_year', passingYear);
       formData.append('field_of_study', fieldOfStudy === 'Other' ? customField : fieldOfStudy);
@@ -317,7 +331,7 @@ export default function OnboardingPage() {
                   </p>
                   <div className="grid sm:grid-cols-3 gap-4">
                     <button
-                      onClick={() => selectAndNext(setCareerStage, 'Intern', () => 3)}
+                      onClick={() => selectAndNext(setCareerStage, 'Intern')}
                       className="p-4 text-left rounded-none transition-all hover:-translate-y-1"
                       style={{
                         border: `2px solid ${careerStage === 'Intern' ? 'var(--color-phosphor)' : 'var(--color-phosphor-deep)'}`,
@@ -331,7 +345,7 @@ export default function OnboardingPage() {
                       </p>
                     </button>
                     <button
-                      onClick={() => selectAndNext(setCareerStage, 'Fresher', () => 3)}
+                      onClick={() => selectAndNext(setCareerStage, 'Fresher')}
                       className="p-4 text-left rounded-none transition-all hover:-translate-y-1"
                       style={{
                         border: `2px solid ${careerStage === 'Fresher' ? 'var(--color-phosphor)' : 'var(--color-phosphor-deep)'}`,
@@ -345,7 +359,7 @@ export default function OnboardingPage() {
                       </p>
                     </button>
                     <button
-                      onClick={() => selectAndNext(setCareerStage, 'Experienced', () => 2)}
+                      onClick={() => selectAndNext(setCareerStage, 'Experienced')}
                       className="p-4 text-left rounded-none transition-all hover:-translate-y-1"
                       style={{
                         border: `2px solid ${careerStage === 'Experienced' ? 'var(--color-phosphor)' : 'var(--color-phosphor-deep)'}`,
@@ -363,43 +377,51 @@ export default function OnboardingPage() {
               )}
 
               {/* Step 2: Experience Details */}
-              {step === 2 && careerStage === 'Experienced' && (
+              {step === 2 && (
                 <div>
                   <h1 className="text-3xl md:text-3xl font-black font-mono text-phosphor mb-2 tracking-tight">
-                    PROFESSIONAL XP
+                    TARGET ROLES
                   </h1>
                   <p className="text-sm mb-10" style={{ color: 'var(--color-phosphor-mid)' }}>
-                    Quantify your professional background.
+                    Which roles do you want? Pick up to {MAX_ROLES}. RADAR looks for all of them.
                   </p>
 
                   <div className="mb-10">
-                    <label
-                      className="block text-xs uppercase tracking-wider font-bold mb-3"
-                      style={{ color: 'var(--color-phosphor-mid)' }}
-                    >
-                      Current / Target Role
-                    </label>
+                    <div className="mb-3 flex items-center justify-between">
+                      <label
+                        className="block text-xs uppercase tracking-wider font-bold"
+                        style={{ color: 'var(--color-phosphor-mid)' }}
+                      >
+                        Roles you want
+                      </label>
+                      <span className="text-xs font-bold text-phosphor">
+                        {wantedRoles.length}/{MAX_ROLES}
+                      </span>
+                    </div>
                     <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mb-4">
-                      {ROLES.map((role) => (
-                        <button
-                          key={role}
-                          onClick={() => {
-                            setCurrentRole(role);
-                            setCustomRole('');
-                          }}
-                          className="px-3 py-3 rounded-none text-sm font-bold transition-all text-center"
-                          style={{
-                            border: `1px solid ${currentRole === role ? 'var(--color-phosphor)' : 'var(--color-phosphor-deep)'}`,
-                            background: currentRole === role ? 'rgb(var(--glow) / 0.1)' : 'var(--color-black)',
-                            color: currentRole === role ? 'var(--color-phosphor)' : 'var(--color-phosphor-mid)',
-                          }}
-                        >
-                          {role}
-                        </button>
-                      ))}
+                      {ROLES.map((role) => {
+                        const on = roles.includes(role);
+                        return (
+                          <button
+                            key={role}
+                            type="button"
+                            aria-pressed={on}
+                            onClick={() => toggleRole(role)}
+                            className="px-3 py-3 rounded-none text-sm font-bold transition-all text-center"
+                            style={{
+                              border: `1px solid ${on ? 'var(--color-phosphor)' : 'var(--color-phosphor-deep)'}`,
+                              background: on ? 'rgb(var(--glow) / 0.1)' : 'var(--color-black)',
+                              color: on ? 'var(--color-phosphor)' : 'var(--color-phosphor-mid)',
+                            }}
+                          >
+                            {on ? '✓ ' : ''}
+                            {role}
+                          </button>
+                        );
+                      })}
                     </div>
                     <AnimatePresence>
-                      {currentRole === 'Other' && (
+                      {roles.includes('Other') && (
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
@@ -407,7 +429,7 @@ export default function OnboardingPage() {
                         >
                           <input
                             type="text"
-                            placeholder="Specify your role..."
+                            placeholder="Type the role you want..."
                             value={customRole}
                             onChange={(e) => setCustomRole(e.target.value)}
                             className="w-full bg-black border border-phosphor-deep rounded-none px-4 py-3 text-phosphor focus:outline-none focus:border-phosphor transition-colors focus:ring-1 focus:ring-phosphor"
@@ -417,27 +439,29 @@ export default function OnboardingPage() {
                     </AnimatePresence>
                   </div>
 
-                  <div>
-                    <div className="flex justify-between items-center mb-3">
-                      <label
-                        className="text-xs uppercase tracking-wider font-bold"
-                        style={{ color: 'var(--color-phosphor-mid)' }}
-                      >
-                        Years of Experience
-                      </label>
-                      <span className="text-phosphor font-bold">
-                        {experienceYears} {experienceYears === 1 ? 'year' : 'years'}
-                      </span>
+                  {careerStage === 'Experienced' && (
+                    <div>
+                      <div className="flex justify-between items-center mb-3">
+                        <label
+                          className="text-xs uppercase tracking-wider font-bold"
+                          style={{ color: 'var(--color-phosphor-mid)' }}
+                        >
+                          Years of Experience
+                        </label>
+                        <span className="text-phosphor font-bold">
+                          {experienceYears} {experienceYears === 1 ? 'year' : 'years'}
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min="1"
+                        max="20"
+                        value={experienceYears}
+                        onChange={(e) => setExperienceYears(parseInt(e.target.value))}
+                        className="w-full accent-phosphor"
+                      />
                     </div>
-                    <input
-                      type="range"
-                      min="1"
-                      max="20"
-                      value={experienceYears}
-                      onChange={(e) => setExperienceYears(parseInt(e.target.value))}
-                      className="w-full accent-phosphor"
-                    />
-                  </div>
+                  )}
                 </div>
               )}
 
@@ -902,7 +926,7 @@ export default function OnboardingPage() {
                                 PDF up to 4 MB
                               </p>
                               <p className="text-xs mt-6" style={{ color: 'var(--color-phosphor)' }}>
-                                Required for AI Matching
+                                Optional · a resume gives the sharpest matches
                               </p>
                             </div>
                           )}
@@ -910,13 +934,16 @@ export default function OnboardingPage() {
 
                         <div className="mt-8 text-center border-t border-phosphor-dark pt-8">
                           <p className="text-sm text-phosphor-mid mb-4">
-                            Don't have a resume ready? No sweat. We can do this the hard way.
+                            No resume yet? No problem. RADAR starts from the roles you picked; add one later.
                           </p>
                           <button
-                            onClick={() => setShowManualEntry(true)}
+                            onClick={() => {
+                              setShowManualEntry(true);
+                              if (!skillsEdited && manualSkills.length === 0) setManualSkills(roleSkills());
+                            }}
                             className="px-6 py-2.5 border-2 border-phosphor text-phosphor rounded-none text-sm font-bold hover:bg-phosphor hover:text-phosphor transition-all shadow-[0_0_15px_rgb(var(--glow)/0.15)]"
                           >
-                            Build Profile Manually ↯
+                            Continue without a resume →
                           </button>
                         </div>
                       </motion.div>
@@ -936,13 +963,17 @@ export default function OnboardingPage() {
                         </button>
 
                         <h2 className="text-xl font-bold text-phosphor mb-6 flex items-center gap-2">
-                          <span className="text-phosphor">↯</span> The Builder Console
+                          <span className="text-phosphor">↯</span> No resume? Your roles are enough
                         </h2>
+                        <p className="mb-6 text-sm normal-case text-phosphor-mid">
+                          Looking for: <span className="font-bold text-phosphor">{wantedRoles.join(' · ')}</span>.
+                          Everything below is optional and can be changed later.
+                        </p>
 
                         {/* Skills */}
                         <div className="mb-6">
                           <label className="block text-xs uppercase tracking-wider font-bold mb-2 text-phosphor-mid">
-                            Core Skills (Required)
+                            Skills (suggested for your role · edit freely)
                           </label>
                           <div className="flex flex-wrap gap-2 mb-3">
                             <AnimatePresence>

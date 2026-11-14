@@ -10,6 +10,7 @@
 // company and location. Tracking links that wrap the real one (a redirect parameter, a base64 or gzip token) are
 // unwrapped locally, never opened.
 
+import { recordAlertOwner } from '@/lib/alert-owner';
 import { gunzipSync } from 'node:zlib';
 import { accessTokenFor, getMessage, gmailConfig, messageBodies, messageDate, searchMessages } from '@/lib/gmail';
 import { createServerClient } from '@/lib/supabase/client';
@@ -387,6 +388,7 @@ export async function scrapeAlertEmails(provider: AlertProvider): Promise<Scrape
   const jobs = new Map<string, ScrapedJob>();
   const state: AlertReadState = { emails: 0, jobs: 0, lastEmailAt: null, error: null };
   for (const link of links) {
+    const fromThisInbox: string[] = [];
     try {
       const token = await accessTokenFor(cfg, link.user_id, link.refresh_token_enc);
       const ids = await searchMessages(token, `${WINDOW} ${source.query}`, MAX_EMAILS);
@@ -397,13 +399,16 @@ export async function scrapeAlertEmails(provider: AlertProvider): Promise<Scrape
         // Newest email first: a job seen in several alerts keeps its newest card.
         const bodies = messageBodies(msg.payload);
         const resolved = source.tracker ? await resolveTracked(bodies.html, source.tracker) : undefined;
-        for (const job of parseAlertEmail(provider, { ...bodies, date }, resolved))
+        for (const job of parseAlertEmail(provider, { ...bodies, date }, resolved)) {
+          fromThisInbox.push(job.external_id);
           if (!jobs.has(job.external_id)) jobs.set(job.external_id, job);
+        }
       }
     } catch (err) {
       state.error = err instanceof Error ? err.message : String(err);
       console.warn('[ALERTS]', provider, link.user_id, state.error);
     }
+    await recordAlertOwner(supabase, link.user_id, fromThisInbox);
   }
   state.jobs = jobs.size;
   await supabase

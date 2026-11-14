@@ -6,6 +6,7 @@
 // removed from the Vault is never re-added: only rows still in status 'new' are promoted.
 // A company holds at most PER_COMPANY of your roles, applications included.
 
+import { alertOwnership } from '@/lib/alert-owner';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   activeSpace,
@@ -230,16 +231,20 @@ export async function matchUser(
     .select('id')
     .in('ats_provider', ['indeed_email', 'linkedin_email', 'wttj_email']);
   if (alertSources?.length) {
-    const { data } = await supabase
-      .from('jobs')
-      .select('id')
-      .in(
-        'company_id',
-        alertSources.map((c) => c.id),
-      )
-      .eq('is_active', true)
-      .limit(2000);
-    alsoScore((data || []).map((j) => j.id as string));
+    const [{ data }, owns] = await Promise.all([
+      supabase
+        .from('jobs')
+        .select('id, external_id')
+        .in(
+          'company_id',
+          alertSources.map((c) => c.id),
+        )
+        .eq('is_active', true)
+        .limit(2000),
+      alertOwnership(supabase, userId),
+    ]);
+    // Only the alerts from your own inbox: another account's alerts are not yours to be shown.
+    alsoScore((data || []).filter((j) => owns(j.external_id as string)).map((j) => j.id as string));
   }
 
   // Every match you can still see (Discovery, the Vault) is scored again on each scan. Before, only today's candidates

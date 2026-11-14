@@ -1,9 +1,11 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
 
-// First-run tour of the dashboard: a spotlight on one control at a time. Starts from /dashboard?tour=1 (onboarding's
-// last button, or "Replay the tour" in Preferences). A stop whose control is not on screen (phone layout) is skipped.
+// First-run tour of the dashboard: a spotlight on one control at a time. Starts by itself the first time an account
+// opens the dashboard in this browser, and from /dashboard?tour=1 (onboarding's last button, "Replay the tour" in
+// Preferences). It waits while `hold` is true (a scan on screen). A stop whose control is not on screen is skipped.
 const STOPS: { target: string; title: string; text: string }[] = [
   {
     target: 'tabs',
@@ -33,18 +35,33 @@ const find = (target: string) => {
   return r && r.width > 0 ? r : null;
 };
 
-export function Tour() {
+export function Tour({ hold = false }: { hold?: boolean }) {
+  const { isLoaded, userId } = useAuth();
   const [at, setAt] = useState(-1);
   const [rect, setRect] = useState<DOMRect | null>(null);
+  const decided = useRef(false);
 
   useEffect(() => {
+    if (!isLoaded || hold || decided.current) return;
+    decided.current = true;
     const q = new URLSearchParams(location.search);
-    if (q.get('tour') !== '1') return;
-    q.delete('tour');
-    history.replaceState(null, '', location.pathname + (q.size ? '?' + q : ''));
+    let wanted = q.get('tour') === '1';
+    if (wanted) {
+      q.delete('tour');
+      history.replaceState(null, '', location.pathname + (q.size ? '?' + q : ''));
+    }
+    if (userId)
+      try {
+        const seen = 'radar:tour-seen:' + userId;
+        if (!localStorage.getItem(seen)) wanted = true;
+        localStorage.setItem(seen, '1');
+      } catch {
+        // storage blocked: the tour still runs from ?tour=1
+      }
+    if (!wanted) return;
     const start = setTimeout(() => setAt(0), 600); // let the dashboard settle first
     return () => clearTimeout(start);
-  }, []);
+  }, [isLoaded, userId, hold]);
 
   const go = useCallback((from: number) => {
     let i = from;

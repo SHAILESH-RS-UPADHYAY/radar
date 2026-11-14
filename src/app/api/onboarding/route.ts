@@ -38,6 +38,10 @@ export async function POST(req: NextRequest) {
     const workModel = (formData.get('work_model') as string) || '';
     const experienceYears = parseInt((formData.get('experience_years') as string) || '0', 10) || 0;
     const currentRole = (formData.get('current_role') as string) || '';
+    const targetRoles = parseJsonArray(formData.get('target_roles'))
+      .map((r) => r.trim().slice(0, 80))
+      .filter(Boolean)
+      .slice(0, 5);
     const educationLevel = (formData.get('education_level') as string) || '';
     const passingYear = (formData.get('passing_year') as string) || '';
     const fieldOfStudy = (formData.get('field_of_study') as string) || '';
@@ -64,7 +68,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    // Onboarding again never erases: an existing resume stays unless a new PDF came, and skills only grow.
+    const { data: existing, error: existingErr } = await supabase
+      .from('user_profiles')
+      .select('resume_text, skills, target_roles')
+      .eq('id', userId)
+      .maybeSingle();
+    if (existingErr) return serverError('API /onboarding', existingErr);
+    const wanted = targetRoles.length ? targetRoles : currentRole ? [currentRole] : [];
+    // No PDF: the role and education you gave stand in for a resume, so matching has something to read.
+    const noResume = !resumeText && !existing?.resume_text;
     const manual = [
+      noResume && wanted.length > 0 && `TARGET ROLES: ${wanted.join(', ')}`,
+      noResume && educationLevel && `EDUCATION: ${educationLevel} in ${fieldOfStudy} (${passingYear})`,
       manualSkillsRaw && `SKILLS: ${manualSkillsRaw}`,
       manualProjects && `PROJECTS: ${manualProjects}`,
       manualBio && `ADDITIONAL BIO: ${manualBio}`,
@@ -77,20 +93,13 @@ export async function POST(req: NextRequest) {
       .map((s) => s.trim())
       .filter(Boolean);
 
-    // Onboarding again never erases: an existing resume stays unless a new PDF came, and skills only grow.
-    const { data: existing, error: existingErr } = await supabase
-      .from('user_profiles')
-      .select('resume_text, skills')
-      .eq('id', userId)
-      .maybeSingle();
-    if (existingErr) return serverError('API /onboarding', existingErr);
     const kept = onboardingResume(existing, { text: resumeText, manual, skills: parsedManualSkills });
     resumeText = kept.resumeText;
     const skills = [...new Set([...kept.skills, ...extractSkills(resumeText)])];
 
     const embeddingInput = [
       'Career Stage: ' + (isFresher ? careerStage : `Experienced (${experienceYears} years)`),
-      currentRole ? `Target/Current Role: ${currentRole}` : '',
+      wanted.length ? `Target Roles: ${wanted.join(', ')}` : '',
       `Education: ${educationLevel} in ${fieldOfStudy} (Class of ${passingYear})`,
       orgCulture.length ? 'Org Culture Prefs: ' + orgCulture.join(', ') : '',
       dreamCompanies.length ? 'Dream Companies: ' + dreamCompanies.join(', ') : '',
@@ -119,6 +128,15 @@ export async function POST(req: NextRequest) {
         is_fresher: isFresher,
         experience_years: experienceYears,
         current_role: currentRole || null,
+        // The roles you picked join the ones already saved (onboarding again never erases).
+        ...(wanted.length
+          ? {
+              target_roles: [...new Set([...((existing?.target_roles as string[] | null) || []), ...wanted])].slice(
+                0,
+                10,
+              ),
+            }
+          : {}),
         skills,
         resume_text: resumeText || null,
         // A failed embedding keeps the vector you had; the next match rebuilds it from resume_text.

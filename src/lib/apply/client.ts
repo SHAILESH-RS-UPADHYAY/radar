@@ -4,6 +4,7 @@
 // Used by INFILTRATE (FORM://INTERCEPT) and by ↯ HACK on the cards. Nothing here talks to the employer.
 
 import { useEffect, useState } from 'react';
+import { useAuth } from '@clerk/nextjs';
 import type { useApi } from '@/lib/use-api';
 import { armInExtension, keepResumeInExtension, launchInExtension, type PageQuestion } from '@/lib/extension';
 import type { FilledField } from './answers';
@@ -49,12 +50,36 @@ const RESUME_CACHE = 'radar-resume';
 const RESUME_KEY = '/radar/resume.pdf';
 /** Fired on window when a new resume PDF is kept, so a status line can refresh. */
 const RESUME_KEPT = 'radar:resume-kept';
+// The kept PDF belongs to the account that uploaded it: on a shared computer the next person to sign in must not see
+// or send it. A copy kept before owners were recorded goes to the first account that reads it.
+// ponytail: the extension still holds one PDF for the whole browser; it is replaced when the next account uploads.
+const OWNER = 'x-owner';
+const signedInId = (): string | null =>
+  (window as unknown as { Clerk?: { user?: { id?: string } | null } }).Clerk?.user?.id ?? null;
+
+/** The kept PDF, if it is this account's. */
+async function keptResume(userId: string | null): Promise<Response | null> {
+  if (!userId) return null;
+  const cache = await caches.open(RESUME_CACHE);
+  const kept = await cache.match(RESUME_KEY);
+  if (!kept) return null;
+  const owner = kept.headers.get(OWNER);
+  if (owner) return owner === userId ? kept : null;
+  const headers = new Headers(kept.headers);
+  headers.set(OWNER, userId);
+  await cache.put(RESUME_KEY, new Response(await kept.clone().blob(), { headers }));
+  return kept;
+}
 
 export async function keepResumeFile(file: File): Promise<void> {
   // The extension's copy first, on its own: it is what forms get, on every RADAR address.
   keepResumeInExtension({ name: file.name, data: toBase64(await file.arrayBuffer()) });
   try {
-    const headers = { 'content-type': 'application/pdf', 'x-file-name': encodeURIComponent(file.name) };
+    const headers = {
+      'content-type': 'application/pdf',
+      'x-file-name': encodeURIComponent(file.name),
+      [OWNER]: signedInId() || '',
+    };
     await (await caches.open(RESUME_CACHE)).put(RESUME_KEY, new Response(file, { headers }));
     window.dispatchEvent(new Event(RESUME_KEPT));
   } catch {
@@ -65,10 +90,10 @@ export async function keepResumeFile(file: File): Promise<void> {
 /** Give the extension the PDF kept here (a resume uploaded before it was installed). */
 export async function shareKeptResume(): Promise<void> {
   try {
-    const kept = await (await caches.open(RESUME_CACHE)).match(RESUME_KEY);
+    const kept = await keptResume(signedInId());
     if (kept)
       keepResumeInExtension({
-        name: (await keptResumeName()) || 'Resume.pdf',
+        name: (await keptResumeName(signedInId())) || 'Resume.pdf',
         data: toBase64(await kept.arrayBuffer()),
       });
   } catch {
@@ -78,20 +103,22 @@ export async function shareKeptResume(): Promise<void> {
 
 /** The resume PDF kept in this browser, kept current as you upload: its name, null for none, undefined while reading. */
 export function useKeptResume(): string | null | undefined {
+  const { isLoaded, userId } = useAuth();
   const [name, setName] = useState<string | null | undefined>(undefined);
   useEffect(() => {
-    const read = () => void keptResumeName().then(setName);
+    if (!isLoaded) return;
+    const read = () => void keptResumeName(userId ?? null).then(setName);
     read();
     window.addEventListener(RESUME_KEPT, read);
     return () => window.removeEventListener(RESUME_KEPT, read);
-  }, []);
+  }, [isLoaded, userId]);
   return name;
 }
 
-/** The resume PDF kept in this browser: its file name, or null. */
-async function keptResumeName(): Promise<string | null> {
+/** This account's resume PDF kept in this browser: its file name, or null. */
+async function keptResumeName(userId: string | null): Promise<string | null> {
   try {
-    const kept = await (await caches.open(RESUME_CACHE)).match(RESUME_KEY);
+    const kept = await keptResume(userId);
     return kept ? decodeURIComponent(kept.headers.get('x-file-name') || 'Resume.pdf') : null;
   } catch {
     return null;
@@ -114,8 +141,12 @@ async function resumeFor(api: Api, d: Prepared, company: string): Promise<FillPa
     if (pdf.ok) return { name: name || `Resume - ${company}.pdf`, data: toBase64(await pdf.arrayBuffer()) };
   }
   try {
-    const kept = await (await caches.open(RESUME_CACHE)).match(RESUME_KEY);
-    if (kept) return { name: (await keptResumeName()) || 'Resume.pdf', data: toBase64(await kept.arrayBuffer()) };
+    const kept = await keptResume(signedInId());
+    if (kept)
+      return {
+        name: decodeURIComponent(kept.headers.get('x-file-name') || 'Resume.pdf'),
+        data: toBase64(await kept.arrayBuffer()),
+      };
   } catch {
     // no Cache Storage: no PDF
   }
