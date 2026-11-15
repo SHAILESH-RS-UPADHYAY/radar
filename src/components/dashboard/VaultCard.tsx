@@ -84,7 +84,7 @@ export function VaultCard({
 
         <div className="flex w-full flex-col gap-2 sm:w-44">
           <ScoreMeter score={match.score} />
-          {/* ↯ HACK first: the one-click run. INFILTRATE (step by step) under it, or alone without the extension. */}
+          {/* ↯ HACK first: the one-click run. INFILTRATE (step by step) under it. */}
           {onHack && (
             <button
               type="button"
@@ -98,15 +98,23 @@ export function VaultCard({
               </span>
             </button>
           )}
+          {/* Without the extension the real posting comes first: you can check the job exists before anything else. */}
+          {!onHack && (
+            <a
+              href={job.apply_url}
+              target="_blank"
+              rel="noreferrer"
+              title="Opens the employer's own posting in a new tab"
+              className={PILL}
+            >
+              VIEW JOB ↗
+            </a>
+          )}
           <button
             type="button"
             onClick={() => onInfiltrate(match.id)}
             title="Step by step: the tailored resume, every answer of the form to review, then the form"
-            className={
-              onHack
-                ? 'border border-phosphor/40 py-2 font-mono text-[11px] font-bold tracking-[0.25em] text-phosphor transition-colors hover:bg-phosphor/10'
-                : PILL
-            }
+            className="border border-phosphor/40 py-2 font-mono text-[11px] font-bold tracking-[0.25em] text-phosphor transition-colors hover:bg-phosphor/10"
           >
             INFILTRATE ▸
           </button>

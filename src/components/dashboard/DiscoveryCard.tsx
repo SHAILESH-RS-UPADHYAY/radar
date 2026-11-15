@@ -70,18 +70,37 @@ export function DiscoveryCard({
 
         <div className="flex w-full flex-col gap-2 sm:w-44">
           <ScoreMeter score={match.score} />
-          <button
-            type="button"
-            onClick={() => (onHack ? onHack(match.id) : onInfiltrate(match.id))}
-            title={
-              onHack
-                ? 'One click: the form opens filled with your answers and resume. You press Submit.'
-                : 'Step by step: the tailored resume, every answer of the form to review, then the form'
-            }
-            className="mt-2 bg-phosphor py-2 text-center font-mono text-[11px] font-bold tracking-[0.25em] text-black transition-colors hover:bg-phosphor-hi"
-          >
-            {onHack ? '↯ HACK' : 'INFILTRATE ▸'}
-          </button>
+          {/* With the extension: ↯ HACK. Without it the real posting comes first, INFILTRATE (step by step) under it. */}
+          {onHack ? (
+            <button
+              type="button"
+              onClick={() => onHack(match.id)}
+              title="One click: the form opens filled with your answers and resume. You press Submit."
+              className="mt-2 bg-phosphor py-2 text-center font-mono text-[11px] font-bold tracking-[0.25em] text-black transition-colors hover:bg-phosphor-hi"
+            >
+              ↯ HACK
+            </button>
+          ) : (
+            <>
+              <a
+                href={job.apply_url}
+                target="_blank"
+                rel="noreferrer"
+                title="Opens the employer's own posting in a new tab"
+                className="mt-2 bg-phosphor py-2 text-center font-mono text-[11px] font-bold tracking-[0.25em] text-black transition-colors hover:bg-phosphor-hi"
+              >
+                VIEW JOB ↗
+              </a>
+              <button
+                type="button"
+                onClick={() => onInfiltrate(match.id)}
+                title="Step by step: the tailored resume, every answer of the form to review, then the form"
+                className="border border-phosphor/40 py-2 font-mono text-[11px] font-bold tracking-[0.25em] text-phosphor transition-colors hover:bg-phosphor/10"
+              >
+                INFILTRATE ▸
+              </button>
+            </>
+          )}
           <button
             onClick={() => onAction(match.id, 'SAVE')}
             className="border border-phosphor/40 py-2 font-mono text-[11px] font-bold tracking-[0.2em] text-phosphor transition-colors hover:bg-phosphor/10"
