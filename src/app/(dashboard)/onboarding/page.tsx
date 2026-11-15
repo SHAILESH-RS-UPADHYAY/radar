@@ -174,6 +174,9 @@ export default function OnboardingPage() {
     }
   }, []);
 
+  // On a phone the page itself scrolls, so a new step starts at its top.
+  useEffect(() => window.scrollTo(0, 0), [step]);
+
   const handleNext = () => {
     if (step === 1 && !careerStage) return setError('Please select your career stage.');
     if (step === 2 && wantedRoles.length === 0) return setError('Pick at least one role you want.');
@@ -182,6 +185,7 @@ export default function OnboardingPage() {
     if (step === 4 && (!workModel || locations.length === 0))
       return setError('Please select your work model and at least one location.');
     if (step === 5 && orgCultures.length === 0) return setError('Please select at least one organizational culture.');
+    if (step === 6 && companiesLoading) return;
     if (step === 6 && dreamCompanies.length < minDream)
       return setError('Please select at least ' + minDream + ' dream companies.');
     if (step === 7 && !resumeFile && !showManualEntry) return setError('Upload your resume, or continue without one.');
@@ -196,8 +200,6 @@ export default function OnboardingPage() {
   };
 
   const handleSubmit = async () => {
-    if (!resumeFile && !showManualEntry) return setError('Upload your resume, or continue without one.');
-
     setLoading(true);
     setError('');
 
@@ -217,6 +219,8 @@ export default function OnboardingPage() {
       formData.append('country', country);
       formData.append('location', JSON.stringify(locations));
 
+      // No resume and nothing typed: the skills of the roles you picked stand in, so the first scan has something to match.
+      if (!resumeFile && !showManualEntry) formData.append('manual_skills', roleSkills().join(', '));
       if (showManualEntry) {
         formData.append('manual_skills', manualSkills.join(', '));
         if (manualProjects) formData.append('manual_projects', manualProjects);
@@ -225,8 +229,8 @@ export default function OnboardingPage() {
 
       const res = await api('/api/onboarding', { method: 'POST', body: formData });
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to save profile');
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Could not save your profile. Check your connection and try again.');
       }
       if (resumeFile) await keepResumeFile(resumeFile); // attached by one-click apply when there is no tailored PDF
 
@@ -266,10 +270,11 @@ export default function OnboardingPage() {
   );
   const tierFiltered = cityCompanies.filter((c) => cultureTiers.size === 0 || cultureTiers.has(c.tier));
   const displayedCompanies = tierFiltered.length >= 5 ? tierFiltered : cityCompanies;
-  const minDream = Math.min(5, Math.max(1, displayedCompanies.length));
+  // Nothing listed for your cities (a small town, or Anywhere): the step is skippable, never a dead end.
+  const minDream = Math.min(5, displayedCompanies.length);
 
   return (
-    <div className="ob min-h-screen font-mono uppercase flex items-center justify-center px-4 py-24 relative overflow-hidden bg-void">
+    <div className="ob min-h-screen font-mono uppercase flex items-start md:items-center justify-center px-4 pt-24 pb-0 md:py-24 relative overflow-clip md:overflow-hidden bg-void">
       <div className="hud-grid pointer-events-none absolute inset-0" aria-hidden="true" />
       <header className="absolute inset-x-0 top-0 z-20 flex items-center justify-between px-4 py-4 normal-case sm:px-8">
         <Link href="/" aria-label="RADAR home" className="transition-opacity hover:opacity-85">
@@ -292,7 +297,7 @@ export default function OnboardingPage() {
         }}
       />
 
-      <div className="w-full max-w-4xl relative z-10 flex flex-col max-h-[85vh]">
+      <div className="w-full max-w-4xl relative z-10 flex flex-col min-h-[calc(100dvh-6rem)] md:min-h-0 md:max-h-[85vh]">
         <div className="flex items-center gap-2 mb-8 shrink-0">
           {[1, 2, 3, 4, 5, 6, 7].map((s) => (
             <div
@@ -311,7 +316,7 @@ export default function OnboardingPage() {
           ))}
         </div>
 
-        <div className="flex-1 overflow-y-auto custom-scrollbar pb-4 pr-2">
+        <div className="flex-1 md:overflow-y-auto custom-scrollbar pb-4 md:pr-2">
           <AnimatePresence mode="wait">
             <motion.div
               key={step}
@@ -672,7 +677,7 @@ export default function OnboardingPage() {
                               </div>
                             </div>
                             {country !== 'Other' && TOP_CITIES[country] ? (
-                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3 [overflow-wrap:anywhere]">
                                 {TOP_CITIES[country].map((city) => (
                                   <button
                                     key={city}
@@ -717,7 +722,7 @@ export default function OnboardingPage() {
                                       value={customCity}
                                       onChange={(e) => setCustomCity(e.target.value)}
                                       onKeyDown={(e) => e.key === 'Enter' && addCustomCity()}
-                                      className="flex-1 bg-black border border-phosphor-deep rounded-none px-3 py-2 text-phosphor text-sm focus:outline-none focus:border-phosphor"
+                                      className="flex-1 min-w-0 bg-black border border-phosphor-deep rounded-none px-3 py-2 text-phosphor text-sm focus:outline-none focus:border-phosphor"
                                     />
                                     <button
                                       onClick={addCustomCity}
@@ -753,7 +758,7 @@ export default function OnboardingPage() {
                                     value={customCity}
                                     onChange={(e) => setCustomCity(e.target.value)}
                                     onKeyDown={(e) => e.key === 'Enter' && addCustomCity()}
-                                    className="flex-1 bg-black border border-phosphor-deep rounded-none px-4 py-3 text-phosphor focus:outline-none focus:border-phosphor transition-colors focus:ring-1 focus:ring-phosphor"
+                                    className="flex-1 min-w-0 bg-black border border-phosphor-deep rounded-none px-4 py-3 text-phosphor focus:outline-none focus:border-phosphor transition-colors focus:ring-1 focus:ring-phosphor"
                                   />
                                   <button
                                     onClick={addCustomCity}
@@ -821,7 +826,7 @@ export default function OnboardingPage() {
                         {workModel.toLowerCase().includes('remote')
                           ? 'remote hiring'
                           : locations.join(', ') || 'your cities'}
-                        . Select at least {minDream}.
+                        .{minDream > 0 ? ` Select at least ${minDream}.` : ''}
                       </p>
                       <p className="text-[10px] mt-1" style={{ color: 'var(--color-phosphor-dull)' }}>
                         ● = RADAR tracks their live jobs · number = open roles there right now
@@ -841,8 +846,8 @@ export default function OnboardingPage() {
                     )}
                     {!companiesLoading && displayedCompanies.length === 0 && (
                       <p className="col-span-full text-sm text-phosphor-mid">
-                        No companies found for these cities yet. Go back and add a bigger city nearby, or run a scrape
-                        so live jobs show up.
+                        No tracked companies for this choice yet. That is fine: press Continue and RADAR searches every
+                        source for your roles. You can add dream companies later in Preferences.
                       </p>
                     )}
                     {displayedCompanies.map((company) => (
@@ -1003,11 +1008,11 @@ export default function OnboardingPage() {
                               value={skillInput}
                               onChange={(e) => setSkillInput(e.target.value)}
                               onKeyDown={(e) => e.key === 'Enter' && addManualSkill()}
-                              className="flex-1 bg-black border border-phosphor-deep rounded-none px-4 py-3 text-phosphor focus:outline-none focus:border-phosphor transition-colors focus:ring-1 focus:ring-phosphor"
+                              className="flex-1 min-w-0 bg-black border border-phosphor-deep rounded-none px-4 py-3 text-phosphor focus:outline-none focus:border-phosphor transition-colors focus:ring-1 focus:ring-phosphor"
                             />
                             <button
                               onClick={addManualSkill}
-                              className="px-6 py-3 bg-phosphor-deep text-phosphor rounded-none font-bold hover:bg-phosphor transition-colors"
+                              className="shrink-0 px-6 py-3 bg-phosphor-deep text-phosphor rounded-none font-bold hover:bg-phosphor transition-colors"
                             >
                               Add
                             </button>
@@ -1081,9 +1086,20 @@ export default function OnboardingPage() {
                         For Chrome on a computer. Application forms open already filled with your answers and resume;
                         you check them and press Submit.
                       </p>
-                      <p className="mt-4 font-mono text-[11px] font-bold tracking-[0.2em] text-phosphor">
-                        {extension ? `● CONNECTED · v${extension}` : '○ NOT ADDED YET · GET IT ON /INSTALL'}
-                      </p>
+                      {extension ? (
+                        <p className="mt-4 font-mono text-[11px] font-bold tracking-[0.2em] text-phosphor">
+                          ● CONNECTED · v{extension}
+                        </p>
+                      ) : (
+                        <a
+                          href="/install"
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-4 inline-block border border-phosphor/50 px-4 py-2 font-mono text-[11px] font-bold tracking-[0.2em] text-phosphor transition-colors hover:bg-phosphor/10"
+                        >
+                          GET THE EXTENSION ↗
+                        </a>
+                      )}
                     </div>
                   </div>
                   <p className="mt-8 font-mono text-[10px] tracking-[0.3em] text-phosphor/70">OPTIONAL · 03</p>
@@ -1107,7 +1123,7 @@ export default function OnboardingPage() {
 
         {/* Navigation Buttons */}
         <div
-          className="flex justify-between items-center pt-6 shrink-0 mt-4"
+          className="flex justify-between items-center gap-3 pt-4 pb-4 md:pt-6 md:pb-0 shrink-0 mt-4 sticky bottom-0 z-10 bg-void md:static md:bg-transparent"
           style={{ borderTop: '1px solid var(--color-phosphor-deep)' }}
         >
           {step > 1 && step < 8 ? (

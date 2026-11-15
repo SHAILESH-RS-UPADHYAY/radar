@@ -7,7 +7,7 @@ import { resolveDreamCompanyIds } from '@/lib/dream-companies';
 import { runScrape } from '@/lib/pipeline/scrape';
 import { extractPdfText } from '@/lib/resume';
 import { resumeProblem } from '@/lib/validate';
-import { onboardingResume } from '@/lib/profile';
+import { onboardingResume, splitList } from '@/lib/profile';
 import { serverError } from '@/lib/api';
 
 export const maxDuration = 60;
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
     // Onboarding again never erases: an existing resume stays unless a new PDF came, and skills only grow.
     const { data: existing, error: existingErr } = await supabase
       .from('user_profiles')
-      .select('resume_text, skills, target_roles')
+      .select('resume_text, skills, current_role')
       .eq('id', userId)
       .maybeSingle();
     if (existingErr) return serverError('API /onboarding', existingErr);
@@ -127,14 +127,20 @@ export async function POST(req: NextRequest) {
         country,
         is_fresher: isFresher,
         experience_years: experienceYears,
-        current_role: currentRole || null,
-        // The roles you picked join the ones already saved (onboarding again never erases).
+        // Roles live in current_role, comma-separated (the column Preferences and the matcher read). The roles you
+        // picked join the ones already saved: onboarding again never erases.
         ...(wanted.length
           ? {
-              target_roles: [...new Set([...((existing?.target_roles as string[] | null) || []), ...wanted])].slice(
-                0,
-                10,
-              ),
+              current_role: [
+                ...new Map(
+                  [...splitList(existing?.current_role), ...wanted.map((r) => r.replace(/,/g, ' '))].map((r) => [
+                    r.toLowerCase(),
+                    r,
+                  ]),
+                ).values(),
+              ]
+                .slice(0, 8)
+                .join(', '),
             }
           : {}),
         skills,

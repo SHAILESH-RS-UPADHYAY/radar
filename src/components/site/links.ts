@@ -4,4 +4,5 @@ export const SITE_LINKS = [
   { href: '/system', label: 'SYSTEM' },
   { href: '/protocol', label: 'PROTOCOL' },
   { href: '/architecture', label: 'ARCHITECTURE' },
+  { href: '/install', label: 'INSTALL' },
 ];
