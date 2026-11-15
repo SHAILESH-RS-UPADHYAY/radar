@@ -175,7 +175,11 @@ export default function OnboardingPage() {
   }, []);
 
   // On a phone the page itself scrolls, so a new step starts at its top.
-  useEffect(() => window.scrollTo(0, 0), [step]);
+  // Braces matter: newer Chrome and Edge return a Promise from scrollTo, and React calls whatever an effect returns
+  // as its cleanup ("destroy is not a function" on the next step).
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [step]);
 
   const handleNext = () => {
     if (step === 1 && !careerStage) return setError('Please select your career stage.');
