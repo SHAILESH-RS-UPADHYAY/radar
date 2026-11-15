@@ -139,7 +139,34 @@ export function ScanConsole({
             queue.push(e);
           }
         }
-        if (alive && !ended) queue.push({ stage: 'error', error: 'The scan stopped before it finished.', status: 0 });
+        if (ended) return;
+      } catch {
+        // The live feed broke (a network blip); handled below.
+      }
+      if (!alive) return;
+      // The feed dropped, but the scan itself keeps running on the server. Ask once more without the feed: either
+      // this request does the scan, or the first one already finished (429: "scanned a moment ago").
+      try {
+        const res = await api('/api/match', { method: 'POST' });
+        const d = await res.json().catch(() => ({}));
+        if (!alive) return;
+        if (res.ok) {
+          queue.push({ stage: 'done', total: d.total, vaulted: d.vaulted, retired: d.retired, message: d.message });
+        } else if (res.status === 429) {
+          queue.push({
+            stage: 'done',
+            total: 0,
+            vaulted: 0,
+            retired: 0,
+            message: 'Scan finished. Your lists are up to date.',
+          });
+        } else {
+          queue.push({
+            stage: 'error',
+            error: d.error || 'Scan failed (HTTP ' + res.status + ').',
+            status: res.status,
+          });
+        }
       } catch {
         if (alive) queue.push({ stage: 'error', error: 'Connection lost during the scan. Try again.', status: 0 });
       }
