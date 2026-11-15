@@ -14,11 +14,27 @@ export default function Error({
 }) {
   useEffect(() => {
     console.error('[APP]', error);
+    // A tab opened before a deploy asks for script files the new deploy no longer has. A fresh load fixes that, so
+    // do it once by itself (the flag stops a loop if the reload does not help).
+    const stale = /ChunkLoadError|Loading chunk|dynamically imported module|Failed to load chunk/i.test(
+      error.name + ' ' + error.message,
+    );
+    try {
+      if (stale && !sessionStorage.getItem('radar_reloaded')) {
+        sessionStorage.setItem('radar_reloaded', '1');
+        window.location.reload();
+      }
+    } catch {
+      // storage blocked: the screen below stays, with its Retry button
+    }
   }, [error]);
 
   return (
     <StatusScreen
-      code={'ERR 500 · SYSTEM FAULT' + (error.digest ? ' · ' + error.digest : '')}
+      code={
+        'ERR 500 · SYSTEM FAULT' +
+        (error.digest ? ' · ' + error.digest : error.name !== 'Error' ? ' · ' + error.name : '')
+      }
       title="SIGNAL DROPPED"
       body="Something failed while loading this screen. Your data is safe, and retrying usually fixes it."
     >
