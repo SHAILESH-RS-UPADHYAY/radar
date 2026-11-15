@@ -101,6 +101,17 @@ export function DiscoveryCard({
               </button>
             </>
           )}
+          {!onHack && (
+            <a
+              href="/install#extension"
+              target="_blank"
+              rel="noreferrer"
+              title="A free Chrome extension: one click opens the form already filled. Two-minute setup, shown step by step."
+              className="py-1 text-center font-mono text-[10px] tracking-[0.2em] text-dim transition-colors hover:text-phosphor"
+            >
+              ↯ GET ONE-CLICK HACK
+            </a>
+          )}
           <button
             onClick={() => onAction(match.id, 'SAVE')}
             className="border border-phosphor/40 py-2 font-mono text-[11px] font-bold tracking-[0.2em] text-phosphor transition-colors hover:bg-phosphor/10"

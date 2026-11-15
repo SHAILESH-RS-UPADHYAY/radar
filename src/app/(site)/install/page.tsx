@@ -75,14 +75,57 @@ export default function InstallPage() {
               ⤓ DOWNLOAD EXTENSION (.ZIP)
             </a>
           </HudPanel>
-          <div className="mt-8">
+          <p className="mt-8 text-sm leading-relaxed text-dim">
+            It takes about two minutes and you only do it once. You need a computer (Windows or Mac) with Chrome. It
+            does not work on a phone. Follow the steps in order; each one says what you should see.
+          </p>
+          <div className="mt-6">
             <Points
               items={[
-                ['1 · UNZIP', 'Extract the zip. You get a folder called radar-extension.'],
-                ['2 · OPEN', 'In Chrome go to chrome://extensions and turn on Developer mode (top right).'],
-                ['3 · LOAD', 'Click Load unpacked and choose the radar-extension folder.'],
-                ['4 · CONNECT', 'Open your RADAR dashboard. Preferences shows the extension as connected.'],
-                ['UPDATING', 'Download the new zip, replace the folder, and press the reload arrow on the extension.'],
+                [
+                  '1 · DOWNLOAD',
+                  'Press the green DOWNLOAD EXTENSION button above. A file called radar-extension.zip lands in your Downloads folder.',
+                ],
+                [
+                  '2 · UNZIP',
+                  'Open your Downloads folder. Right-click radar-extension.zip and choose Extract All (on a Mac, double-click it). You now have a normal folder called radar-extension. Leave it where it is: Chrome reads the extension from this folder, so deleting or moving it later switches the extension off.',
+                ],
+                [
+                  '3 · OPEN THE PAGE',
+                  'In Chrome, click the address bar at the top, type chrome://extensions and press Enter. A page titled Extensions opens. (In Microsoft Edge the address is edge://extensions.)',
+                ],
+                [
+                  '4 · DEVELOPER MODE',
+                  'Find the switch named Developer mode (top right in Chrome, left side in Edge) and turn it on. Three new buttons appear. This switch only lets you add an extension from a folder; it changes nothing else.',
+                ],
+                [
+                  '5 · LOAD IT',
+                  'Click Load unpacked. A file window opens. Click the radar-extension folder once, then press Select Folder. A card named RADAR · Auto-Fill appears on the page. That means it is installed.',
+                ],
+                [
+                  '6 · CHECK IT WORKS',
+                  'Go back to your RADAR dashboard and refresh the page (press F5). Every job card now shows a ↯ HACK button. If you see it, you are done.',
+                ],
+                [
+                  '7 · ADD YOUR RESUME',
+                  'One time only: open Preferences in RADAR and upload your resume PDF in this same browser. RADAR keeps it on your computer and attaches it to forms for you.',
+                ],
+                [
+                  'HOW TO USE IT',
+                  'Press ↯ HACK on a job. The application form opens in a new tab with your details already typed in. Read it, fix anything you like, and press Submit yourself. Keep the RADAR tab open while the form fills.',
+                ],
+                [
+                  'NO ↯ HACK BUTTON?',
+                  'Refresh the dashboard once more. Check the RADAR · Auto-Fill card on the Extensions page is switched on (blue). Check the radar-extension folder is still where you unzipped it. If Chrome shows "Disable developer mode extensions", press Cancel or close that box.',
+                ],
+                [
+                  'UPDATING',
+                  'Download the new zip, unzip it over the old folder, then press the round reload arrow on the RADAR · Auto-Fill card.',
+                ],
+                [
+                  'REMOVING',
+                  'On the Extensions page press Remove on the RADAR · Auto-Fill card. Nothing else on your computer changes.',
+                ],
               ]}
             />
           </div>
