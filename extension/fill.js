@@ -227,7 +227,9 @@
       q.required =
         [...q.els, ...(q.hidden || [])].some((e) => e.required || e.getAttribute('aria-required') === 'true') ||
         /\*\s*$/.test(text.trim()) ||
-        (!!head && /required/i.test(String(head.className)));
+        (!!head && /required/i.test(String(head.className))) ||
+        // Ashby marks the block's title, not a lone checkbox's own label ("Privacy Notice*" → "Acknowledge").
+        !!el.closest('[class*="fieldEntry"]')?.querySelector(':scope > label[class*="required" i]');
       // A disabled field (End date while "Current role" is ticked) cannot be answered, so it is never owed.
       if (q.els.every((e) => e.disabled || e.getAttribute('aria-disabled') === 'true')) q.required = false;
       out.push(q);
