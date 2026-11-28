@@ -98,12 +98,43 @@ export function sponsorshipFor(location: string | null | undefined, kit: '' | 'y
   return india === false ? 'yes' : india === true ? 'no' : kit;
 }
 
+export interface JobSalary {
+  min: number | null;
+  max: number | null;
+  currency: string | null;
+}
+const money = (n: number) => (n >= 1000 ? Math.round(n / 1000) + 'k' : String(n));
+/** A job outside India: its posted range (salary fields or a "$120k – $160k" in the text), else market rate in USD. */
+export function abroadPay(
+  job: { location?: string | null; description?: string; salary?: JobSalary },
+  type: string,
+): string | null {
+  if (locatedInIndia(job.location) !== false) return null;
+  const s = job.salary;
+  let lo = s?.min ?? null;
+  let hi = s?.max ?? null;
+  let cur = (s?.currency || '').toUpperCase() || null;
+  if (!lo && !hi && job.description) {
+    const m = /([$€£])\s?(\d{2,3})(?:,\d{3}|k)\s*(?:-|–|to)\s*[$€£]?\s?(\d{2,3})(?:,\d{3}|k)/i.exec(job.description);
+    if (m) {
+      [lo, hi] = [Number(m[2]) * 1000, Number(m[3]) * 1000];
+      cur = m[1] === '€' ? 'EUR' : m[1] === '£' ? 'GBP' : 'USD';
+    }
+  }
+  cur ||= 'USD';
+  // A number box gets one figure: the middle of the range.
+  if (type === 'number') return lo || hi ? String(Math.round(((lo || hi)! + (hi || lo)!) / 2)) : null;
+  if (lo && hi) return `${cur} ${money(lo)}–${money(hi)} a year, in line with the posted range; open to discussion`;
+  if (lo || hi) return `Around ${cur} ${money((lo || hi)!)} a year; open to discussion`;
+  return `Market rate for the role in ${cur}; open to discussion`;
+}
+
 /** A fact from your profile for one field, or null when the profile does not say. Pure, for tests. */
 export function fillFromProfile(
   field: FormField,
   c: Candidate,
   resumeText: string,
-  job: { location?: string | null } = {},
+  job: { location?: string | null; description?: string; salary?: JobSalary } = {},
 ): Pick<FilledField, 'value' | 'note'> | null {
   const label = (field.label + ' ' + field.name).toLowerCase();
   const text = (value: string) => (value ? { value } : null);
@@ -124,7 +155,9 @@ export function fillFromProfile(
   const taught = c.learned?.[learnKey(field.label)];
   // A bare country taught for "Location" ("india") loses to the city you live in: pickers turn it into Indianapolis.
   const bareCountry = taught && c.city && /^(india|bharat)$/i.test(taught.trim());
-  if (taught && !bareCountry) {
+  // A pay figure taught for Indian forms (lakhs) never goes to a job abroad.
+  const inrForAbroad = taught && /salary|compensation|ctc|pay/.test(label) && abroadPay(job, field.type);
+  if (taught && !bareCountry && !inrForAbroad) {
     const value = field.options?.length ? pickOption(field.options, taught) : taught;
     if (value) return { value, note: 'you taught RADAR this answer' };
   }
@@ -187,7 +220,11 @@ export function fillFromProfile(
   const unit = (a: string) => c.currency || (/^\d+(\.\d+)?$/.test(a.trim()) && Number(a) < 200 ? 'LPA' : '');
   const pay = (amount: string) => text(amount ? [amount, unit(amount)].filter(Boolean).join(' ') : '');
   if (/current (ctc|salary|compensation|pay)/.test(label)) return pay(c.currentCtc);
-  if (/expected|desired|salary expectation|compensation expectation/.test(label)) return pay(c.expectedCtc);
+  if (/expected|desired|salary expectation|compensation expectation/.test(label)) {
+    // A job abroad is paid in its own currency: answer from the posted range, never in lakhs.
+    const abroad = abroadPay(job, field.type);
+    return abroad ? { value: abroad, note: 'a job abroad: expectation in its currency' } : pay(c.expectedCtc);
+  }
   // Where you are now; a preferred office is left to the AI, which reads the job's locations.
   const where = field.label.toLowerCase().trim();
   if (field.type === 'text' && /^(current )?location\b|^city\b|where are you (located|based)/.test(where))
@@ -221,7 +258,7 @@ Rules:
 Reply with JSON only: {"answers":[{"name":"<field name>","value":"<text>" or ["<option>", ...]}]}`;
 
 export interface AnswerContext {
-  job: { title: string; company: string; location: string | null; description: string };
+  job: { title: string; company: string; location: string | null; description: string; salary?: JobSalary };
   resumeText: string;
   tailoredText: string | null;
   /** When the answers must be ready (ms since epoch): HUMANIZE starts no round it cannot finish by then. */

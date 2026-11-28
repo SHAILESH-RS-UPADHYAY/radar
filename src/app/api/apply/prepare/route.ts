@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
     supabase
       .from('match_scores')
       .select(
-        'id, job_id, jobs!inner(id, external_id, title, description, location, apply_url, employer, companies!inner(name, ats_provider, ats_identifier))',
+        'id, job_id, jobs!inner(id, external_id, title, description, location, apply_url, employer, salary_min, salary_max, salary_currency, companies!inner(name, ats_provider, ats_identifier))',
       )
       .eq('user_id', userId)
       .eq('id', body.matchId)
@@ -128,6 +128,7 @@ export async function POST(req: NextRequest) {
       company: job.employer || company.name,
       location: job.location,
       description: job.description || '',
+      salary: { min: job.salary_min ?? null, max: job.salary_max ?? null, currency: job.salary_currency ?? null },
     },
     resumeText: resume?.resume_text || '',
     tailoredText,

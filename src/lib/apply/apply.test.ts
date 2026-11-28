@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applicationFormUrl, parseGreenhouseForm, parseLeverForm } from './form';
-import { answerForm, fillFromProfile, sponsorshipFor, tooThin, YOUR_CALL, type Candidate } from './answers';
+import { abroadPay, answerForm, fillFromProfile, sponsorshipFor, tooThin, YOUR_CALL, type Candidate } from './answers';
 import { fillPacket } from './bridge';
 
 // Shapes copied from live postings (Greenhouse ?questions=true, a Lever apply page), cut down.
@@ -303,5 +303,16 @@ describe('employment blocks', () => {
     const f = (label: string) => ({ name: 'x', label, type: 'text' as const, required: true });
     expect(fillFromProfile(f('Company name'), me, '')?.value).toBe(me.currentCompany);
     expect(fillFromProfile(f('Start date year'), me, '')).toBeNull();
+  });
+});
+
+describe('abroadPay', () => {
+  it('answers a job abroad in its currency from the posted range, and India in lakhs', () => {
+    expect(
+      abroadPay({ location: 'San Francisco', salary: { min: 120000, max: 160000, currency: 'USD' } }, 'text'),
+    ).toMatch(/^USD 120k–160k/);
+    expect(abroadPay({ location: 'London', description: 'Pay: £60,000 - £80,000' }, 'text')).toMatch(/^GBP 60k–80k/);
+    expect(abroadPay({ location: 'Remote (US)', description: 'Range $90k to $110k' }, 'number')).toBe('100000');
+    expect(abroadPay({ location: 'Bengaluru' }, 'text')).toBeNull();
   });
 });
