@@ -723,44 +723,64 @@
     });
     const id = Date.now();
     const byName = new Map(open.map((q, i) => ['q' + i, q]));
-    if (hud) hud.log('AI', `${open.length} more questions on this form: RADAR is answering them…`, 'ai');
-    const sent = await ask({
-      type: 'questions',
-      id,
-      fields: [...byName].map(([name, q]) => ({
-        name,
-        label: q.label.slice(0, 600),
-        type: q.kind === 'text' && ['email', 'tel', 'url'].includes(q.el.type) ? q.el.type : TYPE[q.kind],
-        required: q.required,
-        ...(q.options && q.options.length ? { options: q.options.slice(0, 200).map((o) => o.slice(0, 300)) } : {}),
-      })),
-    });
-    if (!sent || !sent.ok) {
-      if (hud) hud.log('ERR', `${(sent && sent.error) || 'RADAR did not get them'}: these questions are yours`, 'err');
-      return null;
+    const status = hud
+      ? hud.live('AI', `${open.length} more questions on this form: RADAR is answering them…`)
+      : () => {};
+    const started = Date.now();
+    const tick = setInterval(
+      () => status(`${open.length} more questions: RADAR is answering… ${Math.round((Date.now() - started) / 1000)}s`),
+      1000,
+    );
+    try {
+      return await waitAnswers();
+    } finally {
+      clearInterval(tick);
     }
-    for (let i = 0; i < 300; i++) {
-      await sleep(1000);
-      const entry = await ask({ type: 'packet' });
-      if (!entry || entry.done) return null;
-      if (!entry.more || entry.more.id !== id) continue;
-      if (entry.more.error) {
-        if (hud) hud.log('ERR', 'RADAR could not answer them: ' + entry.more.error, 'err');
+    async function waitAnswers() {
+      const sent = await ask({
+        type: 'questions',
+        id,
+        fields: [...byName].map(([name, q]) => ({
+          name,
+          label: q.label.slice(0, 600),
+          type: q.kind === 'text' && ['email', 'tel', 'url'].includes(q.el.type) ? q.el.type : TYPE[q.kind],
+          required: q.required,
+          ...(q.options && q.options.length ? { options: q.options.slice(0, 200).map((o) => o.slice(0, 300)) } : {}),
+        })),
+      });
+      if (!sent || !sent.ok) {
+        status(`${(sent && sent.error) || 'RADAR did not get them'}: these questions are yours`, 'err');
         return null;
       }
-      return exclusive(async () => {
-        let n = 0;
-        for (const f of (entry.more.packet && entry.more.packet.fields) || []) {
-          const asked = byName.get(f.name);
-          // The page may have redrawn the question meanwhile: find it again by its label.
-          const q = asked && (asked.el.isConnected ? asked : questions().find((x) => x.label === asked.label));
-          if (q && !answered(q) && (await answer(q, [].concat(f.value).filter(Boolean), f.submit))) n++;
+      for (let i = 0; i < 300; i++) {
+        await sleep(1000);
+        const entry = await ask({ type: 'packet' });
+        if (!entry || entry.done) return null;
+        if (!entry.more || entry.more.id !== id) continue;
+        if (entry.more.error) {
+          status('RADAR could not answer them: ' + entry.more.error, 'err');
+          return null;
         }
-        return n;
-      });
+        return exclusive(async () => {
+          let n = 0;
+          for (const f of (entry.more.packet && entry.more.packet.fields) || []) {
+            const asked = byName.get(f.name);
+            // The page may have redrawn the question meanwhile: find it again by its label.
+            const q = asked && (asked.el.isConnected ? asked : questions().find((x) => x.label === asked.label));
+            if (q && !answered(q) && (await answer(q, [].concat(f.value).filter(Boolean), f.submit))) n++;
+          }
+          const left = open.length - n;
+          status(
+            `${open.length} questions: ${n} answered by RADAR` +
+              (left ? ` · ${left} left for you (NEEDS YOU)` : ' · all done'),
+            left ? 'you' : 'ok',
+          );
+          return n;
+        });
+      }
+      status('RADAR did not answer in time: keep its tab open, then reload this page', 'err');
+      return null;
     }
-    if (hud) hud.log('ERR', 'RADAR did not answer in time: keep its dashboard tab open', 'err');
-    return null;
   }
 
   // =====================================================================================================
@@ -979,6 +999,20 @@
             await sleep(9);
           }
         out.textContent = text;
+      },
+      /** A status line that changes in place (no stale "answering…" left behind): returns set(text, tone). */
+      live(tag, text, tone = 'ai') {
+        const line = document.createElement('div');
+        line.className = 'line';
+        line.innerHTML = `<span class="tag">[${tag}]</span> <span></span>`;
+        $('.log').appendChild(line);
+        $('.log').scrollTop = $('.log').scrollHeight;
+        const set = (t, k = tone) => {
+          line.lastElementChild.className = k;
+          line.lastElementChild.textContent = t;
+        };
+        set(text);
+        return set;
       },
       state(label, color = '#FACC15') {
         $('.state').textContent = label;
@@ -1365,7 +1399,8 @@
       settle();
       try {
         const n = await askRadar(packet, hud);
-        if (n) report(hud, [['AI', `${n} more questions answered`, 'ai']]);
+        if (n)
+          report(hud, []); // the live status line already says how many
         else if (n === 0) report(hud, []); // none answerable from your materials: NEEDS YOU lists them
       } finally {
         asking--;
