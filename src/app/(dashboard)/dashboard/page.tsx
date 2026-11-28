@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { UserButton, useUser } from '@clerk/nextjs';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useApi } from '@/lib/use-api';
+import { BootTrace } from '@/components/dashboard/BootTrace';
 import { onExtension, useExtension } from '@/lib/extension';
 import { adoptPage, answerPageQuestions, oneClickApply, rememberAnswer, reportLanded } from '@/lib/apply/client';
 import { PER_COMPANY, type MatchStatus, type Stage } from '@/types';
@@ -830,7 +831,8 @@ export default function DashboardPage() {
           <ParkedPanel onApplied={() => void fetchMatches()} />
         </div>
         <AnimatePresence mode="wait">
-          {primaryTab === 'DISCOVERY' && (
+          {loading && <BootTrace key={primaryTab} tab={primaryTab} />}
+          {!loading && primaryTab === 'DISCOVERY' && (
             <motion.section
               key="DISCOVERY"
               initial={{ opacity: 0, y: 16 }}
@@ -1107,7 +1109,7 @@ export default function DashboardPage() {
             </motion.section>
           )}
 
-          {primaryTab === 'VAULT' && (
+          {!loading && primaryTab === 'VAULT' && (
             <motion.section
               key="VAULT"
               initial={{ opacity: 0, y: 16 }}
@@ -1271,7 +1273,7 @@ export default function DashboardPage() {
             </motion.section>
           )}
 
-          {primaryTab === 'OVERCLOCK' && (
+          {!loading && primaryTab === 'OVERCLOCK' && (
             <motion.section
               key="OVERCLOCK"
               initial={{ opacity: 0, y: 16 }}
@@ -1376,7 +1378,7 @@ export default function DashboardPage() {
             </motion.section>
           )}
 
-          {primaryTab === 'UPSKILL' && (
+          {!loading && primaryTab === 'UPSKILL' && (
             <motion.section
               key="UPSKILL"
               initial={{ opacity: 0, y: 16 }}
@@ -1398,7 +1400,7 @@ export default function DashboardPage() {
             </motion.section>
           )}
 
-          {primaryTab === 'OPS' && (
+          {!loading && primaryTab === 'OPS' && (
             <motion.section
               key="OPS"
               initial={{ opacity: 0, y: 16 }}
