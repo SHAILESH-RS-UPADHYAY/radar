@@ -224,7 +224,9 @@ export async function answerForm(
   ctx: AnswerContext,
 ): Promise<{ fields: FilledField[]; model: string | null; aiError: string | null; humanized: HumanizeReport | null }> {
   const filled: FilledField[] = fields.map((f) => {
-    if (YOUR_CALL.test(f.label)) return { ...f, value: '', by: 'you', note: 'a legal consent: your decision' };
+    // A consent stays yours, unless you already decided this exact one on an earlier form.
+    if (YOUR_CALL.test(f.label) && !c.learned?.[learnKey(f.label)])
+      return { ...f, value: '', by: 'you', note: 'a legal consent: your decision' };
     const fact = fillFromProfile(f, c, ctx.resumeText, ctx.job);
     if (fact && (Array.isArray(fact.value) ? fact.value.length : fact.value)) return { ...f, ...fact, by: 'profile' };
     return { ...f, value: '', by: 'you' };
