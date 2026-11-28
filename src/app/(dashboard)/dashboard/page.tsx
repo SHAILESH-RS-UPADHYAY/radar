@@ -633,12 +633,13 @@ export default function DashboardPage() {
         setNotice({ tone: 'alert', text: 'The extension could not open the form: ' + e.error });
       if (e.type === 'gone') {
         // An expired posting leaves Discovery for good, so nobody spends another click on it.
-        setNotice({ tone: 'alert', text: 'That posting has expired: RADAR removed it from your feed.' });
+        setNotice({ tone: 'alert', text: 'That posting has expired: RADAR closed its tab and removed it.' });
         setMatches((all) => all.filter((m) => m.id !== e.matchId));
-        void api('/api/vault', {
-          method: 'PATCH',
+        // The server opens the link itself; if it reads closed too, the job leaves every feed, not just yours.
+        void api('/api/apply/gone', {
+          method: 'POST',
           headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ ids: [e.matchId], status: 'dismissed' }),
+          body: JSON.stringify({ matchId: e.matchId }),
         });
       }
       if (e.type === 'filled' && runMatch?.id !== e.matchId)

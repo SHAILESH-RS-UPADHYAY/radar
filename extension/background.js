@@ -265,6 +265,11 @@ const handlers = {
   async gone(msg, sender) {
     const entry = await read(sender.tab.id);
     if (entry) tellRadar(entry, { type: 'gone' });
+    // A ZERO-DAY run waits for its tab's verdict: give it one before the tab goes.
+    if (entry && entry.auto)
+      tellRadar(entry, { type: 'autopilot', state: 'parked', reasons: ['the posting no longer exists'] });
+    // Nothing to do in a dead posting's tab: close it once the panel has said why (RADAR already heard).
+    setTimeout(() => chrome.tabs.remove(sender.tab.id).catch(() => {}), 2500);
     return { ok: true };
   },
 

@@ -1716,7 +1716,7 @@
     if (postingGone()) {
       hud.state('POSTING GONE', '#FF5555');
       hud.log('ERR', 'this posting no longer exists: the employer took it down', 'err');
-      if (AUTO) return park(hud, ['the posting no longer exists']);
+      hud.log('SYS', 'reported to RADAR: it leaves your lists, and this tab closes', 'dim');
       ask({ type: 'gone' });
       return;
     }
