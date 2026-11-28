@@ -163,7 +163,14 @@
     return blockHead(el, own);
   }
 
-  const groupOf = (el) => (el.name ? [...document.getElementsByName(el.name)] : [el]);
+  // A choice group is its fieldset when there is one: Ashby names each checkbox by its option ("Yes", "No"), so the
+  // name alone would join every "Yes" on the form into one question.
+  const groupOf = (el) => {
+    const box = el.closest('fieldset, [role=radiogroup], [role=group]');
+    const inBox = box ? [...box.querySelectorAll(`input[type=${el.type}]`)] : [];
+    if (inBox.length > 1) return inBox;
+    return el.name ? [...document.getElementsByName(el.name)].filter((b) => b.type === el.type) : [el];
+  };
   const choiceText = (box) => ((box.closest('label') || labelOf(box.id) || {}).textContent || box.value || '').trim();
   const PLACEHOLDER = /^(select|choose|please|pick|--|—)/i;
   const selectAnswered = (el) =>
