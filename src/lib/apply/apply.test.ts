@@ -161,6 +161,9 @@ describe('fillFromProfile', () => {
     expect(YOUR_CALL.test('Why do you want to work here?')).toBe(false);
     expect(YOUR_CALL.test('Please double-check the information above and confirm it is accurate')).toBe(true);
     expect(fillFromProfile(field('location', 'Current location'), me, '')?.value).toBe('Bengaluru');
+    // A taught bare country never beats the city: "India" in a place picker becomes Indianapolis.
+    const taughtIndia = { ...me, learned: { 'current location': 'india' } };
+    expect(fillFromProfile(field('location', 'Current location'), taughtIndia, '')?.value).toBe('Bengaluru');
     expect(fillFromProfile(field('q', 'What is your preferred work location?'), me, '')).toBeNull();
   });
 });

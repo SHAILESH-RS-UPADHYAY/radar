@@ -91,7 +91,11 @@ export async function POST(req: NextRequest) {
     fullName: profile.full_name || user?.fullName || '',
     email: user?.primaryEmailAddress?.emailAddress || '',
     phone: kit?.phone || '',
-    city: splitList(profile.location).find((c) => c.toLowerCase() !== 'remote') || '',
+    // Where you live (a taught answer), not the first of the cities you would work in.
+    city:
+      ['location city', 'where is your current location', 'current city'].map((k) => kit?.learned?.[k]).find(Boolean) ||
+      splitList(profile.location).find((c) => c.toLowerCase() !== 'remote') ||
+      '',
     linkedin: links?.linkedin || '',
     github: links?.github || '',
     portfolio: links?.portfolio || '',

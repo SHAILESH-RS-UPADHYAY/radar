@@ -104,7 +104,9 @@ export function fillFromProfile(
   }
   // A question you answered on an earlier form: your own words, before any rule or the AI.
   const taught = c.learned?.[learnKey(field.label)];
-  if (taught) {
+  // A bare country taught for "Location" ("india") loses to the city you live in: pickers turn it into Indianapolis.
+  const bareCountry = taught && c.city && /^(india|bharat)$/i.test(taught.trim());
+  if (taught && !bareCountry) {
     const value = field.options?.length ? pickOption(field.options, taught) : taught;
     if (value) return { value, note: 'you taught RADAR this answer' };
   }
