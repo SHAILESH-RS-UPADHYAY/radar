@@ -243,8 +243,16 @@
       case 'checkboxes':
       case 'checkbox':
         return q.els.some((b) => b.checked);
-      case 'file':
-        return !!(q.el.files && q.el.files.length);
+      case 'file': {
+        if (q.el.files && q.el.files.length) return true;
+        // Ashby/Greenhouse clear the input after uploading and show the file's name with Replace/Remove instead.
+        const block = q.el.closest('[class*="fieldEntry"], .field, fieldset, [class*="upload"]') || q.el.parentElement;
+        return (
+          !!block &&
+          /\.(pdf|docx?|rtf|txt)/i.test(block.textContent || '') &&
+          /replace|remove|delete/i.test(block.textContent || '')
+        );
+      }
       case 'select':
         return selectAnswered(q.el);
       case 'combo':
