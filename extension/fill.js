@@ -1315,6 +1315,8 @@
 
   const FUSE_SECONDS = 60;
   let fuseLit = false;
+  let fuseWhy = '';
+  let fuseWhyLine = null;
   /** The fuse burned down: press the form's Submit and log it when the employer confirms. */
   async function sendNow(hud) {
     if (captchaNow()) return park(hud, ['a CAPTCHA is on the form: finish it, then press Submit']);
@@ -1445,7 +1447,12 @@
       // HACK: once every answer is in and pre-flight is clean, light the fuse (once per tab).
       if (!AUTO && hud && !fuseLit && !arrived && !newStep && asking === 0 && !packet.partial) {
         const verdict = radarPreflight.preflight(snapshot(packet));
-        if (verdict.submit) {
+        if (!verdict.submit) {
+          // Say once, in place, why it will not send itself, so nothing waits silently.
+          const why = verdict.reasons.join(' · ');
+          if (why !== fuseWhy) (fuseWhyLine ||= hud.live('YOU', ''))('fuse waits: ' + (fuseWhy = why), 'you');
+        } else {
+          if (fuseWhyLine) fuseWhyLine('fuse: every check passes now', 'ok');
           fuseLit = true;
           if ((await hud.fuse(FUSE_SECONDS)) === 'go') return exclusive(() => sendNow(hud));
           hud.note('Auto-send aborted. Review, then press Submit yourself; RADAR logs it.');
