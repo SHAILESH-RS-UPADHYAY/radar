@@ -297,3 +297,11 @@ describe('taught answers on choice questions', () => {
     expect(fillFromProfile(f, me2, '')?.value).toBe('Job Board (Indeed, ZipRecruiter)');
   });
 });
+
+describe('employment blocks', () => {
+  it('use your own company and never put your notice period in a date', () => {
+    const f = (label: string) => ({ name: 'x', label, type: 'text' as const, required: true });
+    expect(fillFromProfile(f('Company name'), me, '')?.value).toBe(me.currentCompany);
+    expect(fillFromProfile(f('Start date year'), me, '')).toBeNull();
+  });
+});

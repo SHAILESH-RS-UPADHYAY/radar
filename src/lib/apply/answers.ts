@@ -170,9 +170,18 @@ export function fillFromProfile(
     return null;
   }
 
-  if (/current (company|employer)|\borg\b|organi[sz]ation/.test(label)) return text(c.currentCompany);
+  // An employment block's "Company name" is where you work now, never the company you are applying to.
+  if (
+    /current (company|employer)|\borg\b|organi[sz]ation/.test(label) ||
+    /^(company|employer)( name)?\s*\*?$/.test(field.label.toLowerCase().trim())
+  )
+    return text(c.currentCompany);
   if (/current (title|role|position)|job title/.test(label)) return text(c.currentTitle);
-  if (/notice period|earliest.*start|start date|when can you (start|join)|available to start/.test(label))
+  // "Start date month / year" in an employment block is a past date, not your availability.
+  if (
+    /notice period|earliest.*start|start date|when can you (start|join)|available to start/.test(label) &&
+    !/\b(month|year)\b/.test(label)
+  )
     return text(/^0+( days?)?$/i.test(c.noticePeriod.trim()) ? 'Immediate (no notice period)' : c.noticePeriod);
   // A bare small number with no currency is lakhs a year (how Indian forms ask): say so.
   const unit = (a: string) => c.currency || (/^\d+(\.\d+)?$/.test(a.trim()) && Number(a) < 200 ? 'LPA' : '');
