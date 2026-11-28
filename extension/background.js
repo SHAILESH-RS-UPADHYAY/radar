@@ -63,7 +63,7 @@ async function boardApplyLink() {
       links.find((l) => l.dataset.js === 'apply') ||
       links.find(
         (l) =>
-          /^\s*apply( for this (job|position|role)| now| on (the )?(company|employer) (site|website))?\s*$/i.test(
+          /^\s*apply( for this (job|position|role)| now| on (the )?(company|employer) (site|website))?\s*(\(.*\))?\s*$/i.test(
             l.textContent || '',
           ) && l.offsetParent,
       );
