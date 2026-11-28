@@ -548,6 +548,25 @@
     return options.filter((t) => t && !PLACEHOLDER.test(t));
   }
 
+  /** The option closest in meaning to an answer: exact, Yes/No, whole word, then most shared words (≥ half). */
+  function closest(options, answer) {
+    const w = norm(answer);
+    const exact = options.find((o) => o.t === w);
+    if (exact) return exact;
+    const yn = /^(yes|no)( |$)/.exec(w);
+    if (yn) return options.find((o) => o.t === yn[1] || o.t.startsWith(yn[1] + ' ')) || null;
+    const word = options.find((o) => new RegExp('(^| )' + w + '( |$)').test(o.t));
+    if (word) return word;
+    const tokens = w.split(' ').filter((k) => k.length > 2);
+    let top = null;
+    let score = 0;
+    for (const o of options) {
+      const s = tokens.filter((k) => o.t.split(' ').includes(k)).length / Math.max(tokens.length, 1);
+      if (s > score) [top, score] = [o, s];
+    }
+    return score >= 0.5 ? top : null;
+  }
+
   function pickChoices(els, values) {
     let hit = false;
     for (const box of els) {
@@ -555,6 +574,17 @@
       if (!values.some((v) => norm(v) === norm(box.value) || norm(v) === text)) continue;
       hit = true;
       if (!box.checked) box.click();
+    }
+    // No exact option (a taught "Y Combinator job board" vs "Job Board (Indeed, …)"): one radio by meaning.
+    if (!hit && els[0] && els[0].type === 'radio') {
+      const pick = closest(
+        els.map((b) => ({ b, t: norm(choiceText(b)) })),
+        values[0] || '',
+      );
+      if (pick) {
+        if (!pick.b.checked) pick.b.click();
+        hit = true;
+      }
     }
     return hit;
   }
