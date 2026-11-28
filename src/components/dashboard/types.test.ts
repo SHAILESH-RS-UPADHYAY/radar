@@ -46,6 +46,10 @@ describe('opsSignals', () => {
   it('never nags about interviews or offers, and flags closed postings', () => {
     expect(labels(app({ stage: 'interview', stage_changed_at: daysAgo(30) }))).toEqual([]);
     expect(labels(app({}, false))).toEqual(['POSTING CLOSED']);
+    // A page you added yourself is stored inactive on purpose: never "closed".
+    const find = app({}, false);
+    find.job.company = { name: 'PointOne', source: 'Your finds', category: '' };
+    expect(labels(find)).toEqual([]);
   });
 });
 

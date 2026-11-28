@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { Brackets } from '@/components/hud/Hud';
 import { BriefingButton, JobFacts, JobTitle, openOnClick, ScoreMeter, SkillChips } from './SkillChips';
 import { CoachPanel } from './CoachPanel';
-import { postedTag, type MatchAction, type MatchedJob } from './types';
+import { postedTag, postingClosed, type MatchAction, type MatchedJob } from './types';
 
 const PILL =
   'group/run mt-2 flex items-center justify-center gap-2.5 rounded-full border border-phosphor bg-phosphor/10 py-2.5 font-mono text-[11px] font-bold tracking-[0.3em] text-phosphor shadow-[0_0_22px_rgb(var(--glow)/0.35)] transition-all hover:bg-phosphor hover:text-black hover:shadow-[0_0_32px_rgb(var(--glow)/0.6)]';
@@ -68,7 +68,7 @@ export function VaultCard({
               <span className={badge + ' border-hud-amber/50 text-hud-amber'}>NEW · APPLY EARLY</span>
             )}
             {match.auto_saved && <span className={badge + ' border-hud-cyan/40 text-hud-cyan'}>AUTO-MATCHED</span>}
-            {!job.is_active && <span className={badge + ' border-hud-red/40 text-hud-red'}>POSTING CLOSED</span>}
+            {postingClosed(job) && <span className={badge + ' border-hud-red/40 text-hud-red'}>POSTING CLOSED</span>}
           </div>
           <JobTitle title={job.title} onOpen={open} className="text-lg font-bold leading-snug text-white sm:text-xl" />
           <JobFacts job={job} statedExp={statedExp} />

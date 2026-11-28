@@ -198,9 +198,12 @@ export interface OpsSignal {
  * What RADAR can tell about an application without access to the employer's system: whether the posting
  * is still up (checked every scan) and how long it has been waiting on the employer.
  */
+/** "Your finds" are stored inactive so the scanner skips them; they are not closed postings. */
+export const postingClosed = (job: MatchedJob['job']) => !job.is_active && job.company?.source !== 'Your finds';
+
 export function opsSignals(m: MatchedJob, now = Date.now()): OpsSignal[] {
   const signals: OpsSignal[] = [];
-  if (!m.job.is_active) {
+  if (postingClosed(m.job)) {
     signals.push({
       tone: 'alert',
       label: 'POSTING CLOSED',

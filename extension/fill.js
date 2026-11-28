@@ -365,7 +365,7 @@
   // A job page whose form opens only behind its own button ("Apply for this job", "I'm interested", Workable's
   // APPLICATION tab). Opening it is not applying; "Apply with LinkedIn / Indeed" is never pressed.
   const OPENER =
-    /^(apply( now| here| for this (job|position|role))?|i'?m interested|start (my |your )?application|application)$/i;
+    /^(apply( now| here| for this (job|position|role))?|i['’]?m interested|easy apply|start (my |your )?application|application)$/i;
   function openForm() {
     const button = deepAll(document, 'button, a, [role="button"], [role="tab"]').find(
       (b) => visible(b) && !b.closest('form') && OPENER.test((b.textContent || '').replace(/\s+/g, ' ').trim()),
@@ -460,6 +460,10 @@
    * from the network), click the one that matches. `loose` (a place) takes the first suggestion. Nothing picked: the
    * typed text is cleared, so the question shows up as yours.
    */
+  // React Select (Greenhouse boards and their embeds) gives options no role, only ids/classes like these.
+  const OPTION_SEL =
+    '[role="option"], [data-automation-id="promptLeafNode"], [id^="react-select-"][id*="-option-"], [class*="select__option"]';
+
   async function pickCombo(input, wanted, loose) {
     const w = norm(wanted);
     // Whole words only: "india" must not pick "Indianapolis" (or "Indiana").
@@ -469,7 +473,7 @@
     const optionsNow = () => {
       const listId = input.getAttribute('aria-controls') || input.getAttribute('aria-owns');
       const list = (listId && document.getElementById(listId)) || document;
-      return [...list.querySelectorAll('[role="option"], [data-automation-id="promptLeafNode"]')].filter(visible);
+      return [...list.querySelectorAll(OPTION_SEL)].filter(visible);
     };
     // Best option by meaning: exact, then whole word, then most of the answer's words ("Yes, I am authorized" ~ "Yes").
     const best = (options, i) => {
@@ -530,7 +534,7 @@
     clickLike(button);
     for (let i = 0; i < 30; i++) {
       await sleep(100);
-      const options = [...document.querySelectorAll('[role="option"]')].filter(visible);
+      const options = [...document.querySelectorAll(OPTION_SEL)].filter(visible);
       if (options.length) return options;
     }
     return [];
