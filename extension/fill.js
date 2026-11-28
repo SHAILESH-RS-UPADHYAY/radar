@@ -1160,6 +1160,7 @@
       },
       hideSubmitJump: () => (root.querySelector('[data-act="submit"]').hidden = true),
       done(text) {
+        if (root.querySelector('.done')) return; // the watcher and the fuse can both see the confirmation
         api.state('LOGGED', '#00FF41');
         $('.needs').hidden = true;
         $('.row').hidden = true;
