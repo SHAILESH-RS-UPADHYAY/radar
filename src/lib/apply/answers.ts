@@ -146,8 +146,10 @@ export function fillFromProfile(
   if (/current (company|employer)|\borg\b|organi[sz]ation/.test(label)) return text(c.currentCompany);
   if (/current (title|role|position)|job title/.test(label)) return text(c.currentTitle);
   if (/notice period|earliest.*start|start date|when can you (start|join)|available to start/.test(label))
-    return text(c.noticePeriod);
-  const pay = (amount: string) => text(amount ? [amount, c.currency].filter(Boolean).join(' ') : '');
+    return text(/^0+( days?)?$/i.test(c.noticePeriod.trim()) ? 'Immediate (no notice period)' : c.noticePeriod);
+  // A bare small number with no currency is lakhs a year (how Indian forms ask): say so.
+  const unit = (a: string) => c.currency || (/^\d+(\.\d+)?$/.test(a.trim()) && Number(a) < 200 ? 'LPA' : '');
+  const pay = (amount: string) => text(amount ? [amount, unit(amount)].filter(Boolean).join(' ') : '');
   if (/current (ctc|salary|compensation|pay)/.test(label)) return pay(c.currentCtc);
   if (/expected|desired|salary expectation|compensation expectation/.test(label)) return pay(c.expectedCtc);
   // Where you are now; a preferred office is left to the AI, which reads the job's locations.
@@ -172,6 +174,9 @@ Rules:
 - A yes/no question about something the materials never mention (a security clearance, a licence, having worked here before): answer "No", since a "Yes" would be a claim nothing supports. Where they say where the candidate lives, answer location questions from it.
 - If the materials do not answer a question and either answer could be true, return "" for it. The candidate will answer it.
 - Short text fields: a few words. "Why this company / role": 2 to 4 sentences, under 80 words, tied to what the company builds and what the candidate has built. Other long answers: under 120 words.
+- "Why us" answers must name one specific thing from the job text (the product, a problem it mentions, its stack) and connect it to one specific thing the candidate built, with its number if there is one. No praise of the company ("leading", "definitive", "cutting-edge", "innovative", "world-class"), no restating the mission.
+- Pick the project that fits this job best (voice, RAG, agents, backend latency, data pipelines, extensions…), not always the same one.
+- Pay and notice answers carry their unit: "8 LPA", "Immediate (no notice period)", never a bare number.
 - A field that lists options: the value must be exactly one of the options (multi-select: an array of them).
 - Never write: ${STOCK_PHRASES.join(', ')}. No emojis, exclamation marks, dashes, semicolons, lists or markdown.
 

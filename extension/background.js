@@ -370,6 +370,11 @@ const handlers = {
     if (sender.frameId !== 0) tellPage(sender.tab.id, { type: 'frame-report', done: true });
     return { ok: true };
   },
+  // From a RADAR tab: load the extension's files again (picks up an update of an unpacked install).
+  async reload() {
+    setTimeout(() => chrome.runtime.reload(), 100);
+    return { ok: true };
+  },
 };
 
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {

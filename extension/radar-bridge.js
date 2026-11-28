@@ -49,7 +49,7 @@ window.addEventListener('message', (event) => {
       () => void chrome.runtime.lastError,
     );
   // ZERO-DAY's controls: plain relays to the worker.
-  if (['switch', 'focus', 'close', 'badge', 'schedule'].includes(msg.type))
+  if (['switch', 'focus', 'close', 'badge', 'schedule', 'reload'].includes(msg.type))
     return chrome.runtime.sendMessage(msg, () => void chrome.runtime.lastError);
   if (msg.type === 'launch')
     chrome.runtime.sendMessage(
