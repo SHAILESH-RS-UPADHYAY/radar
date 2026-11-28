@@ -662,7 +662,14 @@
       ok = true;
       for (const v of values) ok = (await pickCombo(q.el, v, place)) && ok;
     } else if (q.kind !== 'file') {
-      await typeInto(q.el, values.join(', '));
+      let text = values.join(', ');
+      // A number box takes only the number: "4.5 LPA" → 4.5, "USD 120k" → 120000.
+      if (q.el.type === 'number') {
+        const m = /(\d+(?:[.,]\d+)?)\s*(k)?/i.exec(text.replace(/,(?=\d{3})/g, ''));
+        if (!m) return false;
+        text = String(Number(m[1].replace(',', '.')) * (m[2] ? 1000 : 1));
+      }
+      await typeInto(q.el, text);
       ok = true;
     }
     if (ok) glow(q.kind === 'buttons' ? q.el.parentElement : q.el);
