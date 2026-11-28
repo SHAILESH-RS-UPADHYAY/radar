@@ -97,6 +97,8 @@
   ];
   const keyOf = (label) => {
     const l = norm(label);
+    // A long question or one about someone else ("referred by… their email") is not your standard field.
+    if (l.split(' ').length > 7 || /\brefer|recruiter|manager|reference|emergency\b/.test(l)) return null;
     for (const [k, re] of KEYS) if (re.test(l)) return k;
     return null;
   };
@@ -590,6 +592,9 @@
     const q = el && questionOf(el);
     if (!q) return { status: 'missing' };
     if (answered(q)) return { status: 'kept', q };
+    // The packet's field landed on the wrong control: a phone number or an email never answers a written question.
+    if (q.kind === 'textarea' && values.length === 1 && /^(\+?[\d\s()-]{7,}|\S+@\S+\.\S+)$/.test(values[0].trim()))
+      return { status: 'missing', q };
     return { status: (await answer(q, values, field.submit)) ? 'filled' : 'missing', q };
   }
 

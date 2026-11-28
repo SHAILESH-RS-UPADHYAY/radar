@@ -113,8 +113,12 @@ export function fillFromProfile(
   if (field.name === 'first_name' || /\bfirst name\b/.test(label)) return text(first || '');
   if (field.name === 'last_name' || /\b(last|family) name\b/.test(label)) return text(rest.join(' '));
   if (field.name === 'name' || /^(full )?name\b/.test(field.label.toLowerCase())) return text(c.fullName);
-  if (field.type === 'email' || /\be-?mail\b/.test(label)) return text(c.email);
-  if (field.type === 'tel' || /\bphone|mobile\b/.test(label)) return text(c.phone);
+  // "Referred by someone? Their email" asks about another person: never your own contact details.
+  const someoneElse = /\brefer|recruiter|manager|reference|emergency\b/.test(label);
+  if (!someoneElse && field.type !== 'textarea') {
+    if (field.type === 'email' || /\be-?mail\b/.test(label)) return text(c.email);
+    if (field.type === 'tel' || /\bphone|mobile\b/.test(label)) return text(c.phone);
+  }
   if (/linkedin/.test(label)) return text(c.linkedin);
   if (/github/.test(label)) return text(c.github);
   if (/portfolio/.test(label)) return text(c.portfolio || c.website);
