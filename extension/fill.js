@@ -1164,7 +1164,10 @@
         const big = document.createElement('div');
         big.className = 'done';
         big.textContent = '✓ APPLICATION LOGGED';
-        $('.log').appendChild(big);
+        // Pinned above the log, panel unfolded, so it is seen the moment it happens (not buried under old lines).
+        $('.body').prepend(big);
+        hud.classList.remove('closed');
+        $('.log').scrollTop = $('.log').scrollHeight;
       },
     };
     return api;
