@@ -1479,6 +1479,12 @@
 
   /** A frame (a form embedded from an ATS): fill it quietly; the page's panel shows the result. */
   async function runInFrame() {
+    // An answer typed in the panel for a question in this frame (Greenhouse's embed): fill it here.
+    chrome.runtime.onMessage.addListener((msg) => {
+      if (!msg || msg.type !== 'teach') return;
+      const q = questions().find((x) => x.label === msg.question);
+      if (q && !answered(q)) void exclusive(() => answer(q, [msg.value]));
+    });
     let entry = await ask({ type: 'packet' });
     if (!entry || entry.done) return;
     AUTO = entry.auto;
@@ -1514,12 +1520,18 @@
       const q = el && questionOf(el);
       if (q && (q.kind === 'text' || q.kind === 'textarea')) setValue(q.el, text);
     });
+    // The form may live in a frame: then its list is the frame's, minus what you just taught.
+    const taughtHere = new Set();
+    const refreshNeeds2 = () =>
+      fromFrame
+        ? hud.needs((fromFrame.labels || []).filter((l) => !taughtHere.has(l)).map((label) => ({ label })))
+        : hud.needs(stillEmpty());
     // You answered a question in the form itself: it leaves NEEDS YOU right away, not at the next report.
     let redraw = 0;
     const refreshNeeds = (e) => {
       if (!e.isTrusted) return;
       clearTimeout(redraw);
-      redraw = setTimeout(() => hud.needs(stillEmpty()), 350);
+      redraw = setTimeout(refreshNeeds2, 350);
     };
     document.addEventListener('input', refreshNeeds, true);
     document.addEventListener('change', refreshNeeds, true);
@@ -1527,9 +1539,11 @@
       const q = questionFor(question, el);
       if (q && (q.kind === 'text' || q.kind === 'textarea')) setValue(q.el, value);
       else if (q && !answered(q)) await exclusive(() => answer(q, [value]));
+      else if (!q) await ask({ type: 'teach-frames', question, value }); // it lives in an embedded form
       await ask({ type: 'learn', question, answer: value });
       hud.log('OK', `learned "${question.slice(0, 48)}": RADAR answers it from now on`, 'ok');
-      hud.needs(stillEmpty());
+      taughtHere.add(question);
+      refreshNeeds2();
     });
     hud.on('sent', async () => {
       learnYours();

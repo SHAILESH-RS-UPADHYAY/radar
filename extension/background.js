@@ -373,6 +373,11 @@ const handlers = {
     if (sender.frameId !== 0) tellPage(sender.tab.id, { type: 'frame-report', done: true });
     return { ok: true };
   },
+  // The panel (top frame) answered a question that lives in an embedded form: every frame of the tab tries it.
+  async 'teach-frames'(msg, sender) {
+    chrome.tabs.sendMessage(sender.tab.id, { type: 'teach', question: msg.question, value: msg.value }).catch(() => {});
+    return { ok: true };
+  },
   // From a RADAR tab: load the extension's files again (picks up an update of an unpacked install).
   async reload() {
     setTimeout(() => chrome.runtime.reload(), 100);
