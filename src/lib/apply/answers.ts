@@ -181,6 +181,8 @@ Rules:
 - Short text fields: a few words. "Why this company / role": 2 to 4 sentences, under 80 words, tied to what the company builds and what the candidate has built. Other long answers: under 120 words.
 - "Why us" answers must name one specific thing from the job text (the product, a problem it mentions, its stack) and connect it to one specific thing the candidate built, with its number if there is one. No praise of the company ("leading", "definitive", "cutting-edge", "innovative", "world-class"), no restating the mission.
 - Pick the project that fits this job best (voice, RAG, agents, backend latency, data pipelines, extensions…), not always the same one.
+- A take-home exercise, assignment or test submission link: return "". Never put a portfolio or project link there.
+- "Describe / walk us through / tell us about" questions get full sentences about one project, never just its name.
 - Pay and notice answers carry their unit: "8 LPA", "Immediate (no notice period)", never a bare number.
 - A field that lists options: the value must be exactly one of the options (multi-select: an array of them).
 - Never write: ${STOCK_PHRASES.join(', ')}. No emojis, exclamation marks, dashes, semicolons, lists or markdown.
@@ -196,6 +198,13 @@ export interface AnswerContext {
   /** false = profile facts only, no AI (the first, instant fill of a form). Default true. */
   draft?: boolean;
 }
+
+/** A "describe / walk us through / tell us" question needs sentences: a few words are a non-answer. */
+export const tooThin = (f: Pick<FormField, 'type' | 'label'>, value: string) =>
+  (f.type === 'textarea' ||
+    /^(describe|tell us|walk us|explain|why|how|what (makes|excites|interests))/i.test(f.label.trim())) &&
+  value.split(/\s+/).filter(Boolean).length < 6 &&
+  !/^(yes|no|n\/a|none|immediately|https?:)/i.test(value);
 
 /** A written answer worth humanizing: free text of a sentence or more (not "Bengaluru", not a picked option). */
 const isProse = (f: FilledField) =>
@@ -265,6 +274,8 @@ export async function answerForm(
       if (f.type === 'multiselect') value = (Array.isArray(raw) ? raw : [raw]).filter((v) => f.options?.includes(v));
       else if (f.type === 'select') value = f.options?.includes(String(raw)) ? String(raw) : '';
       else value = (Array.isArray(raw) ? raw.join(', ') : raw).trim().slice(0, 2000);
+      // A written question answered with a bare name ("RADAR") is no answer: leave it for you, never send it.
+      if (typeof value === 'string' && tooThin(f, value)) value = '';
       if (Array.isArray(value) ? value.length : value) Object.assign(f, { value, by: 'ai' as const });
     }
 

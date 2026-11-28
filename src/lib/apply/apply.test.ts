@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { applicationFormUrl, parseGreenhouseForm, parseLeverForm } from './form';
-import { answerForm, fillFromProfile, sponsorshipFor, YOUR_CALL, type Candidate } from './answers';
+import { answerForm, fillFromProfile, sponsorshipFor, tooThin, YOUR_CALL, type Candidate } from './answers';
 import { fillPacket } from './bridge';
 
 // Shapes copied from live postings (Greenhouse ?questions=true, a Lever apply page), cut down.
@@ -273,5 +273,13 @@ describe('fillPacket', () => {
       partial: true,
       fields: [{ name: 'email', value: 'a@b.c' }],
     });
+  });
+});
+
+describe('tooThin', () => {
+  it('rejects a bare project name for a written question, keeps real short answers', () => {
+    expect(tooThin({ type: 'textarea', label: 'Describe a time you worked with a customer' }, 'RADAR')).toBe(true);
+    expect(tooThin({ type: 'textarea', label: 'Anything else?' }, 'No')).toBe(false);
+    expect(tooThin({ type: 'text', label: 'Current company' }, 'WebVory')).toBe(false);
   });
 });
