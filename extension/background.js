@@ -155,12 +155,15 @@ async function openForm(msg, sender) {
   if (url.protocol !== 'https:') return { ok: false, error: 'only https forms are opened' };
   if (msg.packet && msg.packet.radar !== 1) return { ok: false, error: 'not a RADAR fill packet' };
   // ZERO-DAY opens forms in the background, so they never steal your screen.
+  // Next to the RADAR tab, in its window and tab group: not in whichever window you happen to be looking at.
   const tab = await chrome.tabs.create({
     url: url.href,
+    windowId: sender.tab.windowId,
     index: sender.tab.index + 1,
     openerTabId: sender.tab.id,
     active: !msg.auto,
   });
+  if (sender.tab.groupId > -1) chrome.tabs.group({ groupId: sender.tab.groupId, tabIds: tab.id }).catch(() => {});
   await write(tab.id, {
     packet: msg.packet || null,
     version: msg.packet ? 1 : 0,
