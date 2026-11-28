@@ -439,31 +439,64 @@
    * typed text is cleared, so the question shows up as yours.
    */
   async function pickCombo(input, wanted, loose) {
+    const w = norm(wanted);
+    // Whole words only: "india" must not pick "Indianapolis" (or "Indiana").
+    // norm() leaves only [a-z0-9 ], so w needs no escaping.
+    const word = new RegExp('(^|[^a-z0-9])' + w + '($|[^a-z0-9])');
+    const tokens = w.split(' ').filter((t) => t.length > 2);
+    const optionsNow = () => {
+      const listId = input.getAttribute('aria-controls') || input.getAttribute('aria-owns');
+      const list = (listId && document.getElementById(listId)) || document;
+      return [...list.querySelectorAll('[role="option"], [data-automation-id="promptLeafNode"]')].filter(visible);
+    };
+    // Best option by meaning: exact, then whole word, then most of the answer's words ("Yes, I am authorized" ~ "Yes").
+    const best = (options, i) => {
+      const t = (o) => norm(o.textContent);
+      const exact = options.find((o) => t(o) === w) || options.find((o) => word.test(t(o)));
+      if (exact) return exact;
+      const yesNo = /^(yes|no)( |$)/.exec(w);
+      if (yesNo) {
+        const yn = options.find((o) => t(o) === yesNo[1] || t(o).startsWith(yesNo[1] + ' '));
+        if (yn) return yn;
+      }
+      let top = null;
+      let score = 0;
+      for (const o of options) {
+        const s = tokens.filter((k) => t(o).split(' ').includes(k)).length / Math.max(tokens.length, 1);
+        if (s > score) [top, score] = [o, s];
+      }
+      if (top && score >= 0.5) return top;
+      // A place with no word match: the first suggestion only if it does not merely share a prefix with it.
+      return loose && i >= 8 ? options.find((o) => !t(o).startsWith(w.slice(0, 4))) : null;
+    };
+    const choose = async (hit) => {
+      hit.scrollIntoView({ block: 'nearest' });
+      clickLike(hit);
+      await sleep(200);
+      return true;
+    };
+
+    // 1. Open the dropdown as a person would and read its options; pick from the full list when it is short.
     input.focus({ preventScroll: true });
     clickLike(input);
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', keyCode: 40, bubbles: true }));
+    for (let i = 0; i < 8; i++) {
+      await sleep(100);
+      const options = optionsNow();
+      if (options.length && options.length <= 60) {
+        const hit = best(options, 0);
+        if (hit) return choose(hit);
+        break;
+      }
+    }
+    // 2. A long or searched list: type to narrow it, then pick the matching suggestion.
     setValue(input, wanted);
     // Workday searches on Enter, not as you type.
     if (WORKDAY) input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
-    const w = norm(wanted);
-    // Whole words only: "india" must not pick "Indianapolis" (or "Indiana").
-    const word = new RegExp('(^|[^a-z0-9])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^a-z0-9])');
     for (let i = 0; i < 40; i++) {
       await sleep(100);
-      const listId = input.getAttribute('aria-controls') || input.getAttribute('aria-owns');
-      const list = (listId && document.getElementById(listId)) || document;
-      const options = [...list.querySelectorAll('[role="option"], [data-automation-id="promptLeafNode"]')].filter(
-        visible,
-      );
-      const hit =
-        options.find((o) => norm(o.textContent) === w) ||
-        options.find((o) => word.test(norm(o.textContent))) ||
-        // A place with no word match: the first suggestion only if it does not merely share a prefix with it.
-        (loose && i >= 8 && options.find((o) => !norm(o.textContent).startsWith(w.slice(0, 4))));
-      if (hit) {
-        clickLike(hit);
-        await sleep(150);
-        return true;
-      }
+      const hit = best(optionsNow(), i);
+      if (hit) return choose(hit);
     }
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
     setValue(input, '');
