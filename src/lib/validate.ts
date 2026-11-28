@@ -72,6 +72,9 @@ export const learnKey = (question: string) =>
 const MAX_LEARNED = 200;
 
 /** An Application Kit from the browser (or the database) → every field present, trimmed and capped. */
+// The extension panel's own text, learned by mistake before 1.9.2.
+const PANEL_TEXT = /^\s*radar( remembers)?\s*$/i;
+
 export function cleanKit(input: unknown): ApplicationKit {
   const o = (input && typeof input === 'object' ? input : {}) as Record<string, unknown>;
   const text = (k: keyof ApplicationKit, max = 120) =>
@@ -82,10 +85,13 @@ export function cleanKit(input: unknown): ApplicationKit {
     if (k === 'needs_sponsorship' || k === 'willing_to_relocate') kit[k] = yesNo(k);
     else kit[k] = text(k, k === 'voice_notes' ? 1500 : k === 'work_authorization' || k === 'deal_breakers' ? 200 : 120);
   }
-  // What you taught RADAR on forms: kept through every save, so a Settings edit never forgets it.
+  // What you taught RADAR on forms (never the panel's own words, which browser autofill once fed back): kept through every save, so a Settings edit never forgets it.
   if (o.learned && typeof o.learned === 'object') {
     const learned = Object.entries(o.learned as Record<string, unknown>)
-      .filter((e): e is [string, string] => typeof e[1] === 'string' && !!e[1].trim() && !!learnKey(e[0]))
+      .filter(
+        (e): e is [string, string] =>
+          typeof e[1] === 'string' && !!e[1].trim() && !!learnKey(e[0]) && !PANEL_TEXT.test(e[1]),
+      )
       .slice(-MAX_LEARNED)
       .map(([q, a]) => [learnKey(q), a.trim().slice(0, 2000)]);
     if (learned.length) kit.learned = Object.fromEntries(learned);

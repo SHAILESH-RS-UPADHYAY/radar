@@ -975,19 +975,24 @@
             const box = document.createElement('form');
             box.className = 'answer';
             box.innerHTML =
-              '<input placeholder="type here: fills the form, RADAR remembers"><button type="submit">↵</button>';
+              '<input autocomplete="off" name="radar-teach" placeholder="type here: fills the form, RADAR remembers"><button type="submit">↵</button>';
             const input = box.querySelector('input');
+            // Only what you typed is learned: browser autofill must never teach RADAR ("RADAR" once became an answer).
+            let typed = false;
+            input.addEventListener('keydown', (e) => (typed = typed || (e.isTrusted && e.key.length === 1)));
+            input.addEventListener('paste', () => (typed = true));
             input.addEventListener('input', () => mirror && mirror(el, input.value));
             let taught = '';
             const commit = () => {
               const value = input.value.trim();
-              if (!value || value === taught || !teach) return;
+              if (!typed || !value || value === taught || !teach) return;
               taught = value;
               teach(label, value, el);
             };
             box.addEventListener('submit', (e) => {
               e.preventDefault();
               commit();
+              input.blur(); // focus leaving the list lets it redraw at once
             });
             input.addEventListener('blur', () => {
               commit();
@@ -1438,6 +1443,15 @@
       const q = el && questionOf(el);
       if (q && (q.kind === 'text' || q.kind === 'textarea')) setValue(q.el, text);
     });
+    // You answered a question in the form itself: it leaves NEEDS YOU right away, not at the next report.
+    let redraw = 0;
+    const refreshNeeds = (e) => {
+      if (!e.isTrusted) return;
+      clearTimeout(redraw);
+      redraw = setTimeout(() => hud.needs(stillEmpty()), 350);
+    };
+    document.addEventListener('input', refreshNeeds, true);
+    document.addEventListener('change', refreshNeeds, true);
     hud.onTeach(async (question, value, el) => {
       const q = questionFor(question, el);
       if (q && (q.kind === 'text' || q.kind === 'textarea')) setValue(q.el, value);

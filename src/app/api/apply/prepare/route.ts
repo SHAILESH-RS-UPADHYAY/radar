@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+import { cleanKit } from '@/lib/validate';
 import { NextResponse, type NextRequest } from 'next/server';
 import { auth, currentUser } from '@clerk/nextjs/server';
 import { z } from 'zod';
@@ -85,7 +86,7 @@ export async function POST(req: NextRequest) {
         applyUrl: job.apply_url,
       });
 
-  const kit = profile.application_kit;
+  const kit = cleanKit(profile.application_kit);
   const links = profile.portfolio;
   const candidate: Candidate = {
     fullName: profile.full_name || user?.fullName || '',
