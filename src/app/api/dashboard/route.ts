@@ -15,6 +15,8 @@ import { serverError } from '@/lib/api';
 
 export const dynamic = 'force-dynamic';
 
+// Discovery hides new matches posted longer ago than this.
+const POSTING_MAX_AGE_MS = 120 * 86_400_000;
 const NO_ATS = { provider: null, identifier: null, externalId: '' };
 
 const job = (extra: string) => `
@@ -110,7 +112,11 @@ export async function GET() {
     applications.set(nameOf(m), (applications.get(nameOf(m)) || 0) + 1);
   // A role you applied to that another source lists again (the company's feed and an alert) is not a new signal.
   const appliedRoles = new Set(appliedRows.map((m) => jobKey(nameOf(m), m.jobs.title)));
-  const fresh = (m: any) => m.status === 'applied' || !appliedRoles.has(jobKey(nameOf(m), m.jobs.title));
+  // A new signal posted months ago is an evergreen ad or a filled role (some boards still list 2-year-old ones).
+  const ancient = (m: any) => m.jobs.posted_at && Date.now() - Date.parse(m.jobs.posted_at) > POSTING_MAX_AGE_MS;
+  const fresh = (m: any) =>
+    m.status === 'applied' ||
+    (!appliedRoles.has(jobKey(nameOf(m), m.jobs.title)) && !(m.status === 'new' && ancient(m)));
   // Alert jobs are shown only to the account whose inbox they came from (see alert-owner.ts).
   const owns = await ownsPromise;
   const fromAlerts = (m: any) => ALERT_SOURCE_KEYS.includes(m.jobs.companies.ats_provider);
