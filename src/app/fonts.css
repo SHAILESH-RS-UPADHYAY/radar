@@ -1,0 +1,64 @@
+/* Every typeface ships from npm (fontsource), so a build never downloads from Google Fonts: that download timing out
+   or being rate-limited was what failed CI and Vercel builds. @font-face files load only when a page uses them. */
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/outfit';
+@import '@fontsource-variable/jetbrains-mono';
+@import '@fontsource-variable/newsreader';
+@import '@fontsource-variable/playfair-display';
+@import '@fontsource-variable/quicksand';
+@import '@fontsource-variable/cormorant-garamond';
+@import '@fontsource-variable/jost';
+@import '@fontsource-variable/pixelify-sans';
+@import '@fontsource-variable/baloo-2';
+@import '@fontsource-variable/dm-sans';
+@import '@fontsource-variable/lora';
+@import '@fontsource-variable/caveat';
+@import '@fontsource-variable/nunito';
+@import '@fontsource-variable/fredoka';
+@import '@fontsource/comic-neue/400.css';
+@import '@fontsource/comic-neue/700.css';
+@import '@fontsource/chakra-petch/400.css';
+@import '@fontsource/chakra-petch/500.css';
+@import '@fontsource/chakra-petch/600.css';
+@import '@fontsource/chakra-petch/700.css';
+@import '@fontsource/bangers/400.css';
+@import '@fontsource/zen-maru-gothic/400.css';
+@import '@fontsource/zen-maru-gothic/500.css';
+@import '@fontsource/zen-maru-gothic/700.css';
+@import '@fontsource/zen-maru-gothic/900.css';
+@import '@fontsource/gaegu/400.css';
+@import '@fontsource/gaegu/700.css';
+@import '@fontsource/mochiy-pop-one/400.css';
+@import '@fontsource/patrick-hand/400.css';
+@import '@fontsource/architects-daughter/400.css';
+@import '@fontsource/m-plus-rounded-1c/400.css';
+@import '@fontsource/m-plus-rounded-1c/500.css';
+@import '@fontsource/m-plus-rounded-1c/700.css';
+@import '@fontsource/m-plus-rounded-1c/800.css';
+
+:root {
+  --font-inter: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-outfit: 'Outfit Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-jetbrains: 'JetBrains Mono Variable', ui-monospace, Consolas, monospace;
+  --font-newsreader: 'Newsreader Variable', Georgia, serif;
+  --font-playfair: 'Playfair Display Variable', Georgia, serif;
+  --font-quicksand: 'Quicksand Variable', ui-sans-serif, sans-serif;
+  --font-cormorant: 'Cormorant Garamond Variable', Georgia, serif;
+  --font-jost: 'Jost Variable', ui-sans-serif, sans-serif;
+  --font-architect: 'Architects Daughter', cursive;
+  --font-pixelify: 'Pixelify Sans Variable', ui-monospace, monospace;
+  --font-baloo: 'Baloo 2 Variable', ui-sans-serif, sans-serif;
+  --font-dmsans: 'DM Sans Variable', ui-sans-serif, sans-serif;
+  --font-lora: 'Lora Variable', Georgia, serif;
+  --font-caveat: 'Caveat Variable', cursive;
+  --font-nunito: 'Nunito Variable', ui-sans-serif, sans-serif;
+  --font-chakra: 'Chakra Petch', ui-sans-serif, sans-serif;
+  --font-comic: 'Comic Neue', 'Comic Sans MS', cursive;
+  --font-bangers: 'Bangers', Impact, sans-serif;
+  --font-zenmaru: 'Zen Maru Gothic', ui-sans-serif, sans-serif;
+  --font-gaegu: 'Gaegu', cursive;
+  --font-fredoka: 'Fredoka Variable', ui-sans-serif, sans-serif;
+  --font-mochiy: 'Mochiy Pop One', ui-sans-serif, sans-serif;
+  --font-patrick: 'Patrick Hand', cursive;
+  --font-mplus: 'M PLUS Rounded 1c', ui-sans-serif, sans-serif;
+}

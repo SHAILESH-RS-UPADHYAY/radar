@@ -1,15 +1,11 @@
 import type { Metadata, Viewport } from 'next';
 import { ClerkProvider } from '@clerk/nextjs';
-import { Inter, JetBrains_Mono, Outfit } from 'next/font/google';
+import './fonts.css';
 import './globals.css';
 import SignalCursor from '@/components/ui/SignalCursor';
 import { LookRoot } from '@/components/looks/LookRoot';
 import { ServiceWorker } from '@/components/site/InstallButton';
 import { SITE_URL } from '@/lib/site';
-
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter' });
-const outfit = Outfit({ subsets: ['latin'], variable: '--font-outfit' });
-const mono = JetBrains_Mono({ subsets: ['latin'], variable: '--font-jetbrains' });
 
 const DESCRIPTION = 'Your career, on autopilot. AI-powered job matching straight from company careers pages.';
 
@@ -72,8 +68,8 @@ export default function RootLayout({
       signInFallbackRedirectUrl="/dashboard"
       signUpFallbackRedirectUrl="/onboarding"
     >
-      <html lang="en" className={inter.variable} suppressHydrationWarning>
-        <body className={[inter.variable, outfit.variable, mono.variable, 'antialiased'].join(' ')}>
+      <html lang="en" suppressHydrationWarning>
+        <body className="antialiased">
           <LookRoot>{children}</LookRoot>
           <SignalCursor />
           <ServiceWorker />

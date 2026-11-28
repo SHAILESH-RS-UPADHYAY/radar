@@ -117,7 +117,7 @@ export default function SignalCursor() {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // next/font gives the mono face a generated family name; read it off the class that uses it.
+    // Read the mono face off the class that uses it (src/app/fonts.css defines it).
     const probe = document.createElement('span');
     probe.className = 'font-mono';
     document.body.appendChild(probe);
