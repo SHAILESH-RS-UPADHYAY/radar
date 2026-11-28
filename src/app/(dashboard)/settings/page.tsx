@@ -19,6 +19,7 @@ import { PortfolioSection } from '@/components/settings/PortfolioSection';
 import { LookPicker } from '@/components/looks/LookPicker';
 import { ResumeAuditView } from '@/components/settings/ResumeAuditView';
 import { ApplicationKitSection } from '@/components/settings/ApplicationKitSection';
+import { ExtensionAnswers } from '@/components/settings/ExtensionAnswers';
 import { ScanConsole, type ScanDone } from '@/components/dashboard/ScanConsole';
 
 interface CityCompany {
@@ -500,6 +501,7 @@ export default function SettingsPage() {
 
   return (
     <div className="relative min-h-screen bg-void">
+      <ExtensionAnswers />
       <div className="hud-grid pointer-events-none fixed inset-0" aria-hidden="true" />
 
       <header className="sticky top-0 z-40 border-b border-phosphor/15 bg-black/85 backdrop-blur-md">
