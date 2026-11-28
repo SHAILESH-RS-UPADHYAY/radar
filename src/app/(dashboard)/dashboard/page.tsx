@@ -183,6 +183,10 @@ export default function DashboardPage() {
   const [heldBack, setHeldBack] = useState<Record<string, number>>({});
   const [vaultExp, setVaultExp] = useState<Record<string, StatedExperience>>({});
   const [primaryTab, setPrimaryTab] = useState<PrimaryTab>('DISCOVERY');
+  // A tab opens at its top, not wherever the last tab was scrolled to.
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' as ScrollBehavior });
+  }, [primaryTab]);
   const [activeTab, setActiveTab] = useState<Section>('recommended');
   // C2 · OPS: which stage's pill is open (APPLIED by default: the biggest pile).
   const [opsLane, setOpsLane] = useState<OpsLane>('applied');
