@@ -976,6 +976,7 @@
     setInterval(() => host.isConnected || document.documentElement.appendChild(host), 400);
     const $ = (s) => root.querySelector(s);
     const hud = $('.hud');
+    let stopFuse = null;
     $('.job').textContent = job;
     // A running packet stream under the header; it races while the panel is dragged.
     const hexLine = () =>
@@ -1187,8 +1188,11 @@
             clearInterval(timer);
             document.removeEventListener('input', typed, true);
             box.remove();
+            stopFuse = null;
             resolve(how);
           };
+          // The application was logged another way (you pressed Submit yourself): the fuse stops for good.
+          stopFuse = () => end('abort');
           // You are editing the form: the fuse waits for you.
           // Only your own typing holds it: RADAR's fills (and answers taught in the panel) fire synthetic events.
           const typed = (e) =>
@@ -1211,6 +1215,7 @@
       },
       hideSubmitJump: () => (root.querySelector('[data-act="submit"]').hidden = true),
       done(text) {
+        if (stopFuse) stopFuse();
         if (root.querySelector('.done')) return; // the watcher and the fuse can both see the confirmation
         api.state('LOGGED', '#00FF41');
         $('.needs').hidden = true;
@@ -1538,6 +1543,8 @@
           if (fuseWhyLine) fuseWhyLine('fuse: every check passes now', 'ok');
           fuseLit = true;
           if ((await hud.fuse(FUSE_SECONDS)) === 'go') return exclusive(() => sendNow(hud));
+          const after = await ask({ type: 'packet' });
+          if (!after || after.done) return; // already logged: nothing left to do here
           hud.note('Auto-send aborted. Review, then press Submit yourself; RADAR logs it.');
         }
       }
