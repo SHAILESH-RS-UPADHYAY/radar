@@ -830,6 +830,24 @@
       .arm .j{font-size:10px;color:#c9a3ae;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
       .arm .row{margin-top:0}.arm button.go{background:#FF2A6D;border-color:#FF2A6D;color:#000}
       @keyframes drain{to{transform:scaleX(0)}}
+      .fuse{margin:10px 0 4px;padding:10px 10px 8px;border:1px solid rgba(255,176,0,.35);background:
+        linear-gradient(90deg,rgba(255,176,0,.06),transparent 60%),repeating-linear-gradient(135deg,transparent 0 6px,rgba(255,176,0,.035) 6px 7px);animation:in .25s ease}
+      .fuse .top{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+      .fuse b{font-size:9px;letter-spacing:.3em;color:#FFB000}
+      .fuse .clock{font-size:30px;font-weight:800;color:#FFE7A8;font-variant-numeric:tabular-nums;text-shadow:0 0 18px rgba(255,140,0,.6)}
+      .fuse .clock small{font-size:11px;color:#a8874a;margin-left:2px}
+      .fuse .wire{position:relative;height:14px;margin:6px 0 8px}
+      .fuse .wire:before{content:"";position:absolute;left:0;right:0;top:6px;height:2px;
+        background:repeating-linear-gradient(90deg,#6b4b12 0 5px,#3a2806 5px 8px)}
+      .fuse .ash{position:absolute;right:0;top:6px;height:2px;background:#1a1408;width:0}
+      .fuse .spark{position:absolute;top:1px;width:12px;height:12px;margin-left:-6px;border-radius:50%;
+        background:radial-gradient(circle,#fff 0 18%,#FFD54A 30%,#FF7A00 55%,transparent 70%);
+        box-shadow:0 0 14px 4px rgba(255,140,0,.55);animation:spark .14s steps(2) infinite}
+      .fuse.held .spark{animation:none;filter:grayscale(1) brightness(.6);box-shadow:none}
+      .fuse.held .clock{color:#8a7a5a;text-shadow:none}
+      .fuse .why{font-size:10px;color:#a8874a;min-height:15px}
+      .fuse .row{margin-top:6px}.fuse button.go{background:#FFB000;border-color:#FFB000;color:#000}
+      @keyframes spark{50%{transform:scale(.7) rotate(40deg);opacity:.75}}
       @media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
     </style>
     <section class="hud" role="status" aria-live="polite">
@@ -841,7 +859,7 @@
       <div class="fold"><div><div class="body"><div class="log"></div>
         <div class="needs" hidden><b>NEEDS YOU · TYPE HERE, RADAR LEARNS</b><div class="list"></div></div>
         <div class="row"><button class="btn" data-act="submit">▼ SUBMIT</button><button class="btn go" data-act="sent">✓ I SUBMITTED IT</button></div>
-        <div class="note">RADAR never presses Submit. Review, then send it yourself.</div></div></div></div>
+        <div class="note">Once every field is filled, a 60 s fuse sends it. Hold it any time to review.</div></div></div></div>
     </section>`;
     document.documentElement.appendChild(host);
     // Apps that hydrate the whole document (Greenhouse is a Remix app) drop nodes they did not render: put it back.
@@ -1006,6 +1024,60 @@
           });
         });
       },
+      /**
+       * HACK's auto-send: a burning fuse for `sec` seconds. HOLD pauses it (so does typing in the form), SEND NOW skips
+       * the wait, ABORT leaves Submit to you. Resolves 'go' or 'abort'.
+       */
+      fuse(sec) {
+        return new Promise((resolve) => {
+          const box = document.createElement('div');
+          box.className = 'fuse';
+          box.innerHTML = `<div class="top"><b>// FUSE LIT · AUTO-SEND</b><span class="clock"></span></div>
+            <div class="wire"><i class="ash"></i><i class="spark"></i></div><div class="why"></div>
+            <div class="row"><button class="btn" data-k="hold">❚❚ HOLD</button><button class="btn" data-k="abort">✕ ABORT</button>
+            <button class="btn go" data-k="go">⚡ SEND NOW</button></div>`;
+          $('.body').insertBefore(box, $('.row'));
+          const [clock, ash, spark, why, hold] = ['.clock', '.ash', '.spark', '.why', '[data-k="hold"]'].map((s) =>
+            box.querySelector(s),
+          );
+          let left = sec * 10; // tenths
+          let held = false;
+          const paint = () => {
+            const burnt = 100 * (1 - left / (sec * 10));
+            ash.style.width = burnt + '%';
+            spark.style.left = 100 - burnt + '%';
+            clock.innerHTML = Math.ceil(left / 10) + '<small>s</small>';
+          };
+          const setHeld = (on, reason) => {
+            held = on;
+            box.classList.toggle('held', on);
+            hold.textContent = on ? '▶ RESUME' : '❚❚ HOLD';
+            why.textContent = on ? reason : 'every field is filled · it sends itself unless you hold it';
+          };
+          const end = (how) => {
+            clearInterval(timer);
+            document.removeEventListener('input', typed, true);
+            box.remove();
+            resolve(how);
+          };
+          // You are editing the form: the fuse waits for you.
+          const typed = (e) => !held && !host.contains(e.target) && setHeld(true, 'held: you are editing the form');
+          document.addEventListener('input', typed, true);
+          setHeld(false);
+          paint();
+          const timer = setInterval(() => {
+            if (held) return;
+            left--;
+            paint();
+            if (left <= 0) end('go');
+          }, 100);
+          box.addEventListener('click', (e) => {
+            const k = e.target.closest('button')?.dataset.k;
+            if (k === 'hold') setHeld(!held, 'held: review it, then RESUME or SEND NOW');
+            else if (k) end(k);
+          });
+        });
+      },
       hideSubmitJump: () => (root.querySelector('[data-act="submit"]').hidden = true),
       done(text) {
         api.state('LOGGED', '#00FF41');
@@ -1158,6 +1230,33 @@
     hud.note('ZERO-DAY left this one to you. Fix what is listed, then press Submit; RADAR logs it.');
   }
 
+  const FUSE_SECONDS = 60;
+  let fuseLit = false;
+  /** The fuse burned down: press the form's Submit and log it when the employer confirms. */
+  async function sendNow(hud) {
+    if (captchaNow()) return park(hud, ['a CAPTCHA is on the form: finish it, then press Submit']);
+    const button = submitCandidates()[0];
+    if (!button) return park(hud, ['no Submit button found: press it yourself']);
+    hud.log('SYS', "fuse burned down: pressing the form's Submit", 'dim');
+    await ask({ type: 'armed' });
+    button.click();
+    for (let i = 0; i < 60; i++) {
+      await sleep(1000);
+      if (confirmed()) {
+        const text = (pageText().match(CONFIRM) || [''])[0];
+        const res = await ask({ type: 'submitted', confirmation: { url: location.href, text } });
+        if (res && res.ok) hud.done(LOGGED);
+        return;
+      }
+      // Some forms (Ashby) take the first click to run their invisible check: press once more.
+      if (i === 4 && !confirmed() && submitCandidates()[0]) submitCandidates()[0].click();
+      if (captchaNow()) return park(hud, ['a CAPTCHA appeared after Submit: finish it in this tab']);
+      if (deepAll(scope, '[aria-invalid="true"]').some(visible))
+        return park(hud, ['the form showed an error after Submit: check this tab']);
+    }
+    park(hud, ['no confirmation 60 s after Submit: check this tab']);
+  }
+
   async function autoFinish(packet, hud) {
     // Only the consent classes you pre-approved are ticked; arbitration and anything else never are.
     for (const q of questions()) {
@@ -1259,6 +1358,15 @@
       if (AUTO && !arrived && !newStep && asking === 0 && !packet.partial)
         return exclusive(() => autoFinish(packet, hud));
       if (AUTO && Date.now() - startedAt > 5 * 60_000) return park(hud, ['the answers did not arrive in time']);
+      // HACK: once every answer is in and pre-flight is clean, light the fuse (once per tab).
+      if (!AUTO && hud && !fuseLit && !arrived && !newStep && asking === 0 && !packet.partial) {
+        const verdict = radarPreflight.preflight(snapshot(packet));
+        if (verdict.submit) {
+          fuseLit = true;
+          if ((await hud.fuse(FUSE_SECONDS)) === 'go') return exclusive(() => sendNow(hud));
+          hud.note('Auto-send aborted. Review, then press Submit yourself; RADAR logs it.');
+        }
+      }
       if (!arrived && !newStep) continue;
       if (arrived) [packet, version] = [entry.packet, entry.version];
       const pass = await exclusive(() => fillPass(packet));
