@@ -1462,7 +1462,15 @@
       if (AUTO && Date.now() - startedAt > 5 * 60_000) return park(hud, ['the answers did not arrive in time']);
       // HACK: once every answer is in and pre-flight is clean, light the fuse (once per tab).
       if (!AUTO && hud && !fuseLit && !arrived && !newStep && asking === 0 && !packet.partial) {
-        const verdict = radarPreflight.preflight(snapshot(packet));
+        let verdict;
+        try {
+          verdict = radarPreflight.preflight(snapshot(packet));
+        } catch (err) {
+          // Never die silently: say what broke and keep watching the form.
+          const msg = 'fuse check failed: ' + String((err && err.message) || err).slice(0, 120);
+          if (msg !== fuseWhy) (fuseWhyLine ||= hud.live('ERR', ''))((fuseWhy = msg), 'err');
+          continue;
+        }
         if (!verdict.submit) {
           // Say once, in place, why it will not send itself, so nothing waits silently.
           const why = verdict.reasons.join(' · ');
@@ -1486,6 +1494,15 @@
       settle();
       void askMore();
       fields = visibleFields().length;
+    }
+  }
+
+  /** A bug must never look like a quiet form: show it in the panel. */
+  function crashed(hud, err) {
+    console.error('[RADAR]', err);
+    if (hud) {
+      hud.state('ERROR', '#FF5555');
+      hud.log('ERR', 'RADAR hit a bug on this form: ' + String((err && err.message) || err).slice(0, 160), 'err');
     }
   }
 
@@ -1645,7 +1662,7 @@
       tellWall();
       if (!(await formAppears(entry.packet, () => false, 1800))) return;
       hud.state('FILLING');
-      return session(entry.packet, entry.version, hud);
+      return session(entry.packet, entry.version, hud).catch((e) => crashed(hud, e));
     }
     const inFrame = () => !!fromFrame;
     // A form embedded in a frame reports within a few seconds: only then say there is none yet.
@@ -1674,7 +1691,7 @@
       return hud.log('ERR', 'no application form appeared on this page', 'err');
     }
     hud.state('FILLING');
-    await session(entry.packet, entry.version, hud);
+    await session(entry.packet, entry.version, hud).catch((e) => crashed(hud, e));
   }
 
   (TOP ? runInPage : runInFrame)();
