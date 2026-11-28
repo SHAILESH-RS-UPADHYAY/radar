@@ -625,8 +625,16 @@ export default function DashboardPage() {
         );
       if (e.type === 'launched' && !e.ok)
         setNotice({ tone: 'alert', text: 'The extension could not open the form: ' + e.error });
-      if (e.type === 'gone')
-        setNotice({ tone: 'alert', text: 'That posting no longer exists: the employer took it down.' });
+      if (e.type === 'gone') {
+        // An expired posting leaves Discovery for good, so nobody spends another click on it.
+        setNotice({ tone: 'alert', text: 'That posting has expired: RADAR removed it from your feed.' });
+        setMatches((all) => all.filter((m) => m.id !== e.matchId));
+        void api('/api/vault', {
+          method: 'PATCH',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ ids: [e.matchId], status: 'dismissed' }),
+        });
+      }
       if (e.type === 'filled' && runMatch?.id !== e.matchId)
         setNotice({
           tone: e.needs ? 'info' : 'ok',

@@ -296,9 +296,12 @@
   /** The posting is gone: an error page, or the ATS sent the link back to its board with ?error=true. */
   function postingGone() {
     if (/[?&]error=true\b/.test(location.search)) return true;
-    const heads = [document.title, ...[...document.querySelectorAll('h1, h2')].slice(0, 3).map((h) => h.textContent)];
+    const heads = [
+      document.title,
+      ...[...document.querySelectorAll('h1, h2, h3, [role=alert]')].slice(0, 8).map((h) => h.textContent),
+    ];
     return heads.some((t) =>
-      /page not found|^\s*404\b|(job|position|posting) (is )?(not found|no longer|closed|has been (filled|closed))|no longer (available|accepting)|doesn.t exist|couldn.t find this/i.test(
+      /page not found|^\s*404\b|(job|position|posting|vacancy) (is |has )?(not found|no longer|closed|expired|been (filled|closed|removed))|(this|the) job has expired|no longer (available|accepting)|doesn.t exist|couldn.t find this|sorry, this job/i.test(
         t || '',
       ),
     );
