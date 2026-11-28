@@ -283,3 +283,17 @@ describe('tooThin', () => {
     expect(tooThin({ type: 'text', label: 'Current company' }, 'WebVory')).toBe(false);
   });
 });
+
+describe('taught answers on choice questions', () => {
+  it('match an option by meaning when no option is exact', () => {
+    const me2 = { ...me, learned: { 'how did you first hear about this opportunity': 'Y Combinator job board' } };
+    const f = {
+      name: 'q',
+      label: 'How did you first hear about this opportunity?',
+      type: 'select' as const,
+      required: true,
+      options: ['LinkedIn', 'Job Board (Indeed, ZipRecruiter)', 'Other'],
+    };
+    expect(fillFromProfile(f, me2, '')?.value).toBe('Job Board (Indeed, ZipRecruiter)');
+  });
+});

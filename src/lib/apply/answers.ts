@@ -66,8 +66,26 @@ const pickOption = (options: string[] | undefined, wanted: string): string => {
     options.find((o) => o.toLowerCase() === w) ||
     options.find((o) => o.toLowerCase().startsWith(w)) ||
     options.find((o) => o.toLowerCase().includes(w)) ||
+    byWords(options, w) ||
     ''
   );
+};
+/** The option sharing most of the answer's words (at least half): "YC job board" → "Job Board (Indeed, …)". */
+const byWords = (options: string[], wanted: string): string => {
+  const words = (s: string) =>
+    s
+      .toLowerCase()
+      .split(/[^a-z0-9]+/)
+      .filter((k) => k.length > 2);
+  const want = words(wanted);
+  let top = '';
+  let score = 0;
+  for (const o of options) {
+    const have = new Set(words(o));
+    const s = want.filter((k) => have.has(k)).length / Math.max(want.length, 1);
+    if (s > score) [top, score] = [o, s];
+  }
+  return score >= 0.5 ? top : '';
 };
 const yesNo = (options: string[] | undefined, v: '' | 'yes' | 'no') => (v ? pickOption(options, v) : '');
 
