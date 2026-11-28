@@ -133,9 +133,11 @@ const CHUNK = 100;
 export async function retireClosedMatches(supabase: SupabaseClient, userId?: string): Promise<number> {
   let query = supabase
     .from('match_scores')
-    .select('id, status, jobs!inner(is_active)')
+    .select('id, status, jobs!inner(is_active, companies!inner(name))')
     .in('status', ['new', 'saved'])
-    .eq('jobs.is_active', false);
+    .eq('jobs.is_active', false)
+    // Pages you added with the extension ("Your finds") are kept off the feed on purpose, not closed: never retire them.
+    .neq('jobs.companies.name', 'Your finds');
   if (userId) query = query.eq('user_id', userId);
   const { data, error } = await query.limit(2000);
   if (error) {
