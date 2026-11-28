@@ -101,7 +101,19 @@ export function OpsCard({
       <JobFacts job={job} />
       <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-dim">
         {[
-          match.applied_at ? 'applied ' + timeAgo(match.applied_at) : null,
+          match.applied_at
+            ? 'applied ' +
+              new Date(match.applied_at).toLocaleString('en-IN', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+              }) +
+              ' (' +
+              timeAgo(match.applied_at) +
+              ')'
+            : null,
           match.stage_changed_at && stage !== 'applied' ? 'stage ' + timeAgo(match.stage_changed_at) : null,
         ]
           .filter(Boolean)

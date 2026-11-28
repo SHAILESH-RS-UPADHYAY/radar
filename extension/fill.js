@@ -443,6 +443,8 @@
     // Workday searches on Enter, not as you type.
     if (WORKDAY) input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', keyCode: 13, bubbles: true }));
     const w = norm(wanted);
+    // Whole words only: "india" must not pick "Indianapolis" (or "Indiana").
+    const word = new RegExp('(^|[^a-z0-9])' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '($|[^a-z0-9])');
     for (let i = 0; i < 40; i++) {
       await sleep(100);
       const listId = input.getAttribute('aria-controls') || input.getAttribute('aria-owns');
@@ -452,9 +454,9 @@
       );
       const hit =
         options.find((o) => norm(o.textContent) === w) ||
-        options.find((o) => norm(o.textContent).startsWith(w)) ||
-        options.find((o) => w.length > 3 && norm(o.textContent).includes(w)) ||
-        (loose && i >= 8 && options[0]);
+        options.find((o) => word.test(norm(o.textContent))) ||
+        // A place with no word match: the first suggestion only if it does not merely share a prefix with it.
+        (loose && i >= 8 && options.find((o) => !norm(o.textContent).startsWith(w.slice(0, 4))));
       if (hit) {
         clickLike(hit);
         await sleep(150);
