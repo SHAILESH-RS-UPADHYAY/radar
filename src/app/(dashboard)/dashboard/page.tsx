@@ -527,7 +527,13 @@ export default function DashboardPage() {
   const appliedAt = new Set(applied.map((m) => m.job.company.name.toLowerCase()));
   const sunk = (m: (typeof matches)[number]) => (appliedAt.has(m.job.company.name.toLowerCase()) ? 1 : 0);
   const saved = shown
-    .filter((m) => m.status === 'saved' && m.job.is_active && !(m.auto_saved && m.score < bar))
+    // A page you added yourself ("Your finds") is never listed as an open feed job, but it stays in your Vault.
+    .filter(
+      (m) =>
+        m.status === 'saved' &&
+        (m.job.is_active || m.job.company.source === 'Your finds') &&
+        !(m.auto_saved && m.score < bar),
+    )
     .sort((a, b) => sunk(a) - sunk(b) || byScore(a, b));
   const laneCounts = signalFacets(saved, vaultFilters, vaultExp).lanes;
   const filteredSaved = applyFilters(saved, vaultFilters, vaultExp);
