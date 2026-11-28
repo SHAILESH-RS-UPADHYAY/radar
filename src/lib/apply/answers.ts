@@ -251,6 +251,7 @@ Rules:
 - Pick the project that fits this job best (voice, RAG, agents, backend latency, data pipelines, extensions…), not always the same one.
 - A take-home exercise, assignment or test submission link: return "". Never put a portfolio or project link there.
 - "Describe / walk us through / tell us about" questions get full sentences about one project, never just its name.
+- Pay for a job outside India is in that job's currency (USD unless the posting says otherwise), taken from the range in the job text when it has one; for a job in India use the candidate's figure in LPA.
 - Pay and notice answers carry their unit: "8 LPA", "Immediate (no notice period)", never a bare number.
 - A field that lists options: the value must be exactly one of the options (multi-select: an array of them).
 - Never write: ${STOCK_PHRASES.join(', ')}. No emojis, exclamation marks, dashes, semicolons, lists or markdown.
