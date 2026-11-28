@@ -121,7 +121,8 @@ export function fillFromProfile(
   }
   if (/linkedin/.test(label)) return text(c.linkedin);
   if (/github/.test(label)) return text(c.github);
-  if (/portfolio/.test(label)) return text(c.portfolio || c.website);
+  // "Portfolio" the link, not "a Vista portfolio company": a long question about companies is never your URL.
+  if (/portfolio/.test(label) && !/compan|employ|fund|invest/.test(label)) return text(c.portfolio || c.website);
   if (/\b(website|personal site|blog)\b/.test(label)) return text(c.website || c.portfolio);
 
   if (field.type === 'select' || field.type === 'multiselect') {

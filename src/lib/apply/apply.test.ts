@@ -161,6 +161,7 @@ describe('fillFromProfile', () => {
     expect(YOUR_CALL.test('Why do you want to work here?')).toBe(false);
     expect(YOUR_CALL.test('Please double-check the information above and confirm it is accurate')).toBe(true);
     expect(fillFromProfile(field('location', 'Current location'), me, '')?.value).toBe('Bengaluru');
+    expect(fillFromProfile(field('q', 'If yes, which Vista portfolio company?'), me, '')).toBeNull();
     // Another person's contact details are never yours.
     expect(
       fillFromProfile(field('q', 'If you were referred by someone, share their official email address'), me, ''),
