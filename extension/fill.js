@@ -1453,6 +1453,18 @@
       if (!entry || entry.done) return;
       const arrived = entry.version !== version && entry.packet;
       const newStep = visibleFields().length !== fields;
+      // Heartbeat for debugging a form that waits: what the loop sees on each tick.
+      document.documentElement.dataset.radarTick = JSON.stringify({
+        t: Date.now(),
+        arrived: !!arrived,
+        newStep,
+        fields,
+        now: visibleFields().length,
+        asking,
+        partial: !!packet.partial,
+        fuseLit,
+        done: !!entry.done,
+      });
       if (WORKDAY && !arrived && !newStep && asking === 0 && !packet.partial && workdayNext()) {
         if (hud) hud.log('SYS', 'step complete: Save and Continue', 'dim');
         await sleep(2500);
