@@ -1259,7 +1259,15 @@
 
   function captchaNow() {
     const frames = [...document.querySelectorAll('iframe')]
-      .filter((f) => visible(f) && f.getBoundingClientRect().height > 10)
+      // Invisible reCAPTCHA preloads its challenge frame hidden (visibility: hidden): only a frame you can see counts.
+      .filter((f) => {
+        if (!visible(f) || f.getBoundingClientRect().height <= 10) return false;
+        for (let n = f; n && n.nodeType === 1; n = n.parentElement) {
+          const st = getComputedStyle(n);
+          if (st.visibility === 'hidden' || st.opacity === '0') return false;
+        }
+        return true;
+      })
       .map((f) => ({ src: f.src || '' }));
     const solved = [
       ...document.querySelectorAll(
