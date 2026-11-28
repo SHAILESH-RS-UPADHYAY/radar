@@ -1349,6 +1349,9 @@
         if (res && res.ok) hud.done(LOGGED);
         return;
       }
+      // Greenhouse may email a one-time code before it accepts: that code is yours to type.
+      if (deepAll(document, '[id^="security-input"]').some(visible))
+        return park(hud, ['the employer emailed you a security code: type it here, then press Submit (RADAR logs it)']);
       // Some forms (Ashby) take the first click to run their invisible check: press once more.
       if (i === 4 && !confirmed() && submitCandidates()[0]) submitCandidates()[0].click();
       if (captchaNow()) return park(hud, ['a CAPTCHA appeared after Submit: finish it in this tab']);
