@@ -33,11 +33,14 @@ export async function prepareForm(
   matchId: string,
   opts: { draft?: boolean; fields?: PageQuestion[] } = {},
 ): Promise<Prepared> {
-  const res = await api('/api/apply/prepare', {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({ matchId, ...opts }),
-  });
+  const send = () =>
+    api('/api/apply/prepare', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ matchId, ...opts }),
+    });
+  // A dropped connection ("Failed to fetch", e.g. while a new deploy goes live) gets one more try.
+  const res = await send().catch(() => new Promise<Response>((ok) => setTimeout(() => ok(send()), 2500)));
   const d = (await res.json().catch(() => ({}))) as Prepared & { error?: string };
   if (!res.ok) throw new Error(d.error || 'HTTP ' + res.status);
   return d;
