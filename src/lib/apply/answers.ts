@@ -125,8 +125,12 @@ export function fillFromProfile(
   if (/portfolio/.test(label) && !/compan|employ|fund|invest/.test(label)) return text(c.portfolio || c.website);
   if (/\b(website|personal site|blog)\b/.test(label)) return text(c.website || c.portfolio);
 
+  // Willing to relocate: your kit says so, whatever shape the question takes (select, Yes/No buttons, a text box).
+  if (/relocat/.test(label) && c.willingToRelocate)
+    return field.options?.length
+      ? option(pickOption(field.options, c.willingToRelocate))
+      : text(c.willingToRelocate === 'yes' ? 'Yes' : 'No');
   if (field.type === 'select' || field.type === 'multiselect') {
-    if (/relocat/.test(label) && c.willingToRelocate === 'yes') return option(pickOption(field.options, 'yes'));
     const eeo: [RegExp, string][] = [
       [/\bgender\b/, c.gender],
       [/pronoun/, c.pronouns],

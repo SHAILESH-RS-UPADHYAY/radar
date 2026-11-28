@@ -156,7 +156,7 @@
   /** The question a radio/checkbox group asks (each box's own label is just an option). */
   function groupHead(el, own) {
     const box = el.closest('fieldset, [role=radiogroup], [role=group], .application-question');
-    for (const sel of ['legend', '.application-label', '.text']) {
+    for (const sel of ['legend', '.application-label', '[class*="question-title"]', ':scope > label', '.text']) {
       const head = box && box.querySelector(sel);
       if (head && head.textContent.trim()) return head;
     }
