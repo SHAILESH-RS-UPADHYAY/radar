@@ -1180,7 +1180,9 @@
             resolve(how);
           };
           // You are editing the form: the fuse waits for you.
-          const typed = (e) => !held && !host.contains(e.target) && setHeld(true, 'held: you are editing the form');
+          // Only your own typing holds it: RADAR's fills (and answers taught in the panel) fire synthetic events.
+          const typed = (e) =>
+            e.isTrusted && !held && !host.contains(e.target) && setHeld(true, 'held: you are editing the form');
           document.addEventListener('input', typed, true);
           setHeld(false);
           paint();
